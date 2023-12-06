@@ -118,7 +118,7 @@ describe("jsx-runtime", () => {
   });
 
   it("correctly handles functional components", () => {
-    const Layout = ({ children }: { children?: JSX.Element | JSX.Element[] }) => {
+    const Layout = ({ children }: JSX.PropsWithChildren) => {
       return (
         <html>
           <head>

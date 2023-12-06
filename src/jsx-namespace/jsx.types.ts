@@ -49,8 +49,6 @@ import { AttributeBool } from "./prop-types/shared/bool";
 
 export {};
 
-type HTMLElement = Element;
-
 declare global {
   namespace JSX {
     type SignalValue = null | undefined | boolean | string | number;
@@ -70,7 +68,9 @@ declare global {
 
     type VanillaValue = Signal<any> | null | undefined | boolean | string | number;
 
-    type Element = HTMLElement | DocumentFragment | VanillaValue;
+    type Element = HTMLElement;
+
+    type Children = Element | VanillaValue | Array<Element | VanillaValue>;
 
     type HTMLProps<P> =
       & {
@@ -210,12 +210,12 @@ declare global {
       event: E,
     ) => void;
 
-    type PropsWithChildren<P> = {
-      children?: Element | Element[];
+    type PropsWithChildren<P = {}> = {
+      children?: Children;
     } & P;
 
     interface BaseAttributes {
-      children?: Element | Element[];
+      children?: Children;
 
       accesskey?: string;
       class?: string;

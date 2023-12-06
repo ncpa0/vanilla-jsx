@@ -39,13 +39,13 @@ describe("Map", () => {
       <div>
         <Map
           data={sig}
-          parent={<ul id="list" /> as Element}
+          parent={<ul id="list" />}
           render={(elem) => {
             return <li>Element: {elem}</li> as Element;
           }}
         />
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual(
       "<div><ul id=\"list\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",

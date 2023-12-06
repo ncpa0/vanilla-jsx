@@ -1,7 +1,22 @@
 {
   "name": "vanilla-jsx",
   "version": "1.0.0",
-  "main": "./dist/index.js",
+  "main": "./dist/legacy/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.mjs",
+      "require": "./dist/cjs/index.cjs"
+    },
+    "./jsx-runtime": {
+      "import": "./dist/esm/jsx-runtime.mjs",
+      "require": "./dist/cjs/jsx-runtime.cjs"
+    },
+    "./jsx-dev-runtime": {
+      "import": "./dist/esm/jsx-dev-runtime.mjs",
+      "require": "./dist/cjs/jsx-dev-runtime.cjs"
+    }
+  },
   "keywords": [],
   "repository": {
     "type": "git",
@@ -16,10 +31,14 @@
   "scripts": {
     "fix:format": "dprint fmt ./src/**/*.ts",
     "test:format": "dprint check ./src/**/*.ts",
-    "test:tsc": "tsc --noEmit"
+    "test:tsc": "tsc --noEmit",
+    "test:unit": "jest",
+    "build": "node ./scripts/build.mjs"
   },
   "devDependencies": {
+    "@ncpa0cpl/nodepack": "^2.3.0",
     "dprint": "^0.43.2",
+    "esbuild": "^0.19.8",
     "git-hook-tasks": "ncpa0cpl/git-hook-tasks",
     "husky": "^8.0.3",
     "jest": "^29.7.0",

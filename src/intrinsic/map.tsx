@@ -1,5 +1,5 @@
-import { jsx } from "../jsx-runtime";
-import { sigProxy } from "../signal-proxy";
+import { jsx } from "../create-element";
+import { sigProxy } from "../signals";
 
 export type MapProps<T> = {
   data: JSX.Signal<T[]>;
@@ -32,11 +32,11 @@ class RenderMemory<T> {
 }
 
 export function Map<T>(props: MapProps<T>) {
-  const memo = new RenderMemory();
+  const memo = new RenderMemory<T>();
   const parent = (props.parent ?? <div></div>) as HTMLElement;
   const signal = sigProxy(props.data);
 
-  const b = signal.add(list => {
+  signal.bindTo(parent, list => {
     for (let i = 0; i < memo.elements.length; i++) {
       const [value, element] = memo.elements[i]!;
       if (list.indexOf(value) === -1) {
@@ -79,11 +79,6 @@ export function Map<T>(props: MapProps<T>) {
       memo.add(i, value, element);
     }
   });
-
-  parent.addEventListener("sig-detach", () => {
-    b.detach();
-    memo.elements.splice(0, memo.elements.length);
-  }, { capture: true, once: true });
 
   return parent;
 }
