@@ -53,22 +53,28 @@ declare global {
   namespace JSX {
     type SignalValue = null | undefined | boolean | string | number;
 
-    interface SignalRemove<V> {
+    interface SignalWithRemove<V> {
       add(listener: (value: V) => void): void;
       remove(listener: (value: V) => void): void;
     }
 
-    interface SignalDetach<V> {
+    interface SignalWithDetach<V> {
+      add(listener: (value: V) => void): void;
+      detach(listener: (value: V) => void): void;
+    }
+
+    interface SignalWithDetachRef<V> {
       add(listener: (value: V) => void): { detach(): void };
     }
 
     type Signal<V = any> =
-      | SignalRemove<V>
-      | SignalDetach<V>;
+      | SignalWithRemove<V>
+      | SignalWithDetach<V>
+      | SignalWithDetachRef<V>;
 
     type VanillaValue = Signal<any> | null | undefined | boolean | string | number;
 
-    type Element = HTMLElement;
+    type Element = globalThis.Element;
 
     type Children = Element | VanillaValue | Array<Element | VanillaValue>;
 
@@ -78,7 +84,14 @@ declare global {
       }
       & {
         [K in keyof BaseAttributes]: Signal<BaseAttributes[K]> | BaseAttributes[K];
+      }
+      & {
+        children?: Children | Children[];
       };
+
+    interface ElementChildrenAttribute {
+      children?: {}; // specify children name to use
+    }
 
     interface IntrinsicElements {
       a: HTMLProps<VanillaJSX.AnchorTagProps>;
@@ -199,11 +212,7 @@ declare global {
       video: HTMLProps<VanillaJSX.VideoTagProps>;
       wbr: HTMLProps<VanillaJSX.WbrTagProps>;
       webview: HTMLProps<VanillaJSX.WebviewTagProps>;
-
-      // SVG
       svg: HTMLProps<VanillaJSX.SvgTagProps>;
-
-      // web components
     }
 
     type EventHandlerFunction<E extends Event = Event> = (
@@ -215,8 +224,6 @@ declare global {
     } & P;
 
     interface BaseAttributes {
-      children?: Children;
-
       accesskey?: string;
       class?: string;
       contenteditable?: AttributeBool;

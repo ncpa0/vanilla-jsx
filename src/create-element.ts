@@ -116,9 +116,17 @@ export function createElement(
           });
         } else {
           sig.bindTo(element, (value) => {
-            if (value == null) {
+            if (value == null && element.hasAttribute(propName)) {
               element.removeAttribute(propName);
-            } else {
+              return;
+            }
+
+            if (propName in element) {
+              (element as any)[propName] = value;
+              return;
+            }
+
+            if (value != null) {
               element.setAttribute(propName, valToString(value));
             }
           });

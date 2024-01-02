@@ -6,15 +6,18 @@
   "exports": {
     ".": {
       "import": "./dist/esm/index.mjs",
-      "require": "./dist/cjs/index.cjs"
+      "require": "./dist/cjs/index.cjs",
+      "types": "./dist/types/index.d.ts"
     },
     "./jsx-runtime": {
       "import": "./dist/esm/jsx-runtime.mjs",
-      "require": "./dist/cjs/jsx-runtime.cjs"
+      "require": "./dist/cjs/jsx-runtime.cjs",
+      "types": "./dist/types/jsx-runtime.d.ts"
     },
     "./jsx-dev-runtime": {
       "import": "./dist/esm/jsx-dev-runtime.mjs",
-      "require": "./dist/cjs/jsx-dev-runtime.cjs"
+      "require": "./dist/cjs/jsx-dev-runtime.cjs",
+      "types": "./dist/types/jsx-runtime.d.ts"
     }
   },
   "keywords": [],
@@ -45,5 +48,6 @@
     "jest-environment-jsdom": "^29.7.0",
     "ts-jest": "^29.1.1",
     "typescript": "^5.3.2"
-  }
+  },
+  "sideEffects": false
 }

@@ -3,8 +3,8 @@ import { sigProxy } from "../signals";
 
 export type MapProps<T> = {
   data: JSX.Signal<T[]>;
-  render: (value: T) => Element;
   parent?: Element;
+  children: (value: T) => Element;
 };
 
 class RenderMemory<T> {
@@ -31,9 +31,19 @@ class RenderMemory<T> {
   }
 }
 
+const getRenderFn = <T,>(props: { children: any }): (elem: T) => JSX.Element => {
+  if (Array.isArray(props.children) && typeof props.children[0] === "function") {
+    return props.children[0];
+  } else if (typeof props.children === "function") {
+    return props.children;
+  }
+
+  throw new Error("<Map>: Invalid children");
+};
+
 export function Map<T>(props: MapProps<T>) {
   const memo = new RenderMemory<T>();
-  const parent = (props.parent ?? <div></div>) as HTMLElement;
+  const parent = props.parent ?? <div></div>;
   const signal = sigProxy(props.data);
 
   signal.bindTo(parent, list => {
@@ -69,12 +79,13 @@ export function Map<T>(props: MapProps<T>) {
       }
 
       // Otherwise, render a new element
-      const element = props.render(value);
+      const render = getRenderFn(props);
+      const element = render(value);
       const beforeElem = memo.elements[i];
       if (beforeElem) {
         parent.insertBefore(element, beforeElem[1]);
       } else {
-        parent.appendChild(element);
+        parent.append(element);
       }
       memo.add(i, value, element);
     }

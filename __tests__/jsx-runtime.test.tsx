@@ -1,34 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
+import { sig } from "../src";
 import { jsx } from "../src/jsx-runtime";
-
-class Signal<T> {
-  private listeners: ((value: T) => void)[] = [];
-  private value: T;
-
-  constructor(value: T) {
-    this.value = value;
-  }
-
-  public add(listener: (value: T) => void): { detach(): void } {
-    this.listeners.push(listener);
-    listener(this.value);
-
-    return {
-      detach: () => {
-        this.listeners = this.listeners.filter((l) => l !== listener);
-      },
-    };
-  }
-
-  public dispatch(value: T): void {
-    this.value = value;
-    this.listeners.forEach((l) => l(value));
-  }
-}
 
 describe("jsx-runtime", () => {
   it("creates a div element", () => {
-    const d = <div /> as HTMLDivElement;
+    const d = <div />;
 
     expect(d.outerHTML).toEqual("<div></div>");
   });
@@ -38,7 +14,7 @@ describe("jsx-runtime", () => {
       <div>
         <span>Hello World!</span>
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual("<div><span>Hello World!</span></div>");
   });
@@ -48,7 +24,7 @@ describe("jsx-runtime", () => {
       <div id="root" class="foo bar">
         <span class="text">Hello World!</span>
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual(
       "<div id=\"root\" class=\"foo bar\"><span class=\"text\">Hello World!</span></div>",
@@ -63,7 +39,7 @@ describe("jsx-runtime", () => {
         <span>World</span>
         {nums.map((n) => <span>{n}</span>)}
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual(
       "<div><span>Hello</span><span>World</span><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
@@ -71,15 +47,15 @@ describe("jsx-runtime", () => {
   });
 
   it("signals correctly update the content of the element", () => {
-    const sig1 = new Signal("Hello World!");
-    const sig2 = new Signal("bar baz");
+    const sig1 = sig("Hello World!");
+    const sig2 = sig("bar baz");
 
     const d = (
       <div>
         <span>{sig1}</span>
         <span>foo {sig2} qux</span>
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual("<div><span>Hello World!</span><span>foo bar baz qux</span></div>");
 
@@ -93,14 +69,14 @@ describe("jsx-runtime", () => {
   });
 
   it("signals correctly update the element attributes", () => {
-    const classNames = new Signal("foo bar");
-    const id = new Signal<string | undefined>("root");
+    const classNames = sig("foo bar");
+    const id = sig<string | undefined>("root");
 
     const d = (
       <div class={classNames} id={id}>
         <p>Hi</p>
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual("<div class=\"foo bar\" id=\"root\"><p>Hi</p></div>");
 
@@ -141,7 +117,7 @@ describe("jsx-runtime", () => {
       <Layout>
         <Header text="Hello World!" />
       </Layout>
-    ) as HTMLHtmlElement;
+    );
 
     expect(d.outerHTML).toEqual(
       "<html><head><title>Test</title></head><body><div id=\"root\"><h1 class=\"header\">Hello World!</h1></div></body></html>",

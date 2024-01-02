@@ -1,46 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
-import { disconnectElement } from "../src";
+import { disconnectElement, sig } from "../src";
 import { jsx } from "../src/jsx-runtime";
 
-class Signal<T> {
-  private listeners: ((value: T) => void)[] = [];
-  private value: T;
-
-  constructor(value: T) {
-    this.value = value;
-  }
-
-  public add(listener: (value: T) => void): { detach(): void } {
-    this.listeners.push(listener);
-    listener(this.value);
-
-    return {
-      detach: () => {
-        this.listeners = this.listeners.filter((l) => l !== listener);
-      },
-    };
-  }
-
-  public dispatch(value: T): void {
-    this.value = value;
-    this.listeners.forEach((l) => l(value));
-  }
-
-  public getCurrent(): T {
-    return this.value;
-  }
-}
-
-describe("signals", () => {
+describe("signal handling", () => {
   it("correctly binds to attributes and children", () => {
-    const sigText = new Signal("Lorem Ipsum dolor sit amet");
-    const sigClass = new Signal("foo bar");
+    const sigText = sig("Lorem Ipsum dolor sit amet");
+    const sigClass = sig("foo bar");
 
     const d = (
       <div class={sigClass}>
         <span>{sigText}</span>
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual(
       "<div class=\"foo bar\"><span>Lorem Ipsum dolor sit amet</span></div>",
@@ -55,8 +26,8 @@ describe("signals", () => {
   });
 
   it("correctly unbinds from the element tree when disconnect is called", () => {
-    const sigText = new Signal("Lorem Ipsum dolor sit amet");
-    const sigClass = new Signal("foo bar");
+    const sigText = sig("Lorem Ipsum dolor sit amet");
+    const sigClass = sig("foo bar");
 
     const d = (
       <body>
@@ -64,7 +35,7 @@ describe("signals", () => {
           <span>{sigText}</span>
         </div>
       </body>
-    ) as HTMLDivElement;
+    );
 
     expect(d.outerHTML).toEqual(
       "<body><div class=\"foo bar\"><span>Lorem Ipsum dolor sit amet</span></div></body>",
@@ -81,8 +52,8 @@ describe("signals", () => {
   });
 
   it("doesn't unbind from outside the element", () => {
-    const sigText = new Signal("Lorem Ipsum dolor sit amet");
-    const sigClass = new Signal("foo bar");
+    const sigText = sig("Lorem Ipsum dolor sit amet");
+    const sigClass = sig("foo bar");
 
     const elem1 = (
       <span class={sigClass}>
@@ -90,8 +61,8 @@ describe("signals", () => {
       </span>
     );
 
-    const sigContainerClass = new Signal("container");
-    const sigHeader = new Signal("Title");
+    const sigContainerClass = sig("container");
+    const sigHeader = sig("Title");
 
     const container = (
       <div class={sigContainerClass}>
@@ -102,7 +73,7 @@ describe("signals", () => {
           {elem1}
         </div>
       </div>
-    ) as HTMLDivElement;
+    );
 
     expect(container.outerHTML).toEqual(
       "<div class=\"container\"><div><h1>Title</h1></div><div class=\"main\"><span class=\"foo bar\"><h2>Lorem Ipsum dolor sit amet</h2></span></div></div>",
