@@ -1,6 +1,6 @@
 {
-  "name": "vanilla-jsx",
-  "version": "1.0.0",
+  "name": "@ncpa0cpl/vanilla-jsx",
+  "version": "0.0.1-alpha.1",
   "main": "./dist/legacy/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
@@ -20,6 +20,16 @@
       "types": "./dist/types/jsx-runtime.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "LICENSE",
+    "package.json",
+    "yarn.lock",
+    "jsx-runtime.js",
+    "jsx-runtime.d.ts",
+    "jsx-dev-runtime.js",
+    "jsx-dev-runtime.d.ts"
+  ],
   "keywords": [],
   "repository": {
     "type": "git",

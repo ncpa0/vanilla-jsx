@@ -1,5 +1,5 @@
 import { jsx } from "../create-element";
-import { sigProxy } from "../signals";
+import { sigProxy } from "../signals/proxy";
 
 export type IfProps = JSX.PropsWithChildren<{
   condition: JSX.Signal<boolean>;

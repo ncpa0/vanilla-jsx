@@ -1,4 +1,4 @@
-import { sigProxy } from "./signals";
+import { sigProxy } from "./signals/proxy";
 
 type FunctionComponent = (props: object) => JSX.Element;
 
