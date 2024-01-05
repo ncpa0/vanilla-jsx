@@ -4,7 +4,7 @@ declare global {
   namespace VanillaJSX {
     interface ButtonTagProps {
       autofocus?: AttributeBool;
-      disabled?: string;
+      disabled?: AttributeBool;
       form?: string;
       formaction?: string;
       formenctype?: string;

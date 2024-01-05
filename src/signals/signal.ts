@@ -68,7 +68,7 @@ function attempt(fn: () => void) {
 
 class VanillaJsxSignal<T> implements Signal<T> {
   private listeners: SignalListener<T>[] = [];
-  private derivedSignals: VanillaJsxSignal<any>[] = [];
+  private derivedSignals: WeakRef<VanillaJsxSignal<any>>[] = [];
   private value: T;
   private deriveFn?: () => T;
   private derivedFrom: VanillaJsxSignal<any>[] = [];
@@ -84,7 +84,10 @@ class VanillaJsxSignal<T> implements Signal<T> {
    * that it doesn't need to be updated anymore)
    */
   private removeDerivedChild(signal: VanillaJsxSignal<any>) {
-    this.derivedSignals = this.derivedSignals.filter((s) => s !== signal);
+    this.derivedSignals = this.derivedSignals.filter((ref) => {
+      const s = ref.deref();
+      return s != null && s !== signal;
+    });
   }
 
   private updateDerived() {
@@ -116,14 +119,19 @@ class VanillaJsxSignal<T> implements Signal<T> {
     }
 
     for (let i = 0; i < this.derivedSignals.length; i++) {
-      const sig = this.derivedSignals[i]!;
-      attempt(() => {
-        if (sig.listeners.length === 0 && sig.derivedSignals.length === 0) {
-          sig.derivedIsOutOfDate = true;
-          return;
-        }
-        sig.updateDerived();
-      });
+      const sig = this.derivedSignals[i]!.deref();
+      if (sig) {
+        attempt(() => {
+          if (sig.listeners.length === 0 && sig.derivedSignals.length === 0) {
+            sig.derivedIsOutOfDate = true;
+            return;
+          }
+          sig.updateDerived();
+        });
+      } else {
+        this.derivedSignals.splice(i, 1);
+        i--;
+      }
     }
   }
 
@@ -210,7 +218,7 @@ class VanillaJsxSignal<T> implements Signal<T> {
     derivedSignal.derivedFrom = [this];
     derivedSignal.dispatch = derivedSignal.dispatch_derived;
 
-    this.derivedSignals.push(derivedSignal);
+    this.derivedSignals.push(new WeakRef(derivedSignal));
     return derivedSignal;
   }
 
@@ -222,7 +230,7 @@ class VanillaJsxSignal<T> implements Signal<T> {
     this.add = this.add_destroyed;
     this.dispatch = this.dispatch_destroyed;
     this.derive = this.derive_destroyed;
-    this.derivedSignals.forEach((s) => s.destroyDerived(this));
+    this.derivedSignals.forEach((s) => s.deref()?.destroyDerived(this));
     this.derivedSignals = [];
   }
 
@@ -236,11 +244,13 @@ class VanillaJsxSignal<T> implements Signal<T> {
     derivedSignal.derivedFrom = signals;
     derivedSignal.dispatch = derivedSignal.dispatch_derived;
 
-    signals.forEach((s) => s.derivedSignals.push(derivedSignal));
+    signals.forEach((s) => s.derivedSignals.push(new WeakRef(derivedSignal)));
 
     return derivedSignal;
   }
 }
+
+export type { VanillaJsxSignal };
 
 /**
  * Create a new signal with the given initial value.

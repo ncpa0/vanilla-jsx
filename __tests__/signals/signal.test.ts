@@ -1,6 +1,15 @@
+import { setFlagsFromString } from "v8";
 import { describe, expect, it, vitest } from "vitest";
+import { runInNewContext } from "vm";
 import { sig, Signal } from "../../src";
-import { deriveMany } from "../../src/signals/signal";
+import { deriveMany, ReadonlySignal, VanillaJsxSignal } from "../../src/signals/signal";
+
+setFlagsFromString("--expose_gc");
+const rawGC = runInNewContext("gc");
+async function gc() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  rawGC();
+}
 
 describe("VanillaJsxSignal()", () => {
   describe("current()", () => {
@@ -243,6 +252,26 @@ describe("VanillaJsxSignal()", () => {
 
       expect(destroySpy).toHaveBeenCalledTimes(1);
     });
+
+    it("derived signals should be possible to garbage collect", async () => {
+      const s = sig("foo") as VanillaJsxSignal<string>;
+      const derivedRefs = s["derivedSignals"];
+      let derived: ReadonlySignal<string> | null = s.derive(v => v.repeat(2));
+
+      expect(derived.current()).toBe("foofoo");
+      expect(derivedRefs[0]!.deref()).toBeDefined();
+
+      derived = null;
+      await gc();
+
+      expect(derivedRefs).toHaveLength(1);
+      expect(derivedRefs[0]!.deref()).toBeUndefined();
+
+      // Signal should remove empty references on change
+      s.dispatch("bar");
+
+      expect(derivedRefs).toHaveLength(0);
+    });
   });
 
   describe("destroy()", () => {
@@ -385,6 +414,40 @@ describe("VanillaJsxSignal()", () => {
 
       sig3.destroy();
       expect(destroySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("derived signals should be possible to garbage collect", async () => {
+      const s1 = sig("foo") as VanillaJsxSignal<string>;
+      const s2 = sig("bar") as VanillaJsxSignal<string>;
+      const s3 = sig("baz") as VanillaJsxSignal<string>;
+      const derivedRefs1 = s1["derivedSignals"];
+      const derivedRefs2 = s2["derivedSignals"];
+      const derivedRefs3 = s3["derivedSignals"];
+      let derived: ReadonlySignal<string> | null = deriveMany(s1, s2, s3, (v1, v2, v3) => `[${v1} ${v2} ${v3}]`);
+
+      expect(derived.current()).toBe("[foo bar baz]");
+      expect(derivedRefs1[0]!.deref()).toBeDefined();
+      expect(derivedRefs2[0]!.deref()).toBeDefined();
+      expect(derivedRefs3[0]!.deref()).toBeDefined();
+
+      derived = null;
+      await gc();
+
+      expect(derivedRefs1).toHaveLength(1);
+      expect(derivedRefs2).toHaveLength(1);
+      expect(derivedRefs3).toHaveLength(1);
+      expect(derivedRefs1[0]!.deref()).toBeUndefined();
+      expect(derivedRefs2[0]!.deref()).toBeUndefined();
+      expect(derivedRefs3[0]!.deref()).toBeUndefined();
+
+      // Signal should remove empty references on change
+      s1.dispatch("");
+      s2.dispatch("");
+      s3.dispatch("");
+
+      expect(derivedRefs1).toHaveLength(0);
+      expect(derivedRefs2).toHaveLength(0);
+      expect(derivedRefs3).toHaveLength(0);
     });
   });
 });
