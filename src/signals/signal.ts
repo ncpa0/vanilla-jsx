@@ -70,15 +70,44 @@ class VanillaJsxSignal<T> implements Signal<T> {
   private listeners: SignalListener<T>[] = [];
   private derivedSignals: VanillaJsxSignal<any>[] = [];
   private value: T;
-  private deriveFn?: (current: any) => T;
-  private derivedFrom?: VanillaJsxSignal<any>;
+  private deriveFn?: () => T;
+  private derivedFrom: VanillaJsxSignal<any>[] = [];
+  private derivedIsOutOfDate = false;
 
   constructor(value: T) {
     this.value = value;
   }
 
-  private removeDerived(signal: VanillaJsxSignal<any>) {
+  /**
+   * Removes the child signal from the list of derived signals.
+   * (should be called by the child to inform the parent
+   * that it doesn't need to be updated anymore)
+   */
+  private removeDerivedChild(signal: VanillaJsxSignal<any>) {
     this.derivedSignals = this.derivedSignals.filter((s) => s !== signal);
+  }
+
+  private updateDerived() {
+    const v = this.deriveFn!();
+    this.derivedIsOutOfDate = false;
+    if (Object.is(v, this.value)) {
+      return;
+    }
+    this.value = v;
+    this.propagateChange();
+  }
+
+  /**
+   * Destroys this derived signal if all of its parents were destroyed.
+   * (should be called by the parent to inform the child
+   * that it will never dispatch any changes)
+   */
+  private destroyDerived(from: VanillaJsxSignal<any>) {
+    this.derivedFrom = this.derivedFrom.filter((s) => s !== from);
+
+    if (this.derivedFrom.length === 0) {
+      this.destroy();
+    }
   }
 
   private propagateChange() {
@@ -89,9 +118,11 @@ class VanillaJsxSignal<T> implements Signal<T> {
     for (let i = 0; i < this.derivedSignals.length; i++) {
       const sig = this.derivedSignals[i]!;
       attempt(() => {
-        const v = sig.deriveFn!(this.value);
-        sig.value = v;
-        sig.propagateChange();
+        if (sig.listeners.length === 0 && sig.derivedSignals.length === 0) {
+          sig.derivedIsOutOfDate = true;
+          return;
+        }
+        sig.updateDerived();
       });
     }
   }
@@ -113,6 +144,10 @@ class VanillaJsxSignal<T> implements Signal<T> {
   }
 
   public add(listener: SignalListener<T>): SignalListenerReference<T> {
+    if (this.derivedIsOutOfDate) {
+      this.updateDerived();
+    }
+
     if (typeof listener !== "function") {
       throw new Error("Signal.add(): listener must be a function");
     }
@@ -151,6 +186,9 @@ class VanillaJsxSignal<T> implements Signal<T> {
   }
 
   public current(): T {
+    if (this.derivedIsOutOfDate) {
+      this.updateDerived();
+    }
     return this.value;
   }
 
@@ -163,9 +201,13 @@ class VanillaJsxSignal<T> implements Signal<T> {
   }
 
   public derive<U>(getDerivedValue: (current: T) => U): ReadonlySignal<U> {
+    if (this.derivedIsOutOfDate) {
+      this.updateDerived();
+    }
+
     const derivedSignal = new VanillaJsxSignal(getDerivedValue(this.value));
-    derivedSignal.deriveFn = getDerivedValue;
-    derivedSignal.derivedFrom = this;
+    derivedSignal.deriveFn = () => getDerivedValue(this.value);
+    derivedSignal.derivedFrom = [this];
     derivedSignal.dispatch = derivedSignal.dispatch_derived;
 
     this.derivedSignals.push(derivedSignal);
@@ -174,14 +216,29 @@ class VanillaJsxSignal<T> implements Signal<T> {
 
   public destroy(): void {
     this.detachAll();
-    this.derivedFrom?.removeDerived(this);
+    this.derivedFrom.forEach((s) => s.removeDerivedChild(this));
     this.deriveFn = undefined;
-    this.derivedFrom = undefined;
+    this.derivedFrom = [];
     this.add = this.add_destroyed;
     this.dispatch = this.dispatch_destroyed;
     this.derive = this.derive_destroyed;
-    this.derivedSignals.forEach((s) => s.destroy());
+    this.derivedSignals.forEach((s) => s.destroyDerived(this));
     this.derivedSignals = [];
+  }
+
+  public static deriveMany<U>(...args: any[]): ReadonlySignal<U> {
+    const signals = args.slice(0, -1) as VanillaJsxSignal<any>[];
+    const getDerivedValue = args[args.length - 1] as (...args: any[]) => U;
+    const deriveFn = () => getDerivedValue(...signals.map((s) => s.value));
+
+    const derivedSignal = new VanillaJsxSignal(deriveFn());
+    derivedSignal.deriveFn = deriveFn;
+    derivedSignal.derivedFrom = signals;
+    derivedSignal.dispatch = derivedSignal.dispatch_derived;
+
+    signals.forEach((s) => s.derivedSignals.push(derivedSignal));
+
+    return derivedSignal;
   }
 }
 
@@ -196,3 +253,34 @@ export function signal<T>(value: T): Signal<T> {
  * Alias for `signal()`.
  */
 export const sig = signal;
+
+export function deriveMany<E, U>(sig: Signal<E>, getDerivedValue: (v: E) => U): ReadonlySignal<U>;
+export function deriveMany<E, F, U>(
+  sig1: Signal<E>,
+  sig2: Signal<F>,
+  getDerivedValue: (v1: E, v2: F) => U,
+): ReadonlySignal<U>;
+export function deriveMany<E, F, G, U>(
+  sig1: Signal<E>,
+  sig2: Signal<F>,
+  sig3: Signal<G>,
+  getDerivedValue: (v1: E, v2: F, v3: G) => U,
+): ReadonlySignal<U>;
+export function deriveMany<E, F, G, H, U>(
+  sig1: Signal<E>,
+  sig2: Signal<F>,
+  sig3: Signal<G>,
+  sig4: Signal<H>,
+  getDerivedValue: (v1: E, v2: F, v3: G, v4: H) => U,
+): ReadonlySignal<U>;
+export function deriveMany<E, F, G, H, I, U>(
+  sig1: Signal<E>,
+  sig2: Signal<F>,
+  sig3: Signal<G>,
+  sig4: Signal<H>,
+  sig5: Signal<I>,
+  getDerivedValue: (v1: E, v2: F, v3: G, v4: H, v5: I) => U,
+): ReadonlySignal<U>;
+export function deriveMany<U>(...args: any[]): ReadonlySignal<U> {
+  return VanillaJsxSignal.deriveMany(...args);
+}

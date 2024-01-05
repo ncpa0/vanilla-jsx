@@ -21,6 +21,12 @@ function valToString(value: JSX.SignalValue): string {
   return value == null ? "" : String(value);
 }
 
+const textBindingFactory = () => {
+  return (value: any, textNode: Text) => {
+    textNode.textContent = valToString(value);
+  };
+};
+
 const mapChildren = (
   children: Exclude<JSX.Children, JSX.Element | JSX.VanillaValue>,
   accumulator: Array<Element | DocumentFragment | Text>,
@@ -46,9 +52,7 @@ const mapChildren = (
           const sig = sigProxy(child);
           const node = document.createTextNode("");
 
-          sig.bindTo(node, (value) => {
-            node.textContent = valToString(value);
-          });
+          sig.bindTo(node, textBindingFactory());
 
           accumulator.push(node);
         } else {
@@ -57,6 +61,38 @@ const mapChildren = (
         break;
     }
   }
+};
+
+const eventBindingFactory = (eventName: string) => {
+  let prevListener: (e: Event) => void;
+  return (value: any, elem: HTMLElement) => {
+    if (prevListener) {
+      elem.removeEventListener(eventName, prevListener);
+    }
+    if (value == null) {
+      return;
+    }
+    elem.addEventListener(eventName, value as any);
+    prevListener = value as any;
+  };
+};
+
+const attributeBindingFactory = (attributeName: string) => {
+  return (value: any, elem: HTMLElement) => {
+    if (value == null && elem.hasAttribute(attributeName)) {
+      elem.removeAttribute(attributeName);
+      return;
+    }
+
+    if (attributeName in elem) {
+      (elem as any)[attributeName] = value;
+      return;
+    }
+
+    if (value != null) {
+      elem.setAttribute(attributeName, valToString(value));
+    }
+  };
 };
 
 export function createElement(
@@ -103,33 +139,9 @@ export function createElement(
 
         if (propName.startsWith("on")) {
           const eventName = propName.substring(2).toLowerCase();
-          let prevListener: (e: Event) => void;
-          sig.bindTo(element, (value) => {
-            if (prevListener) {
-              element.removeEventListener(eventName, prevListener);
-            }
-            if (value == null) {
-              return;
-            }
-            element.addEventListener(eventName, value as any);
-            prevListener = value as any;
-          });
+          sig.bindTo(element, eventBindingFactory(eventName));
         } else {
-          sig.bindTo(element, (value) => {
-            if (value == null && element.hasAttribute(propName)) {
-              element.removeAttribute(propName);
-              return;
-            }
-
-            if (propName in element) {
-              (element as any)[propName] = value;
-              return;
-            }
-
-            if (value != null) {
-              element.setAttribute(propName, valToString(value));
-            }
-          });
+          sig.bindTo(element, attributeBindingFactory(propName));
         }
       } else {
         if (propName.startsWith("on")) {

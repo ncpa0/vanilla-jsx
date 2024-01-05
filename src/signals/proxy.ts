@@ -3,23 +3,24 @@ export interface SignalProxy<T> {
   bindTo<E extends Element | Text>(elem: E, cb: (value: T, element: E) => void): void;
 }
 
-let BoundSignals: {
-  active: boolean;
-  element: Element | Text;
-  detach: () => void;
-}[] = [];
-
 const bindFactory = <T>(add: SignalProxy<T>["add"]) => {
-  const bindTo: SignalProxy<T>["bindTo"] = (element, cb) => {
+  const addSelfDetachingListener = <E extends Element | Text>(
+    elementRef: WeakRef<E>,
+    cb: (value: T, element: E) => void,
+  ) => {
     const ref = add((value) => {
-      cb(value, element);
+      const elem = elementRef.deref();
+      if (elem) {
+        cb(value, elem);
+      } else {
+        ref.detach();
+      }
     });
-    const binding = {
-      active: true,
-      element,
-      detach: ref.detach.bind(ref),
-    };
-    BoundSignals.push(binding);
+  };
+
+  const bindTo: SignalProxy<T>["bindTo"] = (element, cb) => {
+    const elemRef = new WeakRef(element);
+    addSelfDetachingListener(elemRef, cb);
   };
 
   return bindTo;
@@ -75,16 +76,4 @@ export function sigProxy<T>(s: JSX.Signal<T>): SignalProxy<T> {
       bindTo: bindFactory(add),
     };
   }
-}
-
-const isBindingActive = (binding: typeof BoundSignals[0]) => binding.active;
-export function disconnectElement(elem: Element | DocumentFragment | Text) {
-  for (let i = 0; i < BoundSignals.length; i++) {
-    const binding = BoundSignals[i]!;
-    if (binding.active && elem.contains(binding.element)) {
-      binding.detach();
-      binding.active = false;
-    }
-  }
-  BoundSignals = BoundSignals.filter(isBindingActive);
 }

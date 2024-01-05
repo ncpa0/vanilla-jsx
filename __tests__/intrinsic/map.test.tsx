@@ -1,6 +1,6 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it } from "vitest";
 import { Map, sig } from "../../src";
-import { jsx } from "../../src/jsx-runtime";
+import { Fragment, jsx } from "../../src/jsx-runtime";
 
 describe("Map", () => {
   it("renders elements", () => {
@@ -10,7 +10,7 @@ describe("Map", () => {
       <div>
         <Map
           data={s}
-          parent={<ul id="list" />}
+          into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
@@ -20,7 +20,7 @@ describe("Map", () => {
     );
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
     );
   });
 
@@ -31,7 +31,7 @@ describe("Map", () => {
       <div>
         <Map
           data={s}
-          parent={<ul id="list" />}
+          into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
@@ -41,31 +41,31 @@ describe("Map", () => {
     ) as HTMLDivElement;
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
     );
 
     s.dispatch(["oof", "bar", "baz", "qux"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: oof</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: oof</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
     );
 
     s.dispatch(["oof", "rab", "baz", "qux"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: oof</li><li>Element: rab</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: oof</li><li>Element: rab</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
     );
 
     s.dispatch(["oof", "rab", "zab", "qux"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: oof</li><li>Element: rab</li><li>Element: zab</li><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: oof</li><li>Element: rab</li><li>Element: zab</li><li>Element: qux</li></ul></div>",
     );
 
     s.dispatch(["oof", "rab", "zab", "xuq"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: oof</li><li>Element: rab</li><li>Element: zab</li><li>Element: xuq</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: oof</li><li>Element: rab</li><li>Element: zab</li><li>Element: xuq</li></ul></div>",
     );
   });
 
@@ -76,7 +76,7 @@ describe("Map", () => {
       <div>
         <Map
           data={s}
-          parent={<ul id="list" />}
+          into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
@@ -86,37 +86,37 @@ describe("Map", () => {
     ) as HTMLDivElement;
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li><li>Element: coorg</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li><li>Element: coorg</li></ul></div>",
     );
 
     s.dispatch(["bar", "baz", "qux", "coorg"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li><li>Element: coorg</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li><li>Element: coorg</li></ul></div>",
     );
 
     s.dispatch(["bar", "baz", "qux"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
     );
 
     s.dispatch(["bar", "qux"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: bar</li><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: bar</li><li>Element: qux</li></ul></div>",
     );
 
     s.dispatch(["qux"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: qux</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: qux</li></ul></div>",
     );
 
     s.dispatch([]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"></ul></div>",
     );
   });
 
@@ -127,7 +127,7 @@ describe("Map", () => {
       <div>
         <Map
           data={s}
-          parent={<ul id="list" />}
+          into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
@@ -137,25 +137,25 @@ describe("Map", () => {
     ) as HTMLDivElement;
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li></ul></div>",
     );
 
     s.dispatch(["foo", "bar", "123", "baz", "qux", "corge"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: foo</li><li>Element: bar</li><li>Element: 123</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: foo</li><li>Element: bar</li><li>Element: 123</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li></ul></div>",
     );
 
     s.dispatch(["010101", "foo", "bar", "123", "baz", "qux", "corge"]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: 010101</li><li>Element: foo</li><li>Element: bar</li><li>Element: 123</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: 010101</li><li>Element: foo</li><li>Element: bar</li><li>Element: 123</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li></ul></div>",
     );
 
     s.dispatch(["010101", "foo", "bar", "123", "baz", "qux", "corge", "...."]);
 
     expect(d.outerHTML).toEqual(
-      "<div><ul id=\"list\"><li>Element: 010101</li><li>Element: foo</li><li>Element: bar</li><li>Element: 123</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li><li>Element: ....</li></ul></div>",
+      "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: 010101</li><li>Element: foo</li><li>Element: bar</li><li>Element: 123</li><li>Element: baz</li><li>Element: qux</li><li>Element: corge</li><li>Element: ....</li></ul></div>",
     );
   });
 
@@ -168,7 +168,7 @@ describe("Map", () => {
         <div>
           <Map
             data={s}
-            parent={<ul id="list" />}
+            into={<ul id="list" />}
           >
             {(elem) => {
               return <li>{elem}</li>;
@@ -178,13 +178,13 @@ describe("Map", () => {
       ) as HTMLDivElement;
 
       expect(d.outerHTML).toEqual(
-        "<div><ul id=\"list\"><li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li></ul></div>",
+        "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li></ul></div>",
       );
 
       s.dispatch(initVal.slice().sort((a, b) => b - a));
 
       expect(d.outerHTML).toEqual(
-        "<div><ul id=\"list\"><li>6</li><li>5</li><li>4</li><li>3</li><li>2</li><li>1</li></ul></div>",
+        "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>6</li><li>5</li><li>4</li><li>3</li><li>2</li><li>1</li></ul></div>",
       );
 
       s.dispatch(
@@ -199,7 +199,7 @@ describe("Map", () => {
       );
 
       expect(d.outerHTML).toEqual(
-        "<div><ul id=\"list\"><li>5</li><li>3</li><li>1</li><li>2</li><li>4</li><li>6</li></ul></div>",
+        "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>5</li><li>3</li><li>1</li><li>2</li><li>4</li><li>6</li></ul></div>",
       );
     });
 
@@ -215,19 +215,19 @@ describe("Map", () => {
       ) as HTMLDivElement;
 
       expect(d.outerHTML).toEqual(
-        "<div><p>aaa</p><p>bbb</p><p>ccc</p><p>ddd</p><p>eee</p><p>fff</p></div>",
+        "<div class=\"vjsx-map-container\"><p>aaa</p><p>bbb</p><p>ccc</p><p>ddd</p><p>eee</p><p>fff</p></div>",
       );
 
       s.dispatch(["aaa", "bbb", "ddd", "eee", "fff", "ccc"]);
 
       expect(d.outerHTML).toEqual(
-        "<div><p>aaa</p><p>bbb</p><p>ddd</p><p>eee</p><p>fff</p><p>ccc</p></div>",
+        "<div class=\"vjsx-map-container\"><p>aaa</p><p>bbb</p><p>ddd</p><p>eee</p><p>fff</p><p>ccc</p></div>",
       );
 
       s.dispatch(["ccc", "aaa", "bbb", "ddd", "eee", "fff"]);
 
       expect(d.outerHTML).toEqual(
-        "<div><p>ccc</p><p>aaa</p><p>bbb</p><p>ddd</p><p>eee</p><p>fff</p></div>",
+        "<div class=\"vjsx-map-container\"><p>ccc</p><p>aaa</p><p>bbb</p><p>ddd</p><p>eee</p><p>fff</p></div>",
       );
     });
   });
@@ -245,7 +245,7 @@ describe("Map", () => {
         <div>
           <Map
             data={s}
-            parent={<ul id="list" />}
+            into={<ul id="list" />}
           >
             {(elem) => {
               return <li>Element: {elem}</li>;
@@ -255,13 +255,13 @@ describe("Map", () => {
       );
 
       expect(d.outerHTML).toEqual(
-        "<div><ul id=\"list\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
+        "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
       );
 
       s.current()[1]!.dispatch("Hello");
 
       expect(d.outerHTML).toEqual(
-        "<div><ul id=\"list\"><li>Element: foo</li><li>Element: Hello</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
+        "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: foo</li><li>Element: Hello</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
       );
 
       s.dispatch(current => {
@@ -269,13 +269,13 @@ describe("Map", () => {
       });
 
       expect(d.outerHTML).toEqual(
-        "<div><ul id=\"list\"><li>Element: qux</li><li>Element: baz</li><li>Element: Hello</li><li>Element: foo</li></ul></div>",
+        "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: qux</li><li>Element: baz</li><li>Element: Hello</li><li>Element: foo</li></ul></div>",
       );
 
       s.current()[3]!.dispatch("World");
 
       expect(d.outerHTML).toEqual(
-        "<div><ul id=\"list\"><li>Element: qux</li><li>Element: baz</li><li>Element: Hello</li><li>Element: World</li></ul></div>",
+        "<div><ul id=\"list\" class=\"vjsx-map-container\"><li>Element: qux</li><li>Element: baz</li><li>Element: Hello</li><li>Element: World</li></ul></div>",
       );
     });
   });

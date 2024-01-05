@@ -3,7 +3,21 @@ import { sigProxy } from "../signals/proxy";
 
 export type MapProps<T> = {
   data: JSX.Signal<T[]>;
-  parent?: Element;
+  /**
+   * An HTML Element that will be used as a container
+   * for the mapped elements, and which will be
+   * returned.
+   *
+   * @example
+   * const result = <Map data={data} into={<ul />}>(v=>v)</Map>;
+   * // <ul>...</ul>
+   */
+  into?: Element;
+  /**
+   * When enabled the container will not have the
+   * `vjsx-map-container` class added to it.
+   */
+  noclass?: boolean;
   children: (value: T) => Element;
 };
 
@@ -41,12 +55,8 @@ const getRenderFn = <T,>(props: { children: any }): (elem: T) => JSX.Element => 
   throw new Error("<Map>: Invalid children");
 };
 
-export function Map<T>(props: MapProps<T>) {
-  const memo = new RenderMemory<T>();
-  const parent = props.parent ?? <div></div>;
-  const signal = sigProxy(props.data);
-
-  signal.bindTo(parent, list => {
+const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: MapProps<T>) => {
+  return (list: T[], container: JSX.Element) => {
     for (let i = 0; i < memo.elements.length; i++) {
       const [value, element] = memo.elements[i]!;
       if (list.indexOf(value) === -1) {
@@ -70,9 +80,9 @@ export function Map<T>(props: MapProps<T>) {
         const [, element] = memo.elements[prevIdx]!;
         const beforeElem = memo.elements[i];
         if (beforeElem) {
-          parent.insertBefore(element, beforeElem[1]);
+          container.insertBefore(element, beforeElem[1]);
         } else {
-          parent.appendChild(element);
+          container.appendChild(element);
         }
         memo.moveBefore(prevIdx, i);
         continue;
@@ -83,13 +93,25 @@ export function Map<T>(props: MapProps<T>) {
       const element = render(value);
       const beforeElem = memo.elements[i];
       if (beforeElem) {
-        parent.insertBefore(element, beforeElem[1]);
+        container.insertBefore(element, beforeElem[1]);
       } else {
-        parent.append(element);
+        container.append(element);
       }
       memo.add(i, value, element);
     }
-  });
+  };
+};
+
+export function Map<T>(props: MapProps<T>) {
+  const memo = new RenderMemory<T>();
+  const parent = props.into ?? <div />;
+  const signal = sigProxy(props.data);
+
+  if (!props.noclass) {
+    parent.classList.add("vjsx-map-container");
+  }
+
+  signal.bindTo(parent, mapBindingFactory(memo, props));
 
   return parent;
 }

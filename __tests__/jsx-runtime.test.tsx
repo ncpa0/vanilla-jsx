@@ -1,6 +1,6 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it } from "vitest";
 import { sig } from "../src";
-import { jsx } from "../src/jsx-runtime";
+import { Fragment, jsx } from "../src/jsx-runtime";
 
 describe("jsx-runtime", () => {
   it("creates a div element", () => {
@@ -82,7 +82,7 @@ describe("jsx-runtime", () => {
 
     classNames.dispatch("bar baz");
 
-    expect(d.outerHTML).toEqual("<div class=\"bar baz\" id=\"root\"><p>Hi</p></div>");
+    expect(d.outerHTML).toEqual("<div id=\"root\" class=\"bar baz\"><p>Hi</p></div>");
 
     id.dispatch(undefined);
 

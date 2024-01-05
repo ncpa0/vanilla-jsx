@@ -1,6 +1,15 @@
-import { describe, expect, it } from "@jest/globals";
-import { disconnectElement, sig } from "../src";
-import { jsx } from "../src/jsx-runtime";
+import { setFlagsFromString } from "v8";
+import { describe, expect, it } from "vitest";
+import { runInNewContext } from "vm";
+import { sig } from "../src";
+import { Fragment, jsx } from "../src/jsx-runtime";
+
+setFlagsFromString("--expose_gc");
+const rawGC = runInNewContext("gc");
+async function gc() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  rawGC();
+}
 
 describe("signal handling", () => {
   it("correctly binds to attributes and children", () => {
@@ -25,78 +34,50 @@ describe("signal handling", () => {
     );
   });
 
-  it("correctly unbinds from the element tree when disconnect is called", () => {
-    const sigText = sig("Lorem Ipsum dolor sit amet");
-    const sigClass = sig("foo bar");
+  it("correctly binds to multiple consecutive children", () => {
+    const text1 = sig("Lorem Ipsum dolor sit amet,");
+    const text2 = sig("consectetur adipiscing elit.");
+    const text3 = sig("Praesent at molestie erat.");
 
     const d = (
-      <body>
-        <div class={sigClass}>
-          <span>{sigText}</span>
-        </div>
-      </body>
-    );
-
-    expect(d.outerHTML).toEqual(
-      "<body><div class=\"foo bar\"><span>Lorem Ipsum dolor sit amet</span></div></body>",
-    );
-
-    disconnectElement(d);
-
-    sigText.dispatch("Hello World!");
-    sigClass.dispatch("baz qux");
-
-    expect(d.outerHTML).toEqual(
-      "<body><div class=\"foo bar\"><span>Lorem Ipsum dolor sit amet</span></div></body>",
-    );
-  });
-
-  it("doesn't unbind from outside the element", () => {
-    const sigText = sig("Lorem Ipsum dolor sit amet");
-    const sigClass = sig("foo bar");
-
-    const elem1 = (
-      <span class={sigClass}>
-        <h2>{sigText}</h2>
+      <span>
+        {text1} {text2} {text3}
       </span>
     );
 
-    const sigContainerClass = sig("container");
-    const sigHeader = sig("Title");
-
-    const container = (
-      <div class={sigContainerClass}>
-        <div>
-          <h1>{sigHeader}</h1>
-        </div>
-        <div class="main">
-          {elem1}
-        </div>
-      </div>
+    expect(d.outerHTML).toEqual(
+      "<span>Lorem Ipsum dolor sit amet, consectetur adipiscing elit. Praesent at molestie erat.</span>",
     );
 
-    expect(container.outerHTML).toEqual(
-      "<div class=\"container\"><div><h1>Title</h1></div><div class=\"main\"><span class=\"foo bar\"><h2>Lorem Ipsum dolor sit amet</h2></span></div></div>",
+    text1.dispatch("Hello");
+
+    expect(d.outerHTML).toEqual(
+      "<span>Hello consectetur adipiscing elit. Praesent at molestie erat.</span>",
     );
 
-    sigText.dispatch("Hello World!");
-    sigClass.dispatch("baz qux");
-    sigContainerClass.dispatch("container-fluid");
-    sigHeader.dispatch("Other Title");
+    text2.dispatch("World!");
 
-    expect(container.outerHTML).toEqual(
-      "<div class=\"container-fluid\"><div><h1>Other Title</h1></div><div class=\"main\"><span class=\"baz qux\"><h2>Hello World!</h2></span></div></div>",
+    expect(d.outerHTML).toEqual(
+      "<span>Hello World! Praesent at molestie erat.</span>",
     );
+  });
 
-    disconnectElement(elem1);
+  it("should detach the listener after the element was garbage collected", async () => {
+    const text = sig("Lorem Ipsum dolor sit amet");
+    const id = sig("foo");
+    let d: JSX.Element | null = <div id={id}>{text}</div>;
 
-    sigText.dispatch("Lorem Ipsum dolor sit amet");
-    sigClass.dispatch("do not change");
-    sigContainerClass.dispatch("block");
-    sigHeader.dispatch("Boba");
+    expect(text.listenerCount()).toEqual(1);
+    expect(id.listenerCount()).toEqual(1);
 
-    expect(container.outerHTML).toEqual(
-      "<div class=\"block\"><div><h1>Boba</h1></div><div class=\"main\"><span class=\"baz qux\"><h2>Hello World!</h2></span></div></div>",
-    );
+    d = null;
+    await gc();
+
+    // Listener won't be removed until the next dispatch
+    text.dispatch("");
+    id.dispatch("");
+
+    expect(text.listenerCount()).toEqual(0);
+    expect(id.listenerCount()).toEqual(0);
   });
 });
