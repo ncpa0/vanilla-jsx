@@ -46,7 +46,8 @@
     "test:format": "dprint check ./src/**/*.ts",
     "test:tsc": "tsc --noEmit",
     "test:unit": "vitest run",
-    "build": "node ./scripts/build.mjs"
+    "build": "node ./scripts/build.mjs",
+    "prepublish": "yarn test:unit && yarn build"
   },
   "devDependencies": {
     "@ncpa0cpl/nodepack": "^2.3.0",
