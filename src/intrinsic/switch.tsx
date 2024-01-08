@@ -48,13 +48,29 @@ class CaseBuilder<T> {
 
 function childBindingFactory<T>(builder: CaseBuilder<T>) {
   const emptyFragment = document.createElement("template");
-  return (v: T, element: Element) => {
+  return (element: Element, v: T) => {
     const matchingCase = CaseBuilder.findCase(v, builder);
     const newChild = matchingCase ? matchingCase() : emptyFragment;
     element.replaceChildren(newChild);
   };
 }
 
+/**
+ * @example
+ * enum MyEnum {
+ *  A, B, C
+ * }
+ *
+ * <Switch
+ *   value={MyEnum.A}
+ * >
+ *   {(sw) =>
+ *      sw
+ *        .match(MyEnum.A, () => <div>Case A</div>)
+ *        .match(MyEnum.B, () => <div>Case B</div>)
+ *        .default(() => <div>Default case</div>)}
+ * </Switch>
+ */
 export const Switch = <T,>(props: SwitchProps<T>): JSX.Element => {
   const collectCases: typeof props.children = Array.isArray(props.children) ? props.children[0] : props.children;
 

@@ -1,19 +1,22 @@
-export type SignalProxyListenerRef = { detach(): void };
+export type SignalProxyListenerRef = {
+  /** Detaches the listener from the Signal. */
+  detach(): void;
+};
 
 export interface SignalProxy<T> {
   add(cb: (value: T) => void): { detach(): void };
-  bindTo<E extends Element | Text>(elem: E, cb: (value: T, element: E, sigRef?: SignalProxyListenerRef) => void): void;
+  bindTo<E extends Element | Text>(elem: E, cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void): void;
 }
 
 const bindFactory = <T>(add: SignalProxy<T>["add"]) => {
   const addSelfDetachingListener = <E extends Element | Text>(
     elementRef: WeakRef<E>,
-    cb: (value: T, element: E, sigRef?: SignalProxyListenerRef) => void,
+    cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
   ) => {
     const onChange = (value: T) => {
       const elem = elementRef.deref();
       if (elem) {
-        cb(value, elem, ref);
+        cb(elem, value, ref);
       } else {
         ref.detach();
       }
@@ -21,7 +24,7 @@ const bindFactory = <T>(add: SignalProxy<T>["add"]) => {
     const onFirstCall = (value: T) => {
       const elem = elementRef.deref();
       if (elem) {
-        cb(value, elem);
+        cb(elem, value);
       }
       cbRef.cb = onChange;
     };
@@ -93,4 +96,34 @@ export function sigProxy<T>(s: JSX.Signal<T>): SignalProxy<T> {
       bindTo: bindFactory(add),
     };
   }
+}
+
+/**
+ * Bind given signal to the provided element.
+ *
+ * This binding leverages a WeakReference to allow the GC to clean up the
+ * element even when the signal is still accessible in the program, thanks
+ * to this mechanism it is not necessary to cleanup the signal->element
+ * binding manually.
+ *
+ * **You must not reference the bound element within the callback function
+ * otherwise than through the argument provided to it.**
+ *
+ * @example
+ * // DO NOT DO THIS:
+ * bindSignal(mySignal, myElement, (elem, value) => {
+ *  myElement.classList.toggle("DONT_DO_THIS", value);
+ * });
+ *
+ * // Do this instead:
+ * bindSignal(mySignal, myElement, (elem, value) => {
+ *  elem.classList.toggle("this_is_fine", value);
+ * });
+ */
+export function bindSignal<T, E extends Element | Text>(
+  signal: JSX.Signal<T>,
+  toElement: E,
+  callback: (elem: E, value: T, sigRef?: SignalProxyListenerRef) => void,
+) {
+  sigProxy(signal).bindTo(toElement, callback);
 }

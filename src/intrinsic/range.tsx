@@ -56,7 +56,7 @@ const getRenderFn = <T,>(props: { children: any }): (elem: T) => JSX.Element => 
 };
 
 const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
-  return (list: T[], container: JSX.Element) => {
+  return (container: JSX.Element, list: T[]) => {
     for (let i = 0; i < memo.elements.length; i++) {
       const [value, element] = memo.elements[i]!;
       if (list.indexOf(value) === -1) {
@@ -102,6 +102,17 @@ const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
   };
 };
 
+/**
+ * @example
+ * const data = signal([1, 2, 3]);
+ *
+ * <Range
+ *   data={data}
+ *   into={<ul />}
+ * >
+ *   {(value) => <li>{value}</li>}
+ * </Range>
+ */
 export function Range<T>(props: RangeProps<T>) {
   const memo = new RenderMemory<T>();
   const parent = props.into ?? <div />;

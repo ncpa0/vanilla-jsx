@@ -7,6 +7,14 @@ export type IfProps = {
   then: () => JSX.Element;
 };
 
+/**
+ * @example
+ * <If
+ *  condition={boolSignal}
+ *  then={() => <div>Condition is true</div>}
+ *  else={() => <div>Condition is false</div>}
+ * />
+ */
 export function If(props: IfProps) {
   const renderThen: () => JSX.Element = props.then;
 

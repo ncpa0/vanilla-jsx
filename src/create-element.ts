@@ -30,7 +30,7 @@ const getInitialChild = (appendTo: Element) => {
 };
 
 const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
-  return (value: Text | Element, _: unknown, sigRef?: SignalProxyListenerRef) => {
+  return (_: unknown, value: Text | Element, sigRef?: SignalProxyListenerRef) => {
     const lastNode = lastNodeRef?.deref();
     if (!lastNode) {
       return sigRef?.detach();
@@ -82,7 +82,7 @@ const mapChildren = (
 
 const eventBindingFactory = (eventName: string) => {
   let prevListener: (e: Event) => void;
-  return (value: any, elem: HTMLElement) => {
+  return (elem: HTMLElement, value: any) => {
     if (prevListener) {
       elem.removeEventListener(eventName, prevListener);
     }
@@ -95,7 +95,7 @@ const eventBindingFactory = (eventName: string) => {
 };
 
 const attributeBindingFactory = (attributeName: string) => {
-  return (value: any, elem: HTMLElement) => {
+  return (elem: HTMLElement, value: any) => {
     if (value == null && elem.hasAttribute(attributeName)) {
       elem.removeAttribute(attributeName);
       return;
