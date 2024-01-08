@@ -1,6 +1,8 @@
 import { sigProxy } from "../signals/proxy";
 
 export type IfProps = {
+  into?: Element;
+  noclass?: boolean;
   condition: JSX.Signal<boolean>;
   else?: () => JSX.Element;
   not?: true;
@@ -16,81 +18,43 @@ export type IfProps = {
  * />
  */
 export function If(props: IfProps) {
-  const renderThen: () => JSX.Element = props.then;
+  const parent = props.into ?? document.createElement("div");
+
+  if (!props.noclass) {
+    parent.classList.add("vjsx-if-container");
+  }
 
   const sig = sigProxy(props.condition);
-  let lastResult: WeakRef<JSX.Element>;
 
-  const getResult = () => {
-    if (lastResult) {
-      return lastResult.deref()!;
-    }
-    const elem = renderThen();
-    lastResult = new WeakRef(elem);
-    return elem;
+  const onConditionMet = (parent?: JSX.Element) => {
+    parent?.replaceChildren(props.then());
   };
 
-  const validateNotFragment = (element: Element | DocumentFragment) => {
-    if (element instanceof DocumentFragment) {
-      throw new Error("DocumentFragment is not a valid child of If component.");
-    }
-  };
-
-  const onConditionMet = (currentElem?: JSX.Element) => {
-    const element = renderThen();
-    validateNotFragment(element);
-    currentElem?.replaceWith(element);
-    lastResult = new WeakRef(element);
-  };
-
-  const onConditionNotMet = (currentElem?: JSX.Element) => {
+  const onConditionNotMet = (parent?: JSX.Element) => {
     if (props.else) {
-      const element = props.else();
-      validateNotFragment(element);
-      currentElem?.replaceWith(element);
-      lastResult = new WeakRef(element);
+      parent?.replaceChildren(props.else());
     } else {
-      const placeholder = document.createElement("template");
-      currentElem?.replaceWith(placeholder);
-      lastResult = new WeakRef(placeholder);
+      parent?.replaceChildren();
     }
   };
 
   if (props.not) {
-    const sigRef = sig.add((value) => {
-      let currentElem: JSX.Element | undefined;
-      if (lastResult) {
-        currentElem = lastResult.deref();
-        if (!currentElem) {
-          sigRef.detach();
-          return;
-        }
-      }
-
+    sig.bindTo(parent, (_, value) => {
       if (value) {
-        onConditionNotMet(currentElem);
+        onConditionNotMet();
       } else {
-        onConditionMet(currentElem);
+        onConditionMet();
       }
     });
   } else {
-    const sigRef = sig.add((value) => {
-      let currentElem: JSX.Element | undefined;
-      if (lastResult) {
-        currentElem = lastResult.deref();
-        if (!currentElem) {
-          sigRef.detach();
-          return;
-        }
-      }
-
+    sig.bindTo(parent, (elem, value) => {
       if (value) {
-        onConditionMet(currentElem);
+        onConditionMet(elem);
       } else {
-        onConditionNotMet(currentElem);
+        onConditionNotMet(elem);
       }
     });
   }
 
-  return getResult();
+  return parent;
 }

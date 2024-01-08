@@ -1,4 +1,5 @@
 import { jsx } from "../create-element";
+import { createEmptyElem } from "../create-empty-elem";
 import { sigProxy } from "../signals/proxy";
 
 export type SwitchProps<T> = {
@@ -47,7 +48,7 @@ class CaseBuilder<T> {
 }
 
 function childBindingFactory<T>(builder: CaseBuilder<T>) {
-  const emptyFragment = document.createElement("template");
+  const emptyFragment = createEmptyElem();
   return (element: Element, v: T) => {
     const matchingCase = CaseBuilder.findCase(v, builder);
     const newChild = matchingCase ? matchingCase() : emptyFragment;

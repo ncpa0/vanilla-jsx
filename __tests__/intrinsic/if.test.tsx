@@ -24,7 +24,7 @@ describe("If", () => {
         </div>
       );
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
     });
 
     it("renders elements when condition is false", () => {
@@ -38,7 +38,7 @@ describe("If", () => {
         </div>
       );
 
-      expect(d.outerHTML).toEqual("<div><template></template></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"></div></div>");
     });
 
     it("replaces elements when condition changes", () => {
@@ -52,23 +52,23 @@ describe("If", () => {
         </div>
       );
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
 
       s.dispatch(false);
 
-      expect(d.outerHTML).toEqual("<div><template></template></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"></div></div>");
 
       s.dispatch(true);
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
 
       s.dispatch(false);
 
-      expect(d.outerHTML).toEqual("<div><template></template></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"></div></div>");
 
       s.dispatch(true);
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
     });
   });
 
@@ -85,7 +85,7 @@ describe("If", () => {
         </div>
       );
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
     });
 
     it("renders elements when condition is false", () => {
@@ -100,7 +100,7 @@ describe("If", () => {
         </div>
       );
 
-      expect(d.outerHTML).toEqual("<div><span id=\"bar\">Bar</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"bar\">Bar</span></div></div>");
     });
 
     it("replaces elements when condition changes", () => {
@@ -115,23 +115,23 @@ describe("If", () => {
         </div>
       );
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
 
       s.dispatch(false);
 
-      expect(d.outerHTML).toEqual("<div><span id=\"bar\">Bar</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"bar\">Bar</span></div></div>");
 
       s.dispatch(true);
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
 
       s.dispatch(false);
 
-      expect(d.outerHTML).toEqual("<div><span id=\"bar\">Bar</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"bar\">Bar</span></div></div>");
 
       s.dispatch(true);
 
-      expect(d.outerHTML).toEqual("<div><span id=\"foo\">Foo</span></div>");
+      expect(d.outerHTML).toEqual("<div><div class=\"vjsx-if-container\"><span id=\"foo\">Foo</span></div></div>");
     });
   });
 
