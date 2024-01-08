@@ -80,4 +80,54 @@ describe("signal handling", () => {
     expect(text.listenerCount()).toEqual(0);
     expect(id.listenerCount()).toEqual(0);
   });
+
+  it("correctly handles signal children with JSX.Elements", () => {
+    const s = sig(0);
+    const d = s.derive(v => {
+      switch (v) {
+        case 0:
+          return "hello world";
+        case 1:
+          return <span>Hello World!</span>;
+        case 2:
+          return (
+            <div>
+              <input value={v} />
+            </div>
+          );
+        default:
+          return <p>No match</p>;
+      }
+    });
+
+    const html = <body>{d}</body>;
+
+    expect(html.outerHTML).toEqual(
+      "<body>hello world</body>",
+    );
+
+    s.dispatch(1);
+
+    expect(html.outerHTML).toEqual(
+      "<body><span>Hello World!</span></body>",
+    );
+
+    s.dispatch(0);
+
+    expect(html.outerHTML).toEqual(
+      "<body>hello world</body>",
+    );
+
+    s.dispatch(2);
+
+    expect(html.outerHTML).toEqual(
+      "<body><div><input value=\"2\"></div></body>",
+    );
+
+    s.dispatch(3);
+
+    expect(html.outerHTML).toEqual(
+      "<body><p>No match</p></body>",
+    );
+  });
 });

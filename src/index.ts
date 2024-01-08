@@ -1,6 +1,7 @@
 export { createElement, Fragment, jsx, jsxs } from "./create-element";
 export { If, type IfProps } from "./intrinsic/if";
-export { Map, type MapProps } from "./intrinsic/map";
+export { Range, type RangeProps } from "./intrinsic/range";
+export { Switch, type SwitchProps } from "./intrinsic/switch";
 export {
   deriveMany,
   type DispatchFunc,

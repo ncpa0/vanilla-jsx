@@ -1,7 +1,7 @@
 import { jsx } from "../create-element";
 import { sigProxy } from "../signals/proxy";
 
-export type MapProps<T> = {
+export type RangeProps<T> = {
   data: JSX.Signal<T[]>;
   /**
    * An HTML Element that will be used as a container
@@ -55,7 +55,7 @@ const getRenderFn = <T,>(props: { children: any }): (elem: T) => JSX.Element => 
   throw new Error("<Map>: Invalid children");
 };
 
-const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: MapProps<T>) => {
+const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
   return (list: T[], container: JSX.Element) => {
     for (let i = 0; i < memo.elements.length; i++) {
       const [value, element] = memo.elements[i]!;
@@ -102,7 +102,7 @@ const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: MapProps<T>) => {
   };
 };
 
-export function Map<T>(props: MapProps<T>) {
+export function Range<T>(props: RangeProps<T>) {
   const memo = new RenderMemory<T>();
   const parent = props.into ?? <div />;
   const signal = sigProxy(props.data);

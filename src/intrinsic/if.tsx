@@ -4,11 +4,11 @@ export type IfProps = {
   condition: JSX.Signal<boolean>;
   else?: () => JSX.Element;
   not?: true;
-  children: () => JSX.Element;
+  then: () => JSX.Element;
 };
 
 export function If(props: IfProps) {
-  const children: () => JSX.Element = Array.isArray(props.children) ? props.children[0] : props.children;
+  const renderThen: () => JSX.Element = props.then;
 
   const sig = sigProxy(props.condition);
   let lastResult: WeakRef<JSX.Element>;
@@ -17,7 +17,7 @@ export function If(props: IfProps) {
     if (lastResult) {
       return lastResult.deref()!;
     }
-    const elem = children();
+    const elem = renderThen();
     lastResult = new WeakRef(elem);
     return elem;
   };
@@ -29,7 +29,7 @@ export function If(props: IfProps) {
   };
 
   const onConditionMet = (currentElem?: JSX.Element) => {
-    const element = children();
+    const element = renderThen();
     validateNotFragment(element);
     currentElem?.replaceWith(element);
     lastResult = new WeakRef(element);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Map, sig } from "../../src";
+import { Range, sig } from "../../src";
 import { Fragment, jsx } from "../../src/jsx-runtime";
 
 describe("Map", () => {
@@ -8,14 +8,14 @@ describe("Map", () => {
 
     const d = (
       <div>
-        <Map
+        <Range
           data={s}
           into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
           }}
-        </Map>
+        </Range>
       </div>
     );
 
@@ -29,14 +29,14 @@ describe("Map", () => {
 
     const d = (
       <div>
-        <Map
+        <Range
           data={s}
           into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
           }}
-        </Map>
+        </Range>
       </div>
     ) as HTMLDivElement;
 
@@ -74,14 +74,14 @@ describe("Map", () => {
 
     const d = (
       <div>
-        <Map
+        <Range
           data={s}
           into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
           }}
-        </Map>
+        </Range>
       </div>
     ) as HTMLDivElement;
 
@@ -125,14 +125,14 @@ describe("Map", () => {
 
     const d = (
       <div>
-        <Map
+        <Range
           data={s}
           into={<ul id="list" />}
         >
           {(elem) => {
             return <li>Element: {elem}</li>;
           }}
-        </Map>
+        </Range>
       </div>
     ) as HTMLDivElement;
 
@@ -166,14 +166,14 @@ describe("Map", () => {
 
       const d = (
         <div>
-          <Map
+          <Range
             data={s}
             into={<ul id="list" />}
           >
             {(elem) => {
               return <li>{elem}</li>;
             }}
-          </Map>
+          </Range>
         </div>
       ) as HTMLDivElement;
 
@@ -207,11 +207,11 @@ describe("Map", () => {
       const s = sig(["aaa", "bbb", "ccc", "ddd", "eee", "fff"]);
 
       const d = (
-        <Map
+        <Range
           data={s}
         >
           {v => <p>{v}</p>}
-        </Map>
+        </Range>
       ) as HTMLDivElement;
 
       expect(d.outerHTML).toEqual(
@@ -243,14 +243,14 @@ describe("Map", () => {
 
       const d = (
         <div>
-          <Map
+          <Range
             data={s}
             into={<ul id="list" />}
           >
             {(elem) => {
               return <li>Element: {elem}</li>;
             }}
-          </Map>
+          </Range>
         </div>
       );
 

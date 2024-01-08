@@ -17,9 +17,10 @@ describe("If", () => {
       const s = sig(true);
       const d = (
         <div>
-          <If condition={s}>
-            {() => <span id="foo">Foo</span>}
-          </If>
+          <If
+            condition={s}
+            then={() => <span id="foo">Foo</span>}
+          />
         </div>
       );
 
@@ -30,9 +31,10 @@ describe("If", () => {
       const s = sig(false);
       const d = (
         <div>
-          <If condition={s}>
-            {() => <span id="foo">Foo</span>}
-          </If>
+          <If
+            condition={s}
+            then={() => <span id="foo">Foo</span>}
+          />
         </div>
       );
 
@@ -43,9 +45,10 @@ describe("If", () => {
       const s = sig(true);
       const d = (
         <div>
-          <If condition={s}>
-            {() => <span id="foo">Foo</span>}
-          </If>
+          <If
+            condition={s}
+            then={() => <span id="foo">Foo</span>}
+          />
         </div>
       );
 
@@ -74,9 +77,11 @@ describe("If", () => {
       const s = sig(true);
       const d = (
         <div>
-          <If condition={s} else={() => <span id="bar">Bar</span>}>
-            {() => <span id="foo">Foo</span>}
-          </If>
+          <If
+            condition={s}
+            then={() => <span id="foo">Foo</span>}
+            else={() => <span id="bar">Bar</span>}
+          />
         </div>
       );
 
@@ -87,9 +92,11 @@ describe("If", () => {
       const s = sig(false);
       const d = (
         <div>
-          <If condition={s} else={() => <span id="bar">Bar</span>}>
-            {() => <span id="foo">Foo</span>}
-          </If>
+          <If
+            condition={s}
+            then={() => <span id="foo">Foo</span>}
+            else={() => <span id="bar">Bar</span>}
+          />
         </div>
       );
 
@@ -100,9 +107,11 @@ describe("If", () => {
       const s = sig(true);
       const d = (
         <div>
-          <If condition={s} else={() => <span id="bar">Bar</span>}>
-            {() => <span id="foo">Foo</span>}
-          </If>
+          <If
+            condition={s}
+            then={() => <span id="foo">Foo</span>}
+            else={() => <span id="bar">Bar</span>}
+          />
         </div>
       );
 
@@ -130,9 +139,10 @@ describe("If", () => {
     const condition = sig(true);
     let d: JSX.Element | null = (
       <div>
-        <If condition={condition}>
-          {() => <span id="foo">Foo</span>}
-        </If>
+        <If
+          condition={condition}
+          then={() => <span id="foo">Foo</span>}
+        />
       </div>
     );
 

@@ -6,4 +6,14 @@ export default defineConfig({
     dir: "__tests__",
     environment: "happy-dom",
   },
+  esbuild: {
+    jsxInject: "",
+    jsxFactory: "jsx",
+    jsxFragment: "Fragment",
+  },
+  resolve: {
+    alias: {
+      "@/": "./src/",
+    },
+  },
 });

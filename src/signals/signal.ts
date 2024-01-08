@@ -264,31 +264,33 @@ export function signal<T>(value: T): Signal<T> {
  */
 export const sig = signal;
 
-export function deriveMany<E, U>(sig: Signal<E>, getDerivedValue: (v: E) => U): ReadonlySignal<U>;
+export type DerivableSignal<T> = Signal<T> | ReadonlySignal<T>;
+
+export function deriveMany<E, U>(sig: DerivableSignal<E>, getDerivedValue: (v: E) => U): ReadonlySignal<U>;
 export function deriveMany<E, F, U>(
-  sig1: Signal<E>,
-  sig2: Signal<F>,
+  sig1: DerivableSignal<E>,
+  sig2: DerivableSignal<F>,
   getDerivedValue: (v1: E, v2: F) => U,
 ): ReadonlySignal<U>;
 export function deriveMany<E, F, G, U>(
-  sig1: Signal<E>,
-  sig2: Signal<F>,
-  sig3: Signal<G>,
+  sig1: DerivableSignal<E>,
+  sig2: DerivableSignal<F>,
+  sig3: DerivableSignal<G>,
   getDerivedValue: (v1: E, v2: F, v3: G) => U,
 ): ReadonlySignal<U>;
 export function deriveMany<E, F, G, H, U>(
-  sig1: Signal<E>,
-  sig2: Signal<F>,
-  sig3: Signal<G>,
-  sig4: Signal<H>,
+  sig1: DerivableSignal<E>,
+  sig2: DerivableSignal<F>,
+  sig3: DerivableSignal<G>,
+  sig4: DerivableSignal<H>,
   getDerivedValue: (v1: E, v2: F, v3: G, v4: H) => U,
 ): ReadonlySignal<U>;
 export function deriveMany<E, F, G, H, I, U>(
-  sig1: Signal<E>,
-  sig2: Signal<F>,
-  sig3: Signal<G>,
-  sig4: Signal<H>,
-  sig5: Signal<I>,
+  sig1: DerivableSignal<E>,
+  sig2: DerivableSignal<F>,
+  sig3: DerivableSignal<G>,
+  sig4: DerivableSignal<H>,
+  sig5: DerivableSignal<I>,
   getDerivedValue: (v1: E, v2: F, v3: G, v4: H, v5: I) => U,
 ): ReadonlySignal<U>;
 export function deriveMany<U>(...args: any[]): ReadonlySignal<U> {

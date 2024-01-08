@@ -1,20 +1,37 @@
+export type SignalProxyListenerRef = { detach(): void };
+
 export interface SignalProxy<T> {
   add(cb: (value: T) => void): { detach(): void };
-  bindTo<E extends Element | Text>(elem: E, cb: (value: T, element: E) => void): void;
+  bindTo<E extends Element | Text>(elem: E, cb: (value: T, element: E, sigRef?: SignalProxyListenerRef) => void): void;
 }
 
 const bindFactory = <T>(add: SignalProxy<T>["add"]) => {
   const addSelfDetachingListener = <E extends Element | Text>(
     elementRef: WeakRef<E>,
-    cb: (value: T, element: E) => void,
+    cb: (value: T, element: E, sigRef?: SignalProxyListenerRef) => void,
   ) => {
-    const ref = add((value) => {
+    const onChange = (value: T) => {
       const elem = elementRef.deref();
       if (elem) {
-        cb(value, elem);
+        cb(value, elem, ref);
       } else {
         ref.detach();
       }
+    };
+    const onFirstCall = (value: T) => {
+      const elem = elementRef.deref();
+      if (elem) {
+        cb(value, elem);
+      }
+      cbRef.cb = onChange;
+    };
+
+    const cbRef = {
+      cb: onFirstCall,
+    };
+
+    const ref = add((value) => {
+      cbRef.cb(value);
     });
   };
 

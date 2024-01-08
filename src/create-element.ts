@@ -1,4 +1,4 @@
-import { sigProxy } from "./signals/proxy";
+import { SignalProxyListenerRef, sigProxy } from "./signals/proxy";
 
 type FunctionComponent = (props: object) => JSX.Element;
 
@@ -6,6 +6,8 @@ type CreateElementProps = {
   [k: string]: any;
   children?: JSX.Children;
 };
+
+type ChildNode = Element | DocumentFragment | Text | JSX.Signal<Text | Element>;
 
 function asArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value];
@@ -21,15 +23,37 @@ function valToString(value: JSX.SignalValue): string {
   return value == null ? "" : String(value);
 }
 
-const textBindingFactory = () => {
-  return (value: any, textNode: Text) => {
-    textNode.textContent = valToString(value);
+const getInitialChild = (appendTo: Element) => {
+  const initialChild = document.createTextNode("");
+  appendTo.appendChild(initialChild);
+  return new WeakRef(initialChild);
+};
+
+const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
+  return (value: Text | Element, _: unknown, sigRef?: SignalProxyListenerRef) => {
+    const lastNode = lastNodeRef?.deref();
+    if (!lastNode) {
+      return sigRef?.detach();
+    }
+
+    if (typeof value === "string") {
+      if (lastNode instanceof Text) {
+        lastNode.textContent = valToString(value);
+      } else {
+        const node = document.createTextNode(valToString(value));
+        lastNode.replaceWith(node);
+        lastNodeRef = new WeakRef(node);
+      }
+    } else {
+      lastNode.replaceWith(value);
+      lastNodeRef = new WeakRef(value);
+    }
   };
 };
 
 const mapChildren = (
   children: Exclude<JSX.Children, JSX.Element | JSX.VanillaValue>,
-  accumulator: Array<Element | DocumentFragment | Text>,
+  accumulator: Array<ChildNode>,
 ) => {
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
@@ -48,13 +72,6 @@ const mapChildren = (
         }
         if (Array.isArray(child)) {
           mapChildren(child, accumulator);
-        } else if (isSignal(child)) {
-          const sig = sigProxy(child);
-          const node = document.createTextNode("");
-
-          sig.bindTo(node, textBindingFactory());
-
-          accumulator.push(node);
         } else {
           accumulator.push(child);
         }
@@ -110,13 +127,16 @@ export function createElement(
 
   children = children.length > 0 ? children : props ? asArray(props?.children) : [];
 
-  const childNodes: Array<Element | DocumentFragment | Text> = [];
+  const childNodes: Array<ChildNode> = [];
 
   mapChildren(children, childNodes);
 
   if (tag === "") {
     const fragment = document.createDocumentFragment();
     for (const child of childNodes) {
+      if (isSignal(child)) {
+        throw new Error("Signals cannot be used as children of fragments.");
+      }
       fragment.appendChild(child);
     }
     return fragment as any;
@@ -155,7 +175,13 @@ export function createElement(
   }
 
   for (const child of childNodes) {
-    element.appendChild(child);
+    if (isSignal(child)) {
+      const sig = sigProxy(child);
+      let initialNodeRef: WeakRef<Text | Element> = getInitialChild(element);
+      sig.bindTo(element, childBindingFactory(initialNodeRef));
+    } else {
+      element.appendChild(child);
+    }
   }
 
   return element;
