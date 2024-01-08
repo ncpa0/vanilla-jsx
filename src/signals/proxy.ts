@@ -8,7 +8,16 @@ export interface SignalProxy<T> {
   bindTo<E extends Element | Text>(elem: E, cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void): void;
 }
 
-const bindFactory = <T>(add: SignalProxy<T>["add"]) => {
+function addBoundSignal(element: Element | Text, signal: JSX.Signal<any>) {
+  let signals = Reflect.get(element, "__vjsx_signals");
+  if (!signals) {
+    signals = [];
+    Reflect.set(element, "__vjsx_signals", signals);
+  }
+  signals.push(signal);
+}
+
+const bindFactory = <T>(signal: JSX.Signal<T>, add: SignalProxy<T>["add"]) => {
   const addSelfDetachingListener = <E extends Element | Text>(
     elementRef: WeakRef<E>,
     cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
@@ -39,6 +48,7 @@ const bindFactory = <T>(add: SignalProxy<T>["add"]) => {
   };
 
   const bindTo: SignalProxy<T>["bindTo"] = (element, cb) => {
+    addBoundSignal(element, signal);
     const elemRef = new WeakRef(element);
     addSelfDetachingListener(elemRef, cb);
   };
@@ -65,7 +75,7 @@ export function sigProxy<T>(s: JSX.Signal<T>): SignalProxy<T> {
 
     return {
       add,
-      bindTo: bindFactory(add),
+      bindTo: bindFactory(s, add),
     };
   } else if (hasDetach) {
     const add: SignalProxy<T>["add"] = (cb) => {
@@ -79,7 +89,7 @@ export function sigProxy<T>(s: JSX.Signal<T>): SignalProxy<T> {
 
     return {
       add,
-      bindTo: bindFactory(add),
+      bindTo: bindFactory(s, add),
     };
   } else {
     const add: SignalProxy<T>["add"] = (cb) => {
@@ -93,7 +103,7 @@ export function sigProxy<T>(s: JSX.Signal<T>): SignalProxy<T> {
 
     return {
       add,
-      bindTo: bindFactory(add),
+      bindTo: bindFactory(s, add),
     };
   }
 }

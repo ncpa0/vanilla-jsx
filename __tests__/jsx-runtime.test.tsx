@@ -1,6 +1,15 @@
+import { setFlagsFromString } from "v8";
 import { describe, expect, it } from "vitest";
+import { runInNewContext } from "vm";
 import { sig } from "../src";
 import { Fragment, jsx } from "../src/jsx-runtime";
+
+setFlagsFromString("--expose_gc");
+const rawGC = runInNewContext("gc");
+async function gc() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  rawGC();
+}
 
 describe("jsx-runtime", () => {
   it("creates a div element", () => {
@@ -122,5 +131,27 @@ describe("jsx-runtime", () => {
     expect(d.outerHTML).toEqual(
       "<html><head><title>Test</title></head><body><div id=\"root\"><h1 class=\"header\">Hello World!</h1></div></body></html>",
     );
+  });
+
+  it("derived signals bound to elements should not get garbage collected", async () => {
+    const s = sig("foo");
+
+    const d = (
+      <div>
+        <span>{s.derive(v => v.repeat(2))}</span>
+      </div>
+    );
+
+    expect(d.outerHTML).toEqual("<div><span>foofoo</span></div>");
+
+    await gc();
+
+    s.dispatch("bar");
+    expect(d.outerHTML).toEqual("<div><span>barbar</span></div>");
+
+    await gc();
+
+    s.dispatch("baz");
+    expect(d.outerHTML).toEqual("<div><span>bazbaz</span></div>");
   });
 });
