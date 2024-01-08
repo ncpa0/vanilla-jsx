@@ -1,17 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface VideoTagProps {
-      autoplay?: AttributeBool;
-      controls?: AttributeBool;
-      height?: string | number;
-      loop?: AttributeBool;
-      muted?: AttributeBool;
-      poster?: string;
-      preload?: "auto" | "metadata" | "none";
-      src?: string;
-      width?: string | number;
+    interface VideoTagProps extends PropsForElement<HTMLVideoElement> {
     }
   }
 }

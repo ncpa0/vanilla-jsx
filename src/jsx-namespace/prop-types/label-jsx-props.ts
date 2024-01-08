@@ -1,8 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface LabelTagProps {
-      for?: string;
-      form?: string;
+    interface LabelTagProps extends PropsForElement<HTMLLabelElement> {
     }
   }
 }

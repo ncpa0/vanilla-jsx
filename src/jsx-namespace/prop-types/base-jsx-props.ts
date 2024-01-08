@@ -1,10 +1,8 @@
-import type { Target } from "./shared/target";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface BaseTagProps {
-      href?: string;
-      target?: Target;
+    interface BaseTagProps extends PropsForElement<HTMLBaseElement> {
     }
   }
 }

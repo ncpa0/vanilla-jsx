@@ -1,7 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface QTagProps {
-      cite?: string;
+    interface QTagProps extends PropsForElement<HTMLQuoteElement> {
     }
   }
 }

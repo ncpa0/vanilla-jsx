@@ -1,10 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface EmbedTagProps {
-      height?: string | number;
-      src?: string;
-      type?: string;
-      width?: string | number;
+    interface EmbedTagProps extends PropsForElement<HTMLEmbedElement> {
     }
   }
 }

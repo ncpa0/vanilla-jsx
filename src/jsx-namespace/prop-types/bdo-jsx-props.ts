@@ -1,7 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface BdoTagProps {
-      dir?: "ltr" | "rtl";
+    interface BdoTagProps extends PropsForElement<HTMLElement> {
     }
   }
 }

@@ -1,8 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface StyleTagProps {
-      media?: string;
-      type?: string;
+    interface StyleTagProps extends PropsForElement<HTMLStyleElement> {
     }
   }
 }

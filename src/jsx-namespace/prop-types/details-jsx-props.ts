@@ -1,9 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface DetailsTagProps {
-      open?: AttributeBool;
+    interface DetailsTagProps extends PropsForElement<HTMLDetailsElement> {
     }
   }
 }

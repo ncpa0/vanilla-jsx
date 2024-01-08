@@ -1,7 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface TimeTagProps {
-      datetime?: string;
+    interface TimeTagProps extends PropsForElement<HTMLTimeElement> {
     }
   }
 }

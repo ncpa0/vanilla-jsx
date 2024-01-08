@@ -1,9 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface DialogTagProps {
-      open?: AttributeBool;
+    interface DialogTagProps extends PropsForElement<HTMLDialogElement> {
     }
   }
 }

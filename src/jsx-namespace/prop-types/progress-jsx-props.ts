@@ -1,8 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface ProgressTagProps {
-      max?: string | number;
-      value?: string | number;
+    interface ProgressTagProps extends PropsForElement<HTMLProgressElement> {
     }
   }
 }

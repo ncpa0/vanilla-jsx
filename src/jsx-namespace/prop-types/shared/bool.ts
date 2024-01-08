@@ -1,1 +1,1 @@
-export type AttributeBool = boolean | "true" | "false";
+export type AttributeBool = boolean;

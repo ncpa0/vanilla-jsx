@@ -1,18 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface TrackTagProps {
-      default?: AttributeBool;
-      kind?:
-        | "captions"
-        | "chapters"
-        | "descriptions"
-        | "metadata"
-        | "subtitles";
-      label?: string;
-      src?: string;
-      srclang?: string;
+    interface TrackTagProps extends PropsForElement<HTMLTrackElement> {
     }
   }
 }

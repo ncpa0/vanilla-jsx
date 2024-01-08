@@ -1,9 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface OutputTagProps {
-      for?: string;
-      form?: string;
-      name?: string;
+    interface OutputTagProps extends PropsForElement<HTMLOutputElement> {
     }
   }
 }

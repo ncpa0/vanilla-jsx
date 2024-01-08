@@ -1,7 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface LiTagProps {
-      value?: string;
+    interface LiTagProps extends PropsForElement<HTMLLIElement> {
     }
   }
 }

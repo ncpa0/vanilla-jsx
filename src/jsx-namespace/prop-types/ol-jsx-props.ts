@@ -1,11 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface OlTagProps {
-      reversed?: AttributeBool;
-      start?: string | number;
-      type?: "1" | "A" | "a" | "I" | "i";
+    interface OlTagProps extends PropsForElement<HTMLOListElement> {
     }
   }
 }

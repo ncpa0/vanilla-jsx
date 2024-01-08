@@ -1,7 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface ColgroupTagProps {
-      span?: string | number;
+    interface ColgroupTagProps extends PropsForElement<HTMLTableColElement> {
     }
   }
 }

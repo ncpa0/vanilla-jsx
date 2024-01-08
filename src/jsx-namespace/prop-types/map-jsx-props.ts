@@ -1,7 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface MapTagProps {
-      name?: string;
+    interface MapTagProps extends PropsForElement<HTMLMapElement> {
     }
   }
 }

@@ -1,10 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface OptgroupTagProps {
-      disabled?: AttributeBool;
-      label?: string;
+    interface OptgroupTagProps extends PropsForElement<HTMLOptGroupElement> {
     }
   }
 }

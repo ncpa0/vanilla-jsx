@@ -1,8 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface DelTagProps {
-      cite?: string;
-      datetime?: string;
+    interface DelTagProps extends PropsForElement<HTMLModElement> {
     }
   }
 }

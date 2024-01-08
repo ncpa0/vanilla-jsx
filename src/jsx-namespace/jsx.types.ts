@@ -45,9 +45,13 @@
 /// <reference path="./prop-types/track-jsx-props.ts" />
 /// <reference path="./prop-types/video-jsx-props.ts" />
 
-import { AttributeBool } from "./prop-types/shared/bool";
+import { PropsForElement } from "./prop-types/shared/props-for-element";
 
 export {};
+
+type WithSignals<T> = {
+  [K in keyof T]: T[K] | JSX.Signal<T[K]>;
+};
 
 declare global {
   namespace JSX {
@@ -79,12 +83,8 @@ declare global {
     type Children = Element | VanillaValue | Array<Element | VanillaValue>;
 
     type HTMLProps<P> =
-      & {
-        [K in keyof P]: Signal<P[K]> | P[K];
-      }
-      & {
-        [K in keyof BaseAttributes]: Signal<BaseAttributes[K]> | BaseAttributes[K];
-      }
+      & WithSignals<BaseAttributes>
+      & WithSignals<P>
       & {
         children?: Children | Children[];
         /**
@@ -229,197 +229,85 @@ declare global {
     } & P;
 
     interface BaseAttributes {
-      accesskey?: string;
       class?: string;
-      contenteditable?: AttributeBool;
-      dir?: "ltr" | "rtl" | "auto";
-      draggable?: AttributeBool | "auto";
-      hidden?: AttributeBool;
       id?: string;
-      inert?: AttributeBool;
-      is?: string;
-      lang?: string;
-      onabort?: EventHandlerFunction<UIEvent>;
-      onafterprint?: EventHandlerFunction<Event>;
-      onanimationend?: EventHandlerFunction<AnimationEvent>;
-      onanimationiteration?: EventHandlerFunction<AnimationEvent>;
-      onanimationstart?: EventHandlerFunction<AnimationEvent>;
-      onbeforeprint?: EventHandlerFunction<Event>;
-      onbeforeunload?: EventHandlerFunction<BeforeUnloadEvent>;
-      onblur?: EventHandlerFunction<FocusEvent>;
-      oncanplay?: EventHandlerFunction<Event>;
-      oncanplaythrough?: EventHandlerFunction<Event>;
-      onchange?: EventHandlerFunction<Event>;
-      onclick?: EventHandlerFunction<MouseEvent>;
-      oncontextmenu?: EventHandlerFunction<MouseEvent>;
-      oncopy?: EventHandlerFunction<ClipboardEvent>;
-      oncuechange?: EventHandlerFunction<Event>;
-      oncut?: EventHandlerFunction<ClipboardEvent>;
-      ondblclick?: EventHandlerFunction<MouseEvent>;
-      ondrag?: EventHandlerFunction<MouseEvent>;
-      ondragend?: EventHandlerFunction<MouseEvent>;
-      ondragenter?: EventHandlerFunction<MouseEvent>;
-      ondragleave?: EventHandlerFunction<MouseEvent>;
-      ondragover?: EventHandlerFunction<MouseEvent>;
-      ondragstart?: EventHandlerFunction<MouseEvent>;
-      ondrop?: EventHandlerFunction<MouseEvent>;
-      ondurationchange?: EventHandlerFunction<Event>;
-      onemptied?: EventHandlerFunction<Event>;
-      onended?: EventHandlerFunction<Event>;
-      onerror?: EventHandlerFunction<Event>;
-      onfocus?: EventHandlerFunction<FocusEvent>;
-      onfocusin?: EventHandlerFunction<FocusEvent>;
-      onfocusout?: EventHandlerFunction<FocusEvent>;
-      onfullscreenchange?: EventHandlerFunction<Event>;
-      onfullscreenerror?: EventHandlerFunction<Event>;
-      ongotpointercapture?: EventHandlerFunction<PointerEvent>;
-      onhashchange?: EventHandlerFunction<HashChangeEvent>;
-      oninput?: EventHandlerFunction<InputEvent>;
-      oninvalid?: EventHandlerFunction<Event>;
-      onkeydown?: EventHandlerFunction<KeyboardEvent>;
-      onkeypress?: EventHandlerFunction<KeyboardEvent>;
-      onkeyup?: EventHandlerFunction<KeyboardEvent>;
-      onload?: EventHandlerFunction<Event>;
-      onloadeddata?: EventHandlerFunction<Event>;
-      onloadedmetadata?: EventHandlerFunction<Event>;
-      onloadstart?: EventHandlerFunction<Event>;
-      onlostpointercapture?: EventHandlerFunction<PointerEvent>;
-      onmessage?: EventHandlerFunction<MessageEvent>;
-      onmousedown?: EventHandlerFunction<MouseEvent>;
-      onmouseenter?: EventHandlerFunction<MouseEvent>;
-      onmouseleave?: EventHandlerFunction<MouseEvent>;
-      onmousemove?: EventHandlerFunction<MouseEvent>;
-      onmouseout?: EventHandlerFunction<MouseEvent>;
-      onmouseover?: EventHandlerFunction<MouseEvent>;
-      onmouseup?: EventHandlerFunction<MouseEvent>;
-      onmousewheel?: EventHandlerFunction<WheelEvent>;
-      onoffline?: EventHandlerFunction<Event>;
-      ononline?: EventHandlerFunction<Event>;
-      onopen?: EventHandlerFunction<Event>;
-      onpagehide?: EventHandlerFunction<PageTransitionEvent>;
-      onpageshow?: EventHandlerFunction<PageTransitionEvent>;
-      onpaste?: EventHandlerFunction<ClipboardEvent>;
-      onpause?: EventHandlerFunction<Event>;
-      onplay?: EventHandlerFunction<Event>;
-      onplaying?: EventHandlerFunction<Event>;
-      onpointercancel?: EventHandlerFunction<PointerEvent>;
-      onpointerdown?: EventHandlerFunction<PointerEvent>;
-      onpointerenter?: EventHandlerFunction<PointerEvent>;
-      onpointerleave?: EventHandlerFunction<PointerEvent>;
-      onpointermove?: EventHandlerFunction<PointerEvent>;
-      onpointerout?: EventHandlerFunction<PointerEvent>;
-      onpointerover?: EventHandlerFunction<PointerEvent>;
-      onpointerup?: EventHandlerFunction<PointerEvent>;
-      onpopstate?: EventHandlerFunction<PopStateEvent>;
-      onprogress?: EventHandlerFunction<ProgressEvent>;
-      onratechange?: EventHandlerFunction<Event>;
-      onreset?: EventHandlerFunction<Event>;
-      onresize?: EventHandlerFunction<UIEvent>;
-      onscroll?: EventHandlerFunction<UIEvent>;
-      onsearch?: EventHandlerFunction<Event>;
-      onseeked?: EventHandlerFunction<Event>;
-      onseeking?: EventHandlerFunction<Event>;
-      onselect?: EventHandlerFunction<UIEvent>;
-      onshow?: EventHandlerFunction<Event>;
-      onstalled?: EventHandlerFunction<Event>;
-      onstorage?: EventHandlerFunction<StorageEvent>;
-      onsubmit?: EventHandlerFunction<Event>;
-      onsuspend?: EventHandlerFunction<Event>;
-      ontimeupdate?: EventHandlerFunction<Event>;
-      ontoggle?: EventHandlerFunction<Event>;
-      ontouchcancel?: EventHandlerFunction<TouchEvent>;
-      ontouchend?: EventHandlerFunction<TouchEvent>;
-      ontouchmove?: EventHandlerFunction<TouchEvent>;
-      ontouchstart?: EventHandlerFunction<TouchEvent>;
-      ontransitionend?: EventHandlerFunction<TransitionEvent>;
-      onunload?: EventHandlerFunction<UIEvent>;
-      onvolumechange?: EventHandlerFunction<Event>;
-      onwaiting?: EventHandlerFunction<Event>;
-      onwheel?: EventHandlerFunction<WheelEvent>;
-      role?: string;
-      slot?: string;
-      spellcheck?: AttributeBool;
-      style?: string;
-      tabindex?: string | number;
-      title?: string;
-      translate?: "yes" | "no";
     }
   }
 
   // Interfaces for HTML tags that do not have any additional attributes defined
   namespace VanillaJSX {
-    interface AbbrTagProps {}
-    interface AddressTagProps {}
-    interface ArticleTagProps {}
-    interface AsideTagProps {}
-    interface BdiTagProps {}
-    interface BigTagProps {}
-    interface BodyTagProps {}
-    interface BrTagProps {}
-    interface BTagProps {}
-    interface CaptionTagProps {}
-    interface CiteTagProps {}
-    interface CodeTagProps {}
-    interface DatalistTagProps {}
-    interface DdTagProps {}
-    interface DfnTagProps {}
-    interface DivTagProps {}
-    interface DlTagProps {}
-    interface DtTagProps {}
-    interface EmTagProps {}
-    interface FigcaptionTagProps {}
-    interface FigureTagProps {}
-    interface FooterTagProps {}
-    interface H1TagProps {}
-    interface H2TagProps {}
-    interface H3TagProps {}
-    interface H4TagProps {}
-    interface H5TagProps {}
-    interface H6TagProps {}
-    interface HeaderTagProps {}
-    interface HeadTagProps {}
-    interface HgroupTagProps {}
-    interface HrTagProps {}
-    interface ITagProps {}
-    interface KbdTagProps {}
-    interface KeygenTagProps {}
-    interface LegendTagProps {}
-    interface MainTagProps {}
-    interface MarkTagProps {}
-    interface MenuitemTagProps {}
-    interface MenuTagProps {}
-    interface NavTagProps {}
-    interface NoindexTagProps {}
-    interface NoscriptTagProps {}
-    interface ParagraphTagProps {}
-    interface PictureTagProps {}
-    interface PreTagProps {}
-    interface RpTagProps {}
-    interface RtTagProps {}
-    interface RubyTagProps {}
-    interface SampTagProps {}
-    interface SearchTagProps {}
-    interface SectionTagProps {}
-    interface SlotTagProps {}
-    interface SmallTagProps {}
-    interface SpanTagProps {}
-    interface STagProps {}
-    interface StrongTagProps {}
-    interface SubTagProps {}
-    interface SummaryTagProps {}
-    interface SupTagProps {}
-    interface SvgTagProps {}
-    interface TableTagProps {}
-    interface TbodyTagProps {}
-    interface TemplateTagProps {}
-    interface TfootTagProps {}
-    interface TheadTagProps {}
-    interface TitleTagProps {}
-    interface TrTagProps {}
-    interface UlTagProps {}
-    interface UTagProps {}
-    interface VarTagProps {}
-    interface WbrTagProps {}
-    interface WebviewTagProps {}
+    interface AbbrTagProps extends PropsForElement<HTMLElement> {}
+    interface AddressTagProps extends PropsForElement<HTMLElement> {}
+    interface ArticleTagProps extends PropsForElement<HTMLElement> {}
+    interface AsideTagProps extends PropsForElement<HTMLElement> {}
+    interface BdiTagProps extends PropsForElement<HTMLElement> {}
+    interface BigTagProps extends PropsForElement<HTMLElement> {}
+    interface BodyTagProps extends PropsForElement<HTMLBodyElement> {}
+    interface BrTagProps extends PropsForElement<HTMLBRElement> {}
+    interface BTagProps extends PropsForElement<HTMLElement> {}
+    interface CaptionTagProps extends PropsForElement<HTMLTableCaptionElement> {}
+    interface CiteTagProps extends PropsForElement<HTMLElement> {}
+    interface CodeTagProps extends PropsForElement<HTMLElement> {}
+    interface DatalistTagProps extends PropsForElement<HTMLDataListElement> {}
+    interface DdTagProps extends PropsForElement<HTMLElement> {}
+    interface DfnTagProps extends PropsForElement<HTMLElement> {}
+    interface DivTagProps extends PropsForElement<HTMLDivElement> {}
+    interface DlTagProps extends PropsForElement<HTMLElement> {}
+    interface DtTagProps extends PropsForElement<HTMLElement> {}
+    interface EmTagProps extends PropsForElement<HTMLElement> {}
+    interface FigcaptionTagProps extends PropsForElement<HTMLElement> {}
+    interface FigureTagProps extends PropsForElement<HTMLElement> {}
+    interface FooterTagProps extends PropsForElement<HTMLElement> {}
+    interface H1TagProps extends PropsForElement<HTMLHeadingElement> {}
+    interface H2TagProps extends PropsForElement<HTMLHeadingElement> {}
+    interface H3TagProps extends PropsForElement<HTMLHeadingElement> {}
+    interface H4TagProps extends PropsForElement<HTMLHeadingElement> {}
+    interface H5TagProps extends PropsForElement<HTMLHeadingElement> {}
+    interface H6TagProps extends PropsForElement<HTMLHeadingElement> {}
+    interface HeaderTagProps extends PropsForElement<HTMLElement> {}
+    interface HeadTagProps extends PropsForElement<HTMLHeadElement> {}
+    interface HgroupTagProps extends PropsForElement<HTMLElement> {}
+    interface HrTagProps extends PropsForElement<HTMLHRElement> {}
+    interface ITagProps extends PropsForElement<HTMLElement> {}
+    interface KbdTagProps extends PropsForElement<HTMLElement> {}
+    interface KeygenTagProps extends PropsForElement<HTMLElement> {}
+    interface LegendTagProps extends PropsForElement<HTMLLegendElement> {}
+    interface MainTagProps extends PropsForElement<HTMLElement> {}
+    interface MarkTagProps extends PropsForElement<HTMLElement> {}
+    interface MenuitemTagProps extends PropsForElement<HTMLElement> {}
+    interface MenuTagProps extends PropsForElement<HTMLMenuElement> {}
+    interface NavTagProps extends PropsForElement<HTMLElement> {}
+    interface NoindexTagProps extends PropsForElement<HTMLElement> {}
+    interface NoscriptTagProps extends PropsForElement<HTMLElement> {}
+    interface ParagraphTagProps extends PropsForElement<HTMLParagraphElement> {}
+    interface PictureTagProps extends PropsForElement<HTMLPictureElement> {}
+    interface PreTagProps extends PropsForElement<HTMLPreElement> {}
+    interface RpTagProps extends PropsForElement<HTMLElement> {}
+    interface RtTagProps extends PropsForElement<HTMLElement> {}
+    interface RubyTagProps extends PropsForElement<HTMLElement> {}
+    interface SampTagProps extends PropsForElement<HTMLElement> {}
+    interface SearchTagProps extends PropsForElement<HTMLElement> {}
+    interface SectionTagProps extends PropsForElement<HTMLElement> {}
+    interface SlotTagProps extends PropsForElement<HTMLSlotElement> {}
+    interface SmallTagProps extends PropsForElement<HTMLElement> {}
+    interface SpanTagProps extends PropsForElement<HTMLSpanElement> {}
+    interface STagProps extends PropsForElement<HTMLElement> {}
+    interface StrongTagProps extends PropsForElement<HTMLElement> {}
+    interface SubTagProps extends PropsForElement<HTMLElement> {}
+    interface SummaryTagProps extends PropsForElement<HTMLElement> {}
+    interface SupTagProps extends PropsForElement<HTMLElement> {}
+    interface SvgTagProps extends PropsForElement<HTMLElement> {}
+    interface TableTagProps extends PropsForElement<HTMLTableElement> {}
+    interface TbodyTagProps extends PropsForElement<HTMLTableSectionElement> {}
+    interface TemplateTagProps extends PropsForElement<HTMLTemplateElement> {}
+    interface TfootTagProps extends PropsForElement<HTMLTableSectionElement> {}
+    interface TheadTagProps extends PropsForElement<HTMLTableSectionElement> {}
+    interface TitleTagProps extends PropsForElement<HTMLTitleElement> {}
+    interface TrTagProps extends PropsForElement<HTMLTableRowElement> {}
+    interface UlTagProps extends PropsForElement<HTMLUListElement> {}
+    interface UTagProps extends PropsForElement<HTMLElement> {}
+    interface VarTagProps extends PropsForElement<HTMLElement> {}
+    interface WbrTagProps extends PropsForElement<HTMLElement> {}
+    interface WebviewTagProps extends PropsForElement<HTMLElement> {}
   }
 }

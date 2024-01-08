@@ -1,6 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface ThTagProps {
+    interface ThTagProps extends PropsForElement<HTMLTableCellElement> {
       abbr?: string;
       colspan?: string | number;
       headers?: string;

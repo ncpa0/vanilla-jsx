@@ -1,7 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface DataTagProps {
-      value?: string;
+    interface DataTagProps extends PropsForElement<HTMLDataElement> {
     }
   }
 }

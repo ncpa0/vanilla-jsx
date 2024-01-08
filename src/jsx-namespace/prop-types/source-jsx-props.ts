@@ -1,11 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface SourceTagProps {
-      media?: string;
-      sizes?: string;
-      src?: string;
-      srcset?: string;
-      type?: string;
+    interface SourceTagProps extends PropsForElement<HTMLSourceElement> {
     }
   }
 }

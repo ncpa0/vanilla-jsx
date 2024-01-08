@@ -1,14 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface AudioTagProps {
-      autoplay?: AttributeBool;
-      controls?: AttributeBool;
-      loop?: AttributeBool;
-      muted?: AttributeBool;
-      preload?: "auto" | "metadata" | "none";
-      src?: string;
+    interface AudioTagProps extends PropsForElement<HTMLAudioElement> {
     }
   }
 }

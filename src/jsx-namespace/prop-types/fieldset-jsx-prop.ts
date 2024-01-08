@@ -1,11 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface FieldsetTagProps {
-      disabled?: AttributeBool;
-      form?: string;
-      name?: string;
+    interface FieldsetTagProps extends PropsForElement<HTMLFieldSetElement> {
     }
   }
 }

@@ -1,8 +1,8 @@
+import { PropsForElement } from "./shared/props-for-element";
+
 declare global {
   namespace VanillaJSX {
-    interface InsTagProps {
-      cite?: string;
-      datetime?: string;
+    interface InsTagProps extends PropsForElement<HTMLModElement> {
     }
   }
 }

@@ -1,19 +1,8 @@
-import { AttributeBool } from "./shared/bool";
+import { PropsForElement } from "./shared/props-for-element";
 
 declare global {
   namespace VanillaJSX {
-    interface ButtonTagProps {
-      autofocus?: AttributeBool;
-      disabled?: AttributeBool;
-      form?: string;
-      formaction?: string;
-      formenctype?: string;
-      formmethod?: string;
-      formnovalidate?: string;
-      formtarget?: string;
-      name?: string;
-      type?: "button" | "reset" | "submit";
-      value?: string;
+    interface ButtonTagProps extends PropsForElement<HTMLButtonElement> {
     }
   }
 }
