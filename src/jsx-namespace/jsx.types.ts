@@ -87,6 +87,11 @@ declare global {
       }
       & {
         children?: Children | Children[];
+        /**
+         * When true, all strings directly within this element will be
+         * treated as HTML (using `innerHTML`).
+         */
+        unsafeHTML?: boolean;
       };
 
     interface ElementChildrenAttribute {

@@ -1,10 +1,21 @@
 import { SignalProxyListenerRef, sigProxy } from "./signals/proxy";
 
+declare global {
+  interface Window {
+    trustedTypes: {
+      createPolicy: (name: string, policy: { createHTML: (html: string) => string }) => {
+        createHTML: (html: string) => string;
+      };
+    };
+  }
+}
+
 type FunctionComponent = (props: object) => JSX.Element;
 
 type CreateElementProps = {
   [k: string]: any;
   children?: JSX.Children;
+  unsafeHTML?: boolean;
 };
 
 type ChildNode = Element | DocumentFragment | Text | JSX.Signal<Text | Element>;
@@ -51,18 +62,50 @@ const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
   };
 };
 
+const prepareHtmlFactory = typeof window.trustedTypes
+  ? () => {
+    const unsafePolicy = window.trustedTypes.createPolicy("unsafe", {
+      createHTML: (html: string) => html,
+    });
+    return (html: string) => {
+      return unsafePolicy.createHTML(html);
+    };
+  }
+  : () => (html: string) => {
+    return html;
+  };
+
+const prepareHtml = prepareHtmlFactory();
+
+const parseHtml = (unsafehtml: string): Iterable<globalThis.ChildNode> => {
+  const html = prepareHtml(unsafehtml);
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  return tmp.childNodes;
+};
+
 const mapChildren = (
   children: Exclude<JSX.Children, JSX.Element | JSX.VanillaValue>,
   accumulator: Array<ChildNode>,
+  unsafe?: boolean,
 ) => {
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
 
     switch (typeof child) {
       case "string":
-      case "number":
-        accumulator.push(document.createTextNode(valToString(child)));
+        if (unsafe) {
+          const nodes = parseHtml(child);
+          for (const node of nodes) {
+            accumulator.push(node as ChildNode);
+          }
+        } else {
+          accumulator.push(document.createTextNode(child));
+        }
         break;
+      case "number":
+      case "bigint":
+        accumulator.push(document.createTextNode(valToString(child)));
       case "boolean":
       case "undefined":
         break;
@@ -129,7 +172,7 @@ export function createElement(
 
   const childNodes: Array<ChildNode> = [];
 
-  mapChildren(children, childNodes);
+  mapChildren(children, childNodes, props?.unsafeHTML);
 
   if (tag === "") {
     const fragment = document.createDocumentFragment();
@@ -146,7 +189,7 @@ export function createElement(
 
   if (props) {
     for (const [propName, propValue] of Object.entries(props)) {
-      if (propName === "children") {
+      if (propName === "children" || propName === "unsafeHTML") {
         continue;
       }
 
