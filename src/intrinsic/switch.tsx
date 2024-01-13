@@ -9,29 +9,31 @@ export type SwitchProps<T> = {
   noclass?: boolean;
 };
 
+export type CaseRenderFn<T> = (matchedValue: T) => JSX.Element;
+
 function isFunctionMatcher<T>(v: T | ((value: T) => boolean)): v is (value: T) => boolean {
   return typeof v === "function";
 }
 
 class CaseBuilder<T> {
-  private cases: Array<[T | ((value: T) => boolean), () => JSX.Element]> = [];
+  private cases: Array<[T | ((value: T) => boolean), CaseRenderFn<T>]> = [];
 
   constructor() {}
 
   match(
     matcher: T | ((value: T) => boolean),
-    render: () => JSX.Element,
+    render: CaseRenderFn<T>,
   ): CaseBuilder<T> {
     this.cases.push([matcher, render]);
     return this;
   }
 
-  default(render: () => JSX.Element): CaseBuilder<T> {
+  default(render: CaseRenderFn<T>): CaseBuilder<T> {
     this.cases.push([() => true, render]);
     return this;
   }
 
-  static findCase<T>(v: T, builder: CaseBuilder<T>): undefined | (() => JSX.Element) {
+  static findCase<T>(v: T, builder: CaseBuilder<T>): undefined | (CaseRenderFn<T>) {
     for (let i = 0; i < builder.cases.length; i++) {
       const [matcher, render] = builder.cases[i]!;
       if (isFunctionMatcher(matcher)) {
@@ -51,14 +53,14 @@ function childBindingFactory<T>(builder: CaseBuilder<T>) {
   const emptyFragment = createEmptyElem();
   return (element: Element, v: T) => {
     const matchingCase = CaseBuilder.findCase(v, builder);
-    const newChild = matchingCase ? matchingCase() : emptyFragment;
+    const newChild = matchingCase ? matchingCase(v) : emptyFragment;
     element.replaceChildren(newChild);
   };
 }
 
 export type CaseProps<T = unknown> =
   & {
-    children: () => JSX.Element;
+    children: CaseRenderFn<T>;
   }
   & ({
     match: T | ((value: T) => boolean);
@@ -66,7 +68,7 @@ export type CaseProps<T = unknown> =
     default: true;
   });
 
-export const Case = (props: CaseProps): JSX.Element => {
+export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
   const tmp = <div class="vjsx-switch-case-placeholder" />;
   Object.defineProperty(tmp, "__vjsx_case_data", {
     value: {
