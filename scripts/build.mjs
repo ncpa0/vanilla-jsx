@@ -16,7 +16,7 @@ async function main() {
         formats: ["cjs", "esm", "legacy"],
         target: "es2022",
         declarations: true,
-        bundle: true,
+        bundle: false,
         entrypoint: "index.ts",
       }),
       build({

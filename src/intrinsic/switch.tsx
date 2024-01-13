@@ -4,7 +4,7 @@ import { sigProxy } from "../signals/proxy";
 
 export type SwitchProps<T> = {
   value: JSX.Signal<T>;
-  children: (cases: CaseBuilder<T>) => void;
+  children: JSX.Element[];
   into?: Element;
   noclass?: boolean;
 };
@@ -56,6 +56,29 @@ function childBindingFactory<T>(builder: CaseBuilder<T>) {
   };
 }
 
+export type CaseProps<T = unknown> =
+  & {
+    children: () => JSX.Element;
+  }
+  & ({
+    match: T | ((value: T) => boolean);
+  } | {
+    default: true;
+  });
+
+export const Case = (props: CaseProps): JSX.Element => {
+  const tmp = <div class="vjsx-switch-case-placeholder" />;
+  Object.defineProperty(tmp, "__vjsx_case_data", {
+    value: {
+      ...props,
+      children: Array.isArray(props.children)
+        ? props.children[0]!
+        : props.children,
+    },
+  });
+  return tmp;
+};
+
 /**
  * @example
  * enum MyEnum {
@@ -73,8 +96,6 @@ function childBindingFactory<T>(builder: CaseBuilder<T>) {
  * </Switch>
  */
 export const Switch = <T,>(props: SwitchProps<T>): JSX.Element => {
-  const collectCases: typeof props.children = Array.isArray(props.children) ? props.children[0] : props.children;
-
   const parent = props.into || <div />;
   if (!props.noclass) {
     parent.classList.add("vjsx-switch-container");
@@ -82,8 +103,19 @@ export const Switch = <T,>(props: SwitchProps<T>): JSX.Element => {
 
   const builder = new CaseBuilder<T>();
 
-  // collect cases
-  collectCases(builder);
+  for (let i = 0; i < props.children.length; i++) {
+    const child = props.children[i]! as { __vjsx_case_data?: CaseProps<T> };
+
+    if ("__vjsx_case_data" in child) {
+      const caseData = child.__vjsx_case_data!;
+
+      if ("default" in caseData) {
+        builder.default(caseData.children);
+      } else {
+        builder.match(caseData.match, caseData.children);
+      }
+    }
+  }
 
   const s = sigProxy(props.value);
   s.bindTo(parent, childBindingFactory(builder));

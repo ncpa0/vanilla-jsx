@@ -62,7 +62,7 @@ const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
   };
 };
 
-const prepareHtmlFactory = typeof window.trustedTypes
+const prepareHtmlFactory = typeof window.trustedTypes !== "undefined"
   ? () => {
     const unsafePolicy = window.trustedTypes.createPolicy("unsafe", {
       createHTML: (html: string) => html,

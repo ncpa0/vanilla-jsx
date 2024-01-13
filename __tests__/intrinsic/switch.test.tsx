@@ -1,15 +1,6 @@
-import { setFlagsFromString } from "v8";
 import { describe, expect, it } from "vitest";
-import { runInNewContext } from "vm";
-import { sig, Switch } from "../../src";
+import { Case, sig, Switch } from "../../src";
 import { Fragment, jsx } from "../../src/jsx-runtime";
-
-setFlagsFromString("--expose_gc");
-const rawGC = runInNewContext("gc");
-async function gc() {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  rawGC();
-}
 
 describe("Switch", () => {
   it("renders the first matching render", () => {
@@ -17,15 +8,19 @@ describe("Switch", () => {
 
     const elem = (
       <div>
-        <Switch
-          value={s}
-        >
-          {cases =>
-            cases
-              .match("foo", () => <span id="foo">Foo</span>)
-              .match("bar", () => <span id="bar">Bar</span>)
-              .match("baz", () => <span id="baz">Baz</span>)
-              .match("foo", () => <span>Should never render</span>)}
+        <Switch value={s}>
+          <Case match={"foo"}>
+            {() => <span id="foo">Foo</span>}
+          </Case>
+          <Case match={"bar"}>
+            {() => <span id="bar">Bar</span>}
+          </Case>
+          <Case match={"baz"}>
+            {() => <span id="baz">Baz</span>}
+          </Case>
+          <Case match={"foo"}>
+            {() => <span>Should never render</span>}
+          </Case>
         </Switch>
       </div>
     );
@@ -46,15 +41,19 @@ describe("Switch", () => {
 
     const elem = (
       <div>
-        <Switch
-          value={s}
-        >
-          {cases =>
-            cases
-              .match(0, () => <span id="0">0</span>)
-              .match(1, () => <span id="1">1</span>)
-              .match(2, () => <span id="2">2</span>)
-              .default(() => <span id="default">Default</span>)}
+        <Switch value={s}>
+          <Case match={0}>
+            {() => <span id="0">0</span>}
+          </Case>
+          <Case match={1}>
+            {() => <span id="1">1</span>}
+          </Case>
+          <Case match={2}>
+            {() => <span id="2">2</span>}
+          </Case>
+          <Case default>
+            {() => <span id="default">Default</span>}
+          </Case>
         </Switch>
       </div>
     );
@@ -81,15 +80,19 @@ describe("Switch", () => {
 
     const elem = (
       <div>
-        <Switch
-          value={s}
-        >
-          {cases =>
-            cases
-              .match(v => v.length <= 3, () => <span>Short String</span>)
-              .match(v => v.length <= 9, () => <span>Medium String</span>)
-              .match(v => v.length <= 12, () => <span>Long String</span>)
-              .default(() => <span>Very Long String</span>)}
+        <Switch value={s}>
+          <Case match={(v: string) => v.length <= 3}>
+            {() => <span>Short String</span>}
+          </Case>
+          <Case match={(v: string) => v.length <= 9}>
+            {() => <span>Medium String</span>}
+          </Case>
+          <Case match={(v: string) => v.length <= 12}>
+            {() => <span>Long String</span>}
+          </Case>
+          <Case default>
+            {() => <span>Very Long String</span>}
+          </Case>
         </Switch>
       </div>
     );
