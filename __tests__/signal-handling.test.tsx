@@ -1,7 +1,7 @@
 import { setFlagsFromString } from "v8";
 import { describe, expect, it } from "vitest";
 import { runInNewContext } from "vm";
-import { sig } from "../src";
+import { ClassName, sig } from "../src";
 import { Fragment, jsx } from "../src/jsx-runtime";
 
 setFlagsFromString("--expose_gc");
@@ -92,7 +92,7 @@ describe("signal handling", () => {
         case 2:
           return (
             <div>
-              <input value={v} />
+              <input class={v} />
             </div>
           );
         default:
@@ -121,7 +121,7 @@ describe("signal handling", () => {
     s.dispatch(2);
 
     expect(html.outerHTML).toEqual(
-      "<body><div><input value=\"2\"></div></body>",
+      "<body><div><input class=\"2\"></div></body>",
     );
 
     s.dispatch(3);
@@ -129,5 +129,146 @@ describe("signal handling", () => {
     expect(html.outerHTML).toEqual(
       "<body><p>No match</p></body>",
     );
+  });
+
+  it("correctly binds to properties", () => {
+    const elem1 = <input value={"hello"} /> as HTMLInputElement;
+    expect(elem1.value).toEqual("hello");
+
+    const sigValue = sig("world");
+    const elem2 = <input value={sigValue} /> as HTMLInputElement;
+    expect(elem2.value).toEqual("world");
+
+    sigValue.dispatch("foo");
+    expect(elem2.value).toEqual("foo");
+  });
+
+  describe("for class name", () => {
+    describe("arrays", () => {
+      it("correctly handles string arrays", () => {
+        const elem = <div class={["foo", null, "bar", false, "baz", undefined, 0]} />;
+        expect(elem.outerHTML).toEqual("<div class=\"foo bar baz 0\"></div>");
+      });
+
+      it("correctly handles signal of array", () => {
+        const cnameSig = sig(["foo", null, "bar", false, "baz", undefined, 0, true]);
+        const elem = <div class={cnameSig} />;
+        expect(elem.outerHTML).toEqual("<div class=\"foo bar baz 0\"></div>");
+
+        cnameSig.dispatch(["bar", "qux", null, "true", true]);
+        expect(elem.outerHTML).toEqual("<div class=\"bar qux true\"></div>");
+      });
+
+      it("correctly handles array with signals", () => {
+        const cname1 = sig<ClassName>("foo");
+        const cname2 = sig<ClassName>("baz");
+        const elem = <div class={[cname1, "bar", cname2, null, "qux"]} />;
+        expect(elem.outerHTML).toEqual("<div class=\"foo bar baz qux\"></div>");
+
+        cname1.dispatch("oof");
+        expect(elem.outerHTML).toEqual("<div class=\"bar baz qux oof\"></div>");
+
+        cname2.dispatch(false);
+        expect(elem.outerHTML).toEqual("<div class=\"bar qux oof\"></div>");
+
+        cname2.dispatch("zab");
+        expect(elem.outerHTML).toEqual("<div class=\"bar qux oof zab\"></div>");
+      });
+    });
+
+    describe("records", () => {
+      it("correctly handles record", () => {
+        const elem = (
+          <div
+            class={{
+              foo: true,
+              bar: false,
+              baz: 1,
+              qux: 0,
+              coorg: "lol",
+              lol: "",
+            }}
+          />
+        );
+        expect(elem.outerHTML).toEqual("<div class=\"foo baz coorg\"></div>");
+      });
+
+      it("correctly handles signal of record", () => {
+        const cnameSig = sig<Record<string, any>>({
+          foo: true,
+          bar: false,
+          baz: 1,
+          qux: 0,
+          coorg: "lol",
+          lol: "",
+        });
+        const elem = <div class={cnameSig} />;
+        expect(elem.outerHTML).toEqual("<div class=\"foo baz coorg\"></div>");
+
+        cnameSig.dispatch({
+          foo: true,
+          bar: false,
+          baz: 0,
+          qux: 1,
+          coorg: "lol",
+          lol: "",
+        });
+        expect(elem.outerHTML).toEqual("<div class=\"foo qux coorg\"></div>");
+
+        cnameSig.dispatch({
+          bar: true,
+          qux: 1,
+          lol: true,
+        });
+        expect(elem.outerHTML).toEqual("<div class=\"bar qux lol\"></div>");
+
+        cnameSig.dispatch({
+          bar: true,
+          qux: false,
+          lol: true,
+        });
+        expect(elem.outerHTML).toEqual("<div class=\"bar lol\"></div>");
+
+        cnameSig.dispatch({
+          foobar: true,
+          bar: true,
+          lol: true,
+        });
+        expect(elem.outerHTML).toEqual("<div class=\"foobar bar lol\"></div>");
+
+        cnameSig.dispatch({});
+        expect(elem.outerHTML).toEqual("<div class=\"\"></div>");
+
+        cnameSig.dispatch({
+          foo: false,
+          bar: true,
+        });
+        expect(elem.outerHTML).toEqual("<div class=\"bar\"></div>");
+      });
+
+      it("correctly handles record with signals", () => {
+        const cnames = {
+          foo: true,
+          bar: sig<any>(false),
+          baz: sig<any>(1),
+          qux: sig<any>(0),
+          coorg: 0,
+        };
+        const elem = <div class={cnames} />;
+        expect(elem.outerHTML).toEqual("<div class=\"foo baz\"></div>");
+
+        cnames.bar.dispatch(true);
+        expect(elem.outerHTML).toEqual("<div class=\"foo baz bar\"></div>");
+
+        cnames.baz.dispatch(0);
+        expect(elem.outerHTML).toEqual("<div class=\"foo bar\"></div>");
+
+        cnames.qux.dispatch(1);
+        expect(elem.outerHTML).toEqual("<div class=\"foo bar qux\"></div>");
+
+        cnames.baz.dispatch("yes");
+        expect(elem.outerHTML).toEqual("<div class=\"foo bar qux baz\"></div>");
+      });
+    });
   });
 });

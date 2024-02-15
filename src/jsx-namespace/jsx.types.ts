@@ -47,11 +47,20 @@
 
 import { PropsForElement } from "./prop-types/shared/props-for-element";
 
-export {};
+export { };
 
 type WithSignals<T> = {
   [K in keyof T]: T[K] | JSX.Signal<T[K]>;
 };
+
+export type ClassName =
+  | string
+  | number
+  | boolean
+  | Array<string | JSX.Signal<string> | number | null | undefined | boolean>
+  | Record<string, any>
+  | JSX.Signal<Array<string | number | null | undefined | boolean>>
+  | JSX.Signal<Record<string, any>>;
 
 declare global {
   namespace JSX {
@@ -83,16 +92,8 @@ declare global {
     type Children = Element | VanillaValue | Array<Element | VanillaValue>;
 
     type HTMLProps<P> =
-      & WithSignals<BaseAttributes>
-      & WithSignals<P>
-      & {
-        children?: Children | Children[];
-        /**
-         * When true, all strings directly within this element will be
-         * treated as HTML (using `innerHTML`).
-         */
-        unsafeHTML?: boolean;
-      };
+      & BaseAttributes
+      & WithSignals<P>;
 
     interface ElementChildrenAttribute {
       children?: {}; // specify children name to use
@@ -229,8 +230,14 @@ declare global {
     } & P;
 
     interface BaseAttributes {
-      class?: string;
-      id?: string;
+      id?: string | JSX.Signal<string>;
+      class?: ClassName;
+      children?: Children | Children[];
+      /**
+       * When true, all strings directly within this element will be
+       * treated as HTML (using `innerHTML`).
+       */
+      unsafeHTML?: boolean;
     }
   }
 

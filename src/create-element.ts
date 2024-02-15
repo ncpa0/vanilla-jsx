@@ -1,3 +1,4 @@
+import { ClassName } from "./jsx-namespace/jsx.types";
 import { SignalProxyListenerRef, sigProxy } from "./signals/proxy";
 
 declare global {
@@ -23,6 +24,8 @@ type ChildNode = Element | DocumentFragment | Text | JSX.Signal<Text | Element>;
 function asArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value];
 }
+
+const isArray = <T, O>(maybeArray: T[] | O): maybeArray is T[] => Array.isArray(maybeArray);
 
 function isSignal(o: object): o is JSX.Signal {
   return (
@@ -137,7 +140,90 @@ const eventBindingFactory = (eventName: string) => {
   };
 };
 
+const setSimpleClassNameFactory = () => {
+  let lastName = "";
+  return (elem: HTMLElement, cname: string | number | boolean) => {
+    elem.classList.remove(lastName);
+    switch (typeof cname) {
+      case "string":
+        elem.classList.add(cname);
+        lastName = cname;
+        break;
+      case "number":
+        const name = String(cname);
+        elem.classList.add(name);
+        lastName = name;
+        break;
+      default:
+        lastName = "";
+    }
+  };
+};
+
+const setClassNameConditionallyFactory = (cname: string) => {
+  return (elem: HTMLElement, condition: any) => {
+    if (!!condition) {
+      elem.classList.add(cname);
+    } else {
+      elem.classList.remove(cname);
+    }
+  };
+};
+
+const setClassName = (elem: HTMLElement, value: ClassName) => {
+  switch (typeof value) {
+    case "string":
+      elem.className = value;
+      return;
+    case "number":
+      elem.className = String(value);
+      return;
+    case "object":
+      if (isArray(value)) {
+        elem.className = "";
+        for (let i = 0; i < value.length; i++) {
+          const cname = value[i];
+          switch (typeof cname) {
+            case "string":
+              elem.classList.add(cname);
+              break;
+            case "number":
+              elem.classList.add(String(cname));
+              break;
+            case "object":
+              if (cname != null) {
+                const signal = sigProxy(cname);
+                signal.bindTo(elem, setSimpleClassNameFactory());
+              }
+              break;
+          }
+        }
+        return;
+      }
+      if (isSignal(value)) {
+        const signal = sigProxy(value);
+        signal.bindTo(elem, setClassName);
+        return;
+      }
+      const entries = Object.entries(value);
+      elem.className = "";
+      for (const [cname, condition] of entries) {
+        const setCname = setClassNameConditionallyFactory(cname);
+        if (typeof condition === "object" && isSignal(condition)) {
+          const signal = sigProxy(condition);
+          signal.bindTo(elem, setCname);
+        } else {
+          setCname(elem, condition);
+        }
+      }
+  }
+};
+
 const attributeBindingFactory = (attributeName: string) => {
+  if (attributeName === "class") {
+    return setClassName;
+  }
+
   return (elem: HTMLElement, value: any) => {
     if (value == null && elem.hasAttribute(attributeName)) {
       elem.removeAttribute(attributeName);
@@ -210,8 +296,15 @@ export function createElement(
         if (propName.startsWith("on")) {
           const eventName = propName.substring(2).toLowerCase();
           element.addEventListener(eventName, propValue);
+        } else if (propName === "class") {
+          // NOTE: propValue can contain signals
+          setClassName(element, propValue);
         } else {
-          element.setAttribute(propName, propValue);
+          if (propName in element) {
+            (element as any)[propName] = propValue;
+          } else {
+            element.setAttribute(propName, propValue);
+          }
         }
       }
     }
