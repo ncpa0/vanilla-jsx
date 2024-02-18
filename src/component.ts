@@ -18,12 +18,8 @@ class ComponentNode extends HTMLElement {
 
   _emitter = new EventTarget();
 
-  constructor() {
-    super();
-    this.style.display = "contents";
-  }
-
   connectedCallback() {
+    this.style.display = "contents";
     this._emitter.dispatchEvent(new Event(ComponentNode.MOUNTED));
   }
 

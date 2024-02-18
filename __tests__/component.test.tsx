@@ -16,6 +16,8 @@ describe("component", () => {
       </div>
     );
 
+    window.document.body.appendChild(elem);
+
     expect(
       elem.outerHTML,
     ).toMatchInlineSnapshot(

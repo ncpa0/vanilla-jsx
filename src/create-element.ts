@@ -141,31 +141,33 @@ const eventBindingFactory = (eventName: string) => {
 };
 
 const setSimpleClassNameFactory = () => {
-  let lastName = "";
+  let lastNames: string[] = [];
   return (elem: HTMLElement, cname: string | number | boolean) => {
-    elem.classList.remove(lastName);
+    elem.classList.remove(...lastNames);
     switch (typeof cname) {
       case "string":
-        elem.classList.add(cname);
-        lastName = cname;
+        const names = cname.split(" ").filter(Boolean);
+        elem.classList.add(...names);
+        lastNames = names;
         break;
       case "number":
         const name = String(cname);
         elem.classList.add(name);
-        lastName = name;
+        lastNames = [name];
         break;
       default:
-        lastName = "";
+        lastNames.splice(0, lastNames.length);
     }
   };
 };
 
 const setClassNameConditionallyFactory = (cname: string) => {
+  const names = cname.split(" ").filter(Boolean);
   return (elem: HTMLElement, condition: any) => {
     if (!!condition) {
-      elem.classList.add(cname);
+      elem.classList.add(...names);
     } else {
-      elem.classList.remove(cname);
+      elem.classList.remove(...names);
     }
   };
 };
@@ -185,7 +187,8 @@ const setClassName = (elem: HTMLElement, value: ClassName) => {
           const cname = value[i];
           switch (typeof cname) {
             case "string":
-              elem.classList.add(cname);
+              const names = cname.split(" ").filter(Boolean);
+              elem.classList.add(...names);
               break;
             case "number":
               elem.classList.add(String(cname));

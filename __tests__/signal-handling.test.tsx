@@ -174,6 +174,34 @@ describe("signal handling", () => {
         cname2.dispatch("zab");
         expect(elem.outerHTML).toEqual("<div class=\"bar qux oof zab\"></div>");
       });
+
+      it("correctly handles array elements containing multiple class names in one string", () => {
+        const s = sig("foo bar baz");
+        const elem = <div class={[s, "qux coorge"]} />;
+        expect(elem.outerHTML).toEqual("<div class=\"foo bar baz qux coorge\"></div>");
+
+        s.dispatch("bar baz");
+        expect(elem.outerHTML).toEqual("<div class=\"qux coorge bar baz\"></div>");
+
+        s.dispatch("bar");
+        expect(elem.outerHTML).toEqual("<div class=\"qux coorge bar\"></div>");
+
+        s.dispatch("foo baz");
+        expect(elem.outerHTML).toEqual("<div class=\"qux coorge foo baz\"></div>");
+
+        const s2 = sig(["foo bar baz"]);
+        const elem2 = <div class={s2} />;
+        expect(elem2.outerHTML).toEqual("<div class=\"foo bar baz\"></div>");
+
+        s2.dispatch(["bar baz"]);
+        expect(elem2.outerHTML).toEqual("<div class=\"bar baz\"></div>");
+
+        s2.dispatch(["bar"]);
+        expect(elem2.outerHTML).toEqual("<div class=\"bar\"></div>");
+
+        s2.dispatch(["foo baz"]);
+        expect(elem2.outerHTML).toEqual("<div class=\"foo baz\"></div>");
+      });
     });
 
     describe("records", () => {
