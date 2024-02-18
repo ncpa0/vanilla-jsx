@@ -47,7 +47,7 @@
 
 import { PropsForElement } from "./prop-types/shared/props-for-element";
 
-export { };
+export {};
 
 type WithSignals<T> = {
   [K in keyof T]: T[K] | JSX.Signal<T[K]>;
@@ -230,7 +230,7 @@ declare global {
     } & P;
 
     interface BaseAttributes {
-      id?: string | JSX.Signal<string>;
+      id?: string | JSX.Signal<string | undefined>;
       class?: ClassName;
       children?: Children | Children[];
       /**

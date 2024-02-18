@@ -1,16 +1,13 @@
-export { createElement, Fragment, jsx, jsxs } from "./create-element";
+export { $component, type ComponentApi } from "./component";
+export { Fragment, createElement, jsx, jsxs } from "./create-element";
 export { If, type IfProps } from "./intrinsic/if";
 export { Range, type RangeProps } from "./intrinsic/range";
-export { Case, type CaseProps, Switch, type SwitchProps } from "./intrinsic/switch";
+export { Case, Switch, type CaseProps, type SwitchProps } from "./intrinsic/switch";
 export { type ClassName } from "./jsx-namespace/jsx.types";
 export { bindSignal } from "./signals/proxy";
 export {
-  deriveMany,
-  type DispatchFunc,
-  type ReadonlySignal,
-  sig,
-  type Signal,
-  signal,
-  type SignalListener,
-  type SignalListenerReference,
+  deriveMany, sig, signal, type DispatchFunc,
+  type ReadonlySignal, type Signal, type SignalListener,
+  type SignalListenerReference
 } from "./signals/signal";
+
