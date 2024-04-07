@@ -67,6 +67,20 @@ function attempt(fn: () => void) {
 }
 
 class VanillaJsxSignal<T> implements Signal<T> {
+  public static derive<U>(...args: any[]): ReadonlySignal<U> {
+    const signals = args.slice(0, -1) as VanillaJsxSignal<any>[];
+    const getDerivedValue = args[args.length - 1] as (...args: any[]) => U;
+    const deriveFn = () => getDerivedValue(...signals.map((s) => s.value));
+
+    const derivedSignal = new VanillaJsxReadonlySignal(deriveFn());
+    derivedSignal.deriveFn = deriveFn;
+    derivedSignal.derivedFrom = signals;
+
+    signals.forEach((s) => s.derivedSignals.push(new WeakRef(derivedSignal)));
+
+    return derivedSignal;
+  }
+
   private listeners: SignalListener<T>[] = [];
   private derivedSignals: WeakRef<VanillaJsxSignal<any>>[] = [];
   private value: T;
@@ -135,22 +149,6 @@ class VanillaJsxSignal<T> implements Signal<T> {
     }
   }
 
-  private add_destroyed(_: SignalListener<T>): never {
-    throw new Error("Signal.add(): cannot add listeners to a destroyed signal");
-  }
-
-  private dispatch_destroyed(_: T | DispatchFunc<T>): never {
-    throw new Error("Signal.dispatch(): cannot dispatch on a destroyed signal");
-  }
-
-  private derive_destroyed(_: (current: any) => any): never {
-    throw new Error("Signal.derive(): cannot derive from a destroyed signal");
-  }
-
-  private dispatch_derived(_: T | DispatchFunc<T>): void {
-    throw new Error("Signal.dispatch(): cannot dispatch on a derived signal");
-  }
-
   public add(listener: SignalListener<T>): SignalListenerReference<T> {
     if (this.derivedIsOutOfDate) {
       this.updateDerived();
@@ -213,10 +211,9 @@ class VanillaJsxSignal<T> implements Signal<T> {
       this.updateDerived();
     }
 
-    const derivedSignal = new VanillaJsxSignal(getDerivedValue(this.value));
+    const derivedSignal = new VanillaJsxReadonlySignal(getDerivedValue(this.value));
     derivedSignal.deriveFn = () => getDerivedValue(this.value);
     derivedSignal.derivedFrom = [this];
-    derivedSignal.dispatch = derivedSignal.dispatch_derived;
 
     this.derivedSignals.push(new WeakRef(derivedSignal));
     return derivedSignal;
@@ -234,19 +231,22 @@ class VanillaJsxSignal<T> implements Signal<T> {
     this.derivedSignals = [];
   }
 
-  public static deriveMany<U>(...args: any[]): ReadonlySignal<U> {
-    const signals = args.slice(0, -1) as VanillaJsxSignal<any>[];
-    const getDerivedValue = args[args.length - 1] as (...args: any[]) => U;
-    const deriveFn = () => getDerivedValue(...signals.map((s) => s.value));
+  private add_destroyed(_: SignalListener<T>): never {
+    throw new Error("Signal.add(): cannot add listeners to a destroyed signal");
+  }
 
-    const derivedSignal = new VanillaJsxSignal(deriveFn());
-    derivedSignal.deriveFn = deriveFn;
-    derivedSignal.derivedFrom = signals;
-    derivedSignal.dispatch = derivedSignal.dispatch_derived;
+  private dispatch_destroyed(_: T | DispatchFunc<T>): never {
+    throw new Error("Signal.dispatch(): cannot dispatch on a destroyed signal");
+  }
 
-    signals.forEach((s) => s.derivedSignals.push(new WeakRef(derivedSignal)));
+  private derive_destroyed(_: (current: any) => any): never {
+    throw new Error("Signal.derive(): cannot derive from a destroyed signal");
+  }
+}
 
-    return derivedSignal;
+class VanillaJsxReadonlySignal<T> extends VanillaJsxSignal<T> {
+  public dispatch(_: T | DispatchFunc<T>): void {
+    throw new Error("Signal.dispatch(): cannot dispatch on a derived signal");
   }
 }
 
@@ -294,5 +294,5 @@ export function deriveMany<E, F, G, H, I, U>(
   getDerivedValue: (v1: E, v2: F, v3: G, v4: H, v5: I) => U,
 ): ReadonlySignal<U>;
 export function deriveMany<U>(...args: any[]): ReadonlySignal<U> {
-  return VanillaJsxSignal.deriveMany(...args);
+  return VanillaJsxSignal.derive(...args);
 }
