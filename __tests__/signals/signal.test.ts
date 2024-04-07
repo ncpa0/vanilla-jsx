@@ -1,14 +1,24 @@
 import { setFlagsFromString } from "v8";
-import { describe, expect, it, vitest } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vitest } from "vitest";
 import { runInNewContext } from "vm";
 import { sig, Signal } from "../../src";
-import { deriveMany, ReadonlySignal, VanillaJsxSignal } from "../../src/signals/signal";
+import {
+  deriveMany,
+  flushBatch,
+  ReadonlySignal,
+  setAutoBatchingEnabled,
+  VanillaJsxSignal,
+} from "../../src/signals/signal";
 
 setFlagsFromString("--expose_gc");
 const rawGC = runInNewContext("gc");
 async function gc() {
   await new Promise((resolve) => setTimeout(resolve, 0));
   rawGC();
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 describe("VanillaJsxSignal()", () => {
@@ -272,6 +282,37 @@ describe("VanillaJsxSignal()", () => {
 
       expect(derivedRefs).toHaveLength(0);
     });
+
+    it("derived signals should not be GCd if they are being observed", async () => {
+      const s = sig("foo") as VanillaJsxSignal<string>;
+      const getLength = vitest.fn((v: string) => v.length);
+      const derivedRefs = s["derivedSignals"];
+      let derived: ReadonlySignal<number> | null = s.derive(getLength);
+
+      expect(derived.current()).toBe(3);
+      expect(derivedRefs[0]!.deref()).toBeDefined();
+
+      derived.add(() => {});
+      derived = null;
+
+      await gc();
+      s.dispatch("foobar");
+      expect(derivedRefs).toHaveLength(1);
+      expect(derivedRefs[0]!.deref()).toBeDefined();
+
+      await gc();
+      s.dispatch("foobar");
+      expect(derivedRefs).toHaveLength(1);
+      expect(derivedRefs[0]!.deref()).toBeDefined();
+
+      // derivedRefs[0]?.deref()?.detachAll();
+
+      // await gc();
+      // expect(derivedRefs).toHaveLength(1);
+      // expect(derivedRefs[0]!.deref()).toBeUndefined();
+      // s.dispatch("foobarbaz");
+      // expect(derivedRefs).toHaveLength(0);
+    });
   });
 
   describe("destroy()", () => {
@@ -449,5 +490,55 @@ describe("VanillaJsxSignal()", () => {
       expect(derivedRefs2).toHaveLength(0);
       expect(derivedRefs3).toHaveLength(0);
     });
+  });
+
+  describe("auto batching", () => {
+    beforeAll(() => {
+      setAutoBatchingEnabled(true);
+    });
+
+    afterAll(() => {
+      setAutoBatchingEnabled(false);
+    });
+
+    it("should correctly batch updates to derived signals", async () => {
+      const s = sig(0) as any as VanillaJsxSignal<number>;
+      const d1 = s.derive(v => v + 1);
+      const d2 = s.derive(v => v + 1);
+      const d3 = s.derive(v => v + 1);
+      const d4 = s.derive(v => v + 1);
+      const join = deriveMany(d1, d2, d3, d4, (v1, v2, v3, v4) => v1 + v2 + v3 + v4);
+
+      let joinRefreshCount = 0;
+      join.add(() => {
+        joinRefreshCount++;
+      });
+
+      expect(join.current()).toBe(4);
+      expect(joinRefreshCount).toBe(1);
+
+      s.dispatch(1);
+      expect(joinRefreshCount).toBe(1);
+
+      await flushBatch();
+      expect(join.current()).toBe(8);
+      expect(joinRefreshCount).toBe(2);
+    });
+
+    it("should correctly run updates to deeply nested derived signals", async () => {
+      const s = sig(0) as any as VanillaJsxSignal<number>;
+
+      const l1 = s.derive(v => v + 1);
+      const l2 = l1.derive(v => v + 49);
+      const l3 = l2.derive(v => v * 2);
+
+      expect(l3.current()).toBe(100);
+
+      s.dispatch(1);
+
+      await flushBatch();
+
+      expect(l3.current()).toBe(102);
+    }, { timeout: 999999 });
   });
 });
