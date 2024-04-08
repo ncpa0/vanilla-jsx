@@ -457,7 +457,9 @@ describe("VSignal()", () => {
       });
 
       describe("multi-layer", () => {
-        const layers = 30;
+        /* use small layer number, since without batching it can 
+           take a long time for too complex relations */
+        const layers = 10;
 
         it("reading", () => {
           const start = {
