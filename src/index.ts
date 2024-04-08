@@ -6,7 +6,8 @@ export { Case, Switch, type CaseProps, type SwitchProps } from "./intrinsic/swit
 export { type ClassName } from "./jsx-namespace/jsx.types";
 export { bindSignal } from "./signals/proxy";
 export {
-  deriveMany, sig, signal, type DispatchFunc,
+  VReadonlySignal,
+  VSignal, sig, signal, type DispatchFunc,
   type ReadonlySignal, type Signal, type SignalListener,
   type SignalListenerReference
 } from "./signals/signal";

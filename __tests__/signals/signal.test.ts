@@ -1,8 +1,13 @@
 import { setFlagsFromString } from "v8";
 import { describe, expect, it, vitest } from "vitest";
 import { runInNewContext } from "vm";
-import { sig, Signal } from "../../src";
-import { deriveMany, ReadonlySignal, VanillaJsxSignal } from "../../src/signals/signal";
+import { Signal, sig } from "../../src";
+import {
+  ReadonlySignal,
+  SignalListenerReference,
+  VReadonlySignal,
+  VSignal
+} from "../../src/signals/signal";
 
 setFlagsFromString("--expose_gc");
 const rawGC = runInNewContext("gc");
@@ -11,7 +16,7 @@ async function gc() {
   rawGC();
 }
 
-describe("VanillaJsxSignal()", () => {
+describe("VSignal()", () => {
   describe("current()", () => {
     it("should return the current value", () => {
       const signal = sig(1);
@@ -240,6 +245,58 @@ describe("VanillaJsxSignal()", () => {
       expect(getLength).toHaveBeenCalledTimes(4);
     });
 
+    it("should update or not down the chain derived signals depending on if they are observed", () => {
+      const head = sig(0) as VSignal<number>;
+
+      const d1 = head.derive(v => v + 1) as VSignal<number>;
+      const d2 = d1.derive(v => v + 1) as VSignal<number>;
+      const d3 = d2.derive(v => v + 1) as VSignal<number>;
+      const d4 = d3.derive(v => v + 1) as VSignal<number>;
+
+      expect(head.current()).toBe(0);
+      expect(d1.current()).toBe(1);
+      expect(d2.current()).toBe(2);
+      expect(d3.current()).toBe(3);
+      expect(d4.current()).toBe(4);
+
+      head.dispatch(10);
+
+      // inner value does not re-calculate until it is observed
+      expect(head["value"]).toBe(10);
+      expect(d1["value"]).toBe(1);
+      expect(d2["value"]).toBe(2);
+      expect(d3["value"]).toBe(3);
+      expect(d4["value"]).toBe(4);
+
+      expect(head.current()).toBe(10);
+      expect(d1.current()).toBe(11);
+      expect(d2.current()).toBe(12);
+      expect(d3.current()).toBe(13);
+      expect(d4.current()).toBe(14);
+
+      const onD4Change = vitest.fn();
+      // now since d1 is observed, all derived should be recalculated
+      d4.add(onD4Change);
+      onD4Change.mockClear();
+
+      head.dispatch(26);
+
+      expect(onD4Change).toHaveBeenCalledTimes(1);
+      expect(onD4Change).toHaveBeenLastCalledWith(30);
+
+      expect(head["value"]).toBe(26);
+      expect(d1["value"]).toBe(27);
+      expect(d2["value"]).toBe(28);
+      expect(d3["value"]).toBe(29);
+      expect(d4["value"]).toBe(30);
+
+      expect(head.current()).toBe(26);
+      expect(d1.current()).toBe(27);
+      expect(d2.current()).toBe(28);
+      expect(d3.current()).toBe(29);
+      expect(d4.current()).toBe(30);
+    });
+
     it("should destroy the derived signal when the parent signal is destroyed", () => {
       const signal = sig("foo");
       const dSignal = signal.derive(v => v.repeat(2));
@@ -254,7 +311,7 @@ describe("VanillaJsxSignal()", () => {
     });
 
     it("derived signals should be possible to garbage collect", async () => {
-      const s = sig("foo") as VanillaJsxSignal<string>;
+      const s = sig("foo") as VSignal<string>;
       const derivedRefs = s["derivedSignals"];
       let derived: ReadonlySignal<string> | null = s.derive(v => v.repeat(2));
 
@@ -271,6 +328,522 @@ describe("VanillaJsxSignal()", () => {
       s.dispatch("bar");
 
       expect(derivedRefs).toHaveLength(0);
+    });
+
+    describe("complex scenarios", () => {
+      describe("diamond", () => {
+        it("scenario 1 - reading", () => {
+          const head = new VSignal(0);
+
+          const d1 = head.derive(v => v + 1);
+          const d2 = head.derive(v => v + 2);
+          const d3 = head.derive(v => v + 3);
+          const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
+
+          expect(d4.current()).toBe(6);
+          expect(d3.current()).toBe(3);
+          expect(d2.current()).toBe(2);
+          expect(d1.current()).toBe(1);
+          expect(head.current()).toBe(0);
+
+          head.dispatch(10);
+
+          expect(d4.current()).toBe(36);
+          expect(d3.current()).toBe(13);
+          expect(d2.current()).toBe(12);
+          expect(d1.current()).toBe(11);
+          expect(head.current()).toBe(10);
+        });
+
+        it("scenario 2 - listener", () => {
+          const head = new VSignal(0);
+
+          const d1 = head.derive(v => v + 1);
+          const d2 = head.derive(v => v + 2);
+          const d3 = head.derive(v => v + 3);
+          const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
+
+          const onD4Change = vitest.fn();
+          d4.add(onD4Change);
+          onD4Change.mockClear();
+
+          head.dispatch(10);
+
+          expect(onD4Change).toHaveBeenLastCalledWith(36);
+          expect(d4.current()).toBe(36);
+        });
+
+        it("scenario 3 - derived listener", () => {
+          const head = new VSignal(0);
+
+          const d1 = head.derive(v => v + 1);
+          const d2 = head.derive(v => v + 2);
+          const d3 = head.derive(v => v + 3);
+          const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
+          const tail = d4.derive(v => v * 2);
+
+          const onTailChange = vitest.fn();
+          tail.add(onTailChange);
+          onTailChange.mockClear();
+
+          head.dispatch(10);
+
+          expect(onTailChange).toHaveBeenLastCalledWith(72);
+          expect(tail.current()).toBe(72);
+        });
+      });
+
+      describe("split", () => {
+        it("scenario 1 - reading", () => {
+          const source1 = new VSignal(0);
+          const source2 = new VSignal(2);
+          const source3 = new VSignal(3);
+          const source4 = new VSignal(5);
+
+          const join = VSignal.derive(
+            source1,
+            source2,
+            source3,
+            source4,
+            (v1, v2, v3, v4) => v1 + v2 + v3 + v4,
+          );
+
+          const r1 = join.derive(v => v / 4);
+          const r2 = join.derive(v => v / v);
+          const r3 = join.derive(v => v * 2);
+
+          expect(r1.current()).toBe(2.5);
+          expect(r2.current()).toBe(1);
+          expect(r3.current()).toBe(20);
+
+          source1.dispatch(2);
+
+          expect(r1.current()).toBe(3);
+          expect(r2.current()).toBe(1);
+          expect(r3.current()).toBe(24);
+        });
+
+        it("scenario 2 - listener", () => {
+          const source1 = new VSignal(0);
+          const source2 = new VSignal(2);
+          const source3 = new VSignal(3);
+          const source4 = new VSignal(5);
+
+          const join = VSignal.derive(
+            source1,
+            source2,
+            source3,
+            source4,
+            (v1, v2, v3, v4) => v1 + v2 + v3 + v4,
+          );
+
+          const r1 = join.derive(v => v / 4);
+          const r2 = join.derive(v => v / v);
+          const r3 = join.derive(v => v * 2);
+
+          const onR1Change = vitest.fn();
+          const onR2Change = vitest.fn();
+          const onR3Change = vitest.fn();
+
+          r1.add(onR1Change);
+          r2.add(onR2Change);
+          r3.add(onR3Change);
+
+          onR1Change.mockClear();
+          onR2Change.mockClear();
+          onR3Change.mockClear();
+
+          source1.dispatch(10);
+
+          expect(onR1Change).toHaveBeenLastCalledWith(5);
+          expect(onR2Change).toHaveBeenLastCalledWith(1);
+          expect(onR3Change).toHaveBeenLastCalledWith(40);
+        });
+      });
+
+      describe("multi-layer", () => {
+        const layers = 30;
+
+        it("reading", () => {
+          const start = {
+            s1: new VSignal(0) as VReadonlySignal<number>,
+            s2: new VSignal(1) as VReadonlySignal<number>,
+            s3: new VSignal(2) as VReadonlySignal<number>,
+            s4: new VSignal(3) as VReadonlySignal<number>,
+          };
+
+          let control = {
+            s1: 0,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let d1Control = {
+            s1: 10,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let d2Control = {
+            s1: 10,
+            s2: 5,
+            s3: 2,
+            s4: 3,
+          };
+          let d3Control = {
+            s1: 10,
+            s2: 5,
+            s3: 0,
+            s4: 3,
+          };
+          let d4Control = {
+            s1: 10,
+            s2: 5,
+            s3: 0,
+            s4: -2,
+          };
+
+          let c = start;
+
+          for (let i = 0; i <= layers; i++) {
+            const next = {
+              s1: c.s2.derive(v => v + 1),
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
+              s4: c.s3.derive(v => v - 1),
+            };
+            c = next;
+
+            control = {
+              s1: control.s2 + 1,
+              s2: control.s1 + control.s3,
+              s3: control.s4 - control.s1,
+              s4: control.s3 - 1,
+            };
+            d1Control = {
+              s1: d1Control.s2 + 1,
+              s2: d1Control.s1 + d1Control.s3,
+              s3: d1Control.s4 - d1Control.s1,
+              s4: d1Control.s3 - 1,
+            };
+            d2Control = {
+              s1: d2Control.s2 + 1,
+              s2: d2Control.s1 + d2Control.s3,
+              s3: d2Control.s4 - d2Control.s1,
+              s4: d2Control.s3 - 1,
+            };
+            d3Control = {
+              s1: d3Control.s2 + 1,
+              s2: d3Control.s1 + d3Control.s3,
+              s3: d3Control.s4 - d3Control.s1,
+              s4: d3Control.s3 - 1,
+            };
+            d4Control = {
+              s1: d4Control.s2 + 1,
+              s2: d4Control.s1 + d4Control.s3,
+              s3: d4Control.s4 - d4Control.s1,
+              s4: d4Control.s3 - 1,
+            };
+          }
+
+          const end = c;
+
+          expect(end.s1.current()).toBe(control.s1);
+          expect(end.s2.current()).toBe(control.s2);
+          expect(end.s3.current()).toBe(control.s3);
+          expect(end.s4.current()).toBe(control.s4);
+
+          start.s1.dispatch(10);
+
+          expect(end.s1.current()).toBe(d1Control.s1);
+          expect(end.s2.current()).toBe(d1Control.s2);
+          expect(end.s3.current()).toBe(d1Control.s3);
+          expect(end.s4.current()).toBe(d1Control.s4);
+
+          start.s2.dispatch(5);
+
+          expect(end.s1.current()).toBe(d2Control.s1);
+          expect(end.s2.current()).toBe(d2Control.s2);
+          expect(end.s3.current()).toBe(d2Control.s3);
+          expect(end.s4.current()).toBe(d2Control.s4);
+
+          start.s3.dispatch(0);
+
+          expect(end.s1.current()).toBe(d3Control.s1);
+          expect(end.s2.current()).toBe(d3Control.s2);
+          expect(end.s3.current()).toBe(d3Control.s3);
+          expect(end.s4.current()).toBe(d3Control.s4);
+
+          start.s4.dispatch(-2);
+
+          expect(end.s1.current()).toBe(d4Control.s1);
+          expect(end.s2.current()).toBe(d4Control.s2);
+          expect(end.s3.current()).toBe(d4Control.s3);
+          expect(end.s4.current()).toBe(d4Control.s4);
+        });
+
+        it("listening on tail", () => {
+          const start = {
+            s1: new VSignal(0) as VReadonlySignal<number>,
+            s2: new VSignal(1) as VReadonlySignal<number>,
+            s3: new VSignal(2) as VReadonlySignal<number>,
+            s4: new VSignal(3) as VReadonlySignal<number>,
+          };
+
+          let control = {
+            s1: 0,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let d1Control = {
+            s1: 10,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let d2Control = {
+            s1: 10,
+            s2: 5,
+            s3: 2,
+            s4: 3,
+          };
+          let d3Control = {
+            s1: 10,
+            s2: 5,
+            s3: 0,
+            s4: 3,
+          };
+          let d4Control = {
+            s1: 10,
+            s2: 5,
+            s3: 0,
+            s4: -2,
+          };
+
+          let c = start;
+
+          for (let i = 0; i <= layers; i++) {
+            const next = {
+              s1: c.s2.derive(v => v + 1),
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
+              s4: c.s3.derive(v => v - 1),
+            };
+            c = next;
+
+            control = {
+              s1: control.s2 + 1,
+              s2: control.s1 + control.s3,
+              s3: control.s4 - control.s1,
+              s4: control.s3 - 1,
+            };
+            d1Control = {
+              s1: d1Control.s2 + 1,
+              s2: d1Control.s1 + d1Control.s3,
+              s3: d1Control.s4 - d1Control.s1,
+              s4: d1Control.s3 - 1,
+            };
+            d2Control = {
+              s1: d2Control.s2 + 1,
+              s2: d2Control.s1 + d2Control.s3,
+              s3: d2Control.s4 - d2Control.s1,
+              s4: d2Control.s3 - 1,
+            };
+            d3Control = {
+              s1: d3Control.s2 + 1,
+              s2: d3Control.s1 + d3Control.s3,
+              s3: d3Control.s4 - d3Control.s1,
+              s4: d3Control.s3 - 1,
+            };
+            d4Control = {
+              s1: d4Control.s2 + 1,
+              s2: d4Control.s1 + d4Control.s3,
+              s3: d4Control.s4 - d4Control.s1,
+              s4: d4Control.s3 - 1,
+            };
+          }
+
+          const end = c;
+
+          const onS1Change = vitest.fn();
+          const onS2Change = vitest.fn();
+          const onS3Change = vitest.fn();
+          const onS4Change = vitest.fn();
+
+          end.s1.add(onS1Change);
+          end.s2.add(onS2Change);
+          end.s3.add(onS3Change);
+          end.s4.add(onS4Change);
+
+          onS1Change.mockClear();
+          onS2Change.mockClear();
+          onS3Change.mockClear();
+          onS4Change.mockClear();
+
+          start.s1.dispatch(10);
+
+          expect(onS1Change).toHaveBeenLastCalledWith(d1Control.s1);
+          expect(onS2Change).toHaveBeenLastCalledWith(d1Control.s2);
+          expect(onS3Change).toHaveBeenLastCalledWith(d1Control.s3);
+          expect(onS4Change).toHaveBeenLastCalledWith(d1Control.s4);
+
+          start.s2.dispatch(5);
+
+          expect(onS1Change).toHaveBeenLastCalledWith(d2Control.s1);
+          expect(onS2Change).toHaveBeenLastCalledWith(d2Control.s2);
+          expect(onS3Change).toHaveBeenLastCalledWith(d2Control.s3);
+          expect(onS4Change).toHaveBeenLastCalledWith(d2Control.s4);
+
+          start.s3.dispatch(0);
+
+          expect(onS1Change).toHaveBeenLastCalledWith(d3Control.s1);
+          expect(onS2Change).toHaveBeenLastCalledWith(d3Control.s2);
+          expect(onS3Change).toHaveBeenLastCalledWith(d3Control.s3);
+          expect(onS4Change).toHaveBeenLastCalledWith(d3Control.s4);
+
+          start.s4.dispatch(-2);
+
+          expect(onS1Change).toHaveBeenLastCalledWith(d4Control.s1);
+          expect(onS2Change).toHaveBeenLastCalledWith(d4Control.s2);
+          expect(onS3Change).toHaveBeenLastCalledWith(d4Control.s3);
+          expect(onS4Change).toHaveBeenLastCalledWith(d4Control.s4);
+        });
+
+        it("listening on each layer", () => {
+          const start = {
+            s1: new VSignal(0) as VReadonlySignal<number>,
+            s2: new VSignal(1) as VReadonlySignal<number>,
+            s3: new VSignal(2) as VReadonlySignal<number>,
+            s4: new VSignal(3) as VReadonlySignal<number>,
+          };
+
+          let control = {
+            s1: 0,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let d1Control = {
+            s1: 10,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let d2Control = {
+            s1: 10,
+            s2: 5,
+            s3: 2,
+            s4: 3,
+          };
+          let d3Control = {
+            s1: 10,
+            s2: 5,
+            s3: 0,
+            s4: 3,
+          };
+          let d4Control = {
+            s1: 10,
+            s2: 5,
+            s3: 0,
+            s4: -2,
+          };
+
+          let c = start;
+
+          const listeners: SignalListenerReference<number>[] = [];
+          for (let i = 0; i <= layers; i++) {
+            const next = {
+              s1: c.s2.derive(v => v + 1),
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
+              s4: c.s3.derive(v => v - 1),
+            };
+            listeners.push(
+              next.s1.add((v) => {
+                v;
+              }),
+              next.s2.add((v) => {
+                v;
+              }),
+              next.s3.add((v) => {
+                v;
+              }),
+              next.s4.add((v) => {
+                v;
+              }),
+            );
+
+            c = next;
+
+            control = {
+              s1: control.s2 + 1,
+              s2: control.s1 + control.s3,
+              s3: control.s4 - control.s1,
+              s4: control.s3 - 1,
+            };
+            d1Control = {
+              s1: d1Control.s2 + 1,
+              s2: d1Control.s1 + d1Control.s3,
+              s3: d1Control.s4 - d1Control.s1,
+              s4: d1Control.s3 - 1,
+            };
+            d2Control = {
+              s1: d2Control.s2 + 1,
+              s2: d2Control.s1 + d2Control.s3,
+              s3: d2Control.s4 - d2Control.s1,
+              s4: d2Control.s3 - 1,
+            };
+            d3Control = {
+              s1: d3Control.s2 + 1,
+              s2: d3Control.s1 + d3Control.s3,
+              s3: d3Control.s4 - d3Control.s1,
+              s4: d3Control.s3 - 1,
+            };
+            d4Control = {
+              s1: d4Control.s2 + 1,
+              s2: d4Control.s1 + d4Control.s3,
+              s3: d4Control.s4 - d4Control.s1,
+              s4: d4Control.s3 - 1,
+            };
+          }
+
+          const end = c;
+
+          expect(end.s1.current()).toBe(control.s1);
+          expect(end.s2.current()).toBe(control.s2);
+          expect(end.s3.current()).toBe(control.s3);
+          expect(end.s4.current()).toBe(control.s4);
+
+          start.s1.dispatch(10);
+
+          expect(end.s1.current()).toBe(d1Control.s1);
+          expect(end.s2.current()).toBe(d1Control.s2);
+          expect(end.s3.current()).toBe(d1Control.s3);
+          expect(end.s4.current()).toBe(d1Control.s4);
+
+          start.s2.dispatch(5);
+
+          expect(end.s1.current()).toBe(d2Control.s1);
+          expect(end.s2.current()).toBe(d2Control.s2);
+          expect(end.s3.current()).toBe(d2Control.s3);
+          expect(end.s4.current()).toBe(d2Control.s4);
+
+          start.s3.dispatch(0);
+
+          expect(end.s1.current()).toBe(d3Control.s1);
+          expect(end.s2.current()).toBe(d3Control.s2);
+          expect(end.s3.current()).toBe(d3Control.s3);
+          expect(end.s4.current()).toBe(d3Control.s4);
+
+          start.s4.dispatch(-2);
+
+          expect(end.s1.current()).toBe(d4Control.s1);
+          expect(end.s2.current()).toBe(d4Control.s2);
+          expect(end.s3.current()).toBe(d4Control.s3);
+          expect(end.s4.current()).toBe(d4Control.s4);
+        });
+      });
     });
   });
 
@@ -331,12 +904,12 @@ describe("VanillaJsxSignal()", () => {
     });
   });
 
-  describe("deriveMany()", () => {
+  describe("sig.derive()", () => {
     it("should correctly derive from 2 sources", () => {
       const sig1 = sig("Hello");
       const sig2 = sig("World");
 
-      const derived = deriveMany(sig1, sig2, (v1, v2) => `${v1} ${v2}`);
+      const derived = sig.derive(sig1, sig2, (v1, v2) => `${v1} ${v2}`);
       expect(derived.current()).toBe("Hello World");
 
       sig1.dispatch("Goodbye");
@@ -352,7 +925,7 @@ describe("VanillaJsxSignal()", () => {
       const sig3 = sig("baz");
       const sig4 = sig(2);
 
-      const derived = deriveMany(sig1, sig2, sig3, sig4, (v1, v2, v3, v4) => `[${v1} ${v2} ${v3}]`.repeat(v4));
+      const derived = sig.derive(sig1, sig2, sig3, sig4, (v1, v2, v3, v4) => `[${v1} ${v2} ${v3}]`.repeat(v4));
       expect(derived.current()).toBe("[foo bar baz][foo bar baz]");
 
       sig1.dispatch("OOF");
@@ -373,7 +946,7 @@ describe("VanillaJsxSignal()", () => {
       const sig2 = sig("bar");
       const sig3 = sig("baz");
 
-      const derived = deriveMany(sig1, sig2, sig3, (v1, v2, v3) => `[${v1} ${v2} ${v3}]`);
+      const derived = sig.derive(sig1, sig2, sig3, (v1, v2, v3) => `[${v1} ${v2} ${v3}]`);
       const destroySpy = vitest.spyOn(derived, "destroy");
       expect(derived.current()).toBe("[foo bar baz]");
       expect(destroySpy).toHaveBeenCalledTimes(0);
@@ -401,7 +974,7 @@ describe("VanillaJsxSignal()", () => {
       const sig2 = sig("bar");
       const sig3 = sig("baz");
 
-      const derived = deriveMany(sig1, sig2, sig3, (v1, v2, v3) => `[${v1} ${v2} ${v3}]`);
+      const derived = sig.derive(sig1, sig2, sig3, (v1, v2, v3) => `[${v1} ${v2} ${v3}]`);
       const destroySpy = vitest.spyOn(derived, "destroy");
       expect(derived.current()).toBe("[foo bar baz]");
       expect(destroySpy).toHaveBeenCalledTimes(0);
@@ -417,13 +990,13 @@ describe("VanillaJsxSignal()", () => {
     });
 
     it("derived signals should be possible to garbage collect", async () => {
-      const s1 = sig("foo") as VanillaJsxSignal<string>;
-      const s2 = sig("bar") as VanillaJsxSignal<string>;
-      const s3 = sig("baz") as VanillaJsxSignal<string>;
+      const s1 = sig("foo") as VSignal<string>;
+      const s2 = sig("bar") as VSignal<string>;
+      const s3 = sig("baz") as VSignal<string>;
       const derivedRefs1 = s1["derivedSignals"];
       const derivedRefs2 = s2["derivedSignals"];
       const derivedRefs3 = s3["derivedSignals"];
-      let derived: ReadonlySignal<string> | null = deriveMany(s1, s2, s3, (v1, v2, v3) => `[${v1} ${v2} ${v3}]`);
+      let derived: ReadonlySignal<string> | null = sig.derive(s1, s2, s3, (v1, v2, v3) => `[${v1} ${v2} ${v3}]`);
 
       expect(derived.current()).toBe("[foo bar baz]");
       expect(derivedRefs1[0]!.deref()).toBeDefined();
