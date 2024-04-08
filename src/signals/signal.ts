@@ -68,7 +68,65 @@ function attempt(fn: () => void) {
   }
 }
 
+type BatchQueue = InstanceType<typeof VSignal["BatchQueue"]>;
+
+type BatchEntry = [signal: VSignal<any>, isObserved: boolean];
+
+/**
+ * Class containing the actual implementation of the VanillaJSX Signal.
+ */
 class VSignal<T> implements Signal<T> {
+  private static BatchQueue = class BatchQueue {
+    private orderedQueue: Array<BatchEntry> = [];
+    private roots: Map<VSignal<any>, any> = new Map();
+
+    public add(s: VSignal<any>, isObserved: boolean) {
+      s.batchEntry = [s, isObserved];
+      this.orderedQueue.push(s.batchEntry);
+    }
+
+    public addRoot(s: VSignal<any>, newValue: any) {
+      this.roots.set(s, newValue);
+    }
+
+    public commit() {
+      for (const [signal, newValue] of this.roots) {
+        signal.value = newValue;
+        signal.batchEntry = undefined;
+      }
+      /**
+       * first element in the queue is always the leaf node and each subsequent
+       * element is higher in the tree, therefore we iterate in reverse order
+       * in order to always have derived signals updated after all their parent
+       * get updated first.
+       */
+      for (let i = this.orderedQueue.length - 1; i >= 0; i--) {
+        const [signal, isObserved] = this.orderedQueue[i]!;
+        if (!isObserved) {
+          signal.isDirty = true;
+        } else {
+          signal.update();
+          signal.notifyListeners();
+        }
+        signal.batchEntry = undefined;
+      }
+      this.orderedQueue.splice(0, this.orderedQueue.length);
+    }
+  };
+
+  private static batchQueue?: BatchQueue;
+
+  public static startBatch() {
+    VSignal.batchQueue = new VSignal.BatchQueue();
+  }
+
+  public static commitBatch() {
+    if (VSignal.batchQueue) {
+      VSignal.batchQueue.commit();
+      VSignal.batchQueue = undefined;
+    }
+  }
+
   public static derive<E, U>(
     sig1: DerivableSignal<E>,
     getDerivedValue: (v1: E) => U,
@@ -146,12 +204,14 @@ class VSignal<T> implements Signal<T> {
   }
 
   private update() {
-    const v = this.deriveFn!();
-    this.isDirty = false;
-    if (Object.is(v, this.value)) {
-      return;
+    if (this.deriveFn) {
+      const v = this.deriveFn!();
+      this.isDirty = false;
+      if (Object.is(v, this.value)) {
+        return;
+      }
+      this.value = v;
     }
-    this.value = v;
   }
 
   private updateAndPropagate() {
@@ -169,6 +229,12 @@ class VSignal<T> implements Signal<T> {
 
     if (this.derivedFrom.length === 0) {
       this.destroy();
+    }
+  }
+
+  private notifyListeners() {
+    for (let i = 0; i < this.listeners.length; i++) {
+      attempt(() => this.listeners[i]!(this.value));
     }
   }
 
@@ -190,10 +256,7 @@ class VSignal<T> implements Signal<T> {
   }
 
   private propagateChange() {
-    for (let i = 0; i < this.listeners.length; i++) {
-      attempt(() => this.listeners[i]!(this.value));
-    }
-
+    this.notifyListeners();
     this.notifyChildren();
   }
 
@@ -226,7 +289,47 @@ class VSignal<T> implements Signal<T> {
     };
   }
 
-  public dispatch(value: T | DispatchFunc<T>): void {
+  private batchEntry?: BatchEntry;
+  private addToBatch(batchQueue: BatchQueue): boolean {
+    let isObserved = this.listeners.length > 0;
+
+    if (this.batchEntry) {
+      return this.batchEntry[1];
+    }
+
+    for (let i = 0; i < this.derivedSignals.length; i++) {
+      const sig = this.derivedSignals[i]!.deref();
+      if (sig) {
+        const cisObs = sig.addToBatch(batchQueue);
+        isObserved ||= cisObs;
+      } else {
+        this.derivedSignals.splice(i, 1);
+        i--;
+      }
+    }
+
+    batchQueue.add(this, isObserved);
+    return isObserved;
+  }
+
+  private dispatchBatched(value: T | DispatchFunc<T>, batchQueue: BatchQueue): void {
+    const prevValue = this.value;
+    let newValue: T;
+    if (isDispatchFunc(value)) {
+      newValue = value(this.value);
+    } else {
+      newValue = value;
+    }
+
+    if (Object.is(prevValue, newValue)) {
+      return;
+    }
+
+    batchQueue.addRoot(this, newValue);
+    this.addToBatch(batchQueue);
+  }
+
+  private dispatchEager(value: T | DispatchFunc<T>): void {
     const prevValue = this.value;
     if (isDispatchFunc(value)) {
       this.value = value(this.value);
@@ -236,6 +339,14 @@ class VSignal<T> implements Signal<T> {
 
     if (!Object.is(prevValue, this.value)) {
       this.propagateChange();
+    }
+  }
+
+  public dispatch(value: T | DispatchFunc<T>): void {
+    if (VSignal.batchQueue) {
+      this.dispatchBatched(value, VSignal.batchQueue);
+    } else {
+      this.dispatchEager(value);
     }
   }
 
@@ -292,6 +403,9 @@ class VSignal<T> implements Signal<T> {
   }
 }
 
+/**
+ * Class containing the actual implementation of the VanillaJSX ReadonlySignal.
+ */
 class VReadonlySignal<T> extends VSignal<T> {
   public dispatch(_: T | DispatchFunc<T>): void {
     throw new Error("Signal.dispatch(): cannot dispatch on a derived signal");
@@ -301,6 +415,8 @@ class VReadonlySignal<T> extends VSignal<T> {
 interface SignalConstructor {
   <T>(value: T): Signal<T>;
   derive: typeof VSignal.derive;
+  startBatch(): void;
+  commitBatch(): void;
 }
 
 /**
@@ -312,6 +428,8 @@ const signal: SignalConstructor = function signal<T>(value: T): Signal<T> {
   return new VSignal(value);
 };
 signal.derive = VSignal.derive;
+signal.startBatch = VSignal.startBatch;
+signal.commitBatch = VSignal.commitBatch;
 
 /**
  * Alias for `signal()`.

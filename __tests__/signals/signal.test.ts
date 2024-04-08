@@ -1,13 +1,8 @@
 import { setFlagsFromString } from "v8";
-import { describe, expect, it, vitest } from "vitest";
+import { describe, expect, it, Mock, vitest } from "vitest";
 import { runInNewContext } from "vm";
-import { Signal, sig } from "../../src";
-import {
-  ReadonlySignal,
-  SignalListenerReference,
-  VReadonlySignal,
-  VSignal
-} from "../../src/signals/signal";
+import { sig, Signal } from "../../src";
+import { ReadonlySignal, SignalListenerReference, VReadonlySignal, VSignal } from "../../src/signals/signal";
 
 setFlagsFromString("--expose_gc");
 const rawGC = runInNewContext("gc");
@@ -1021,6 +1016,275 @@ describe("VSignal()", () => {
       expect(derivedRefs1).toHaveLength(0);
       expect(derivedRefs2).toHaveLength(0);
       expect(derivedRefs3).toHaveLength(0);
+    });
+  });
+
+  describe("batching", () => {
+    it("should call all listeners after batch commit", () => {
+      const s = new VSignal(1);
+      const onChange = vitest.fn();
+      s.add(onChange);
+
+      expect(s.current()).toBe(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
+
+      VSignal.startBatch();
+
+      s.dispatch(2);
+      expect(s.current()).toBe(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      s.dispatch(3);
+      expect(s.current()).toBe(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      s.dispatch(4);
+      expect(s.current()).toBe(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
+
+      VSignal.commitBatch();
+
+      expect(s.current()).toBe(4);
+      expect(onChange).toHaveBeenCalledTimes(2);
+      expect(onChange).toHaveBeenLastCalledWith(4);
+    });
+
+    it("should minimize updates to diamond structure", () => {
+      const head = new VSignal(0);
+
+      const d1 = head.derive(v => v + 1);
+      const d2 = head.derive(v => v + 2);
+      const d3 = head.derive(v => v + 3);
+      const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
+
+      const onD4Change = vitest.fn();
+      d4.add(onD4Change);
+      onD4Change.mockClear();
+
+      VSignal.startBatch();
+      head.dispatch(10);
+      VSignal.commitBatch();
+
+      expect(onD4Change).toHaveBeenCalledTimes(1);
+      expect(onD4Change).toHaveBeenLastCalledWith(36);
+    });
+
+    describe("multi-layer", () => {
+      describe("multi-layer", () => {
+        const layers = 1000;
+
+        it("listening on tail", () => {
+          const start = {
+            s1: new VSignal(0) as VReadonlySignal<number>,
+            s2: new VSignal(1) as VReadonlySignal<number>,
+            s3: new VSignal(2) as VReadonlySignal<number>,
+            s4: new VSignal(3) as VReadonlySignal<number>,
+          };
+
+          let control = {
+            s1: 0,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let d2Control = {
+            s1: 10,
+            s2: 5,
+            s3: 2,
+            s4: 3,
+          };
+          let d4Control = {
+            s1: 10,
+            s2: 5,
+            s3: 0,
+            s4: -2,
+          };
+
+          let c = start;
+
+          for (let i = 0; i <= layers; i++) {
+            const next = {
+              s1: c.s2.derive(v => v + 1),
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
+              s4: c.s3.derive(v => v - 1),
+            };
+            c = next;
+
+            control = {
+              s1: control.s2 + 1,
+              s2: control.s1 + control.s3,
+              s3: control.s4 - control.s1,
+              s4: control.s3 - 1,
+            };
+            d2Control = {
+              s1: d2Control.s2 + 1,
+              s2: d2Control.s1 + d2Control.s3,
+              s3: d2Control.s4 - d2Control.s1,
+              s4: d2Control.s3 - 1,
+            };
+            d4Control = {
+              s1: d4Control.s2 + 1,
+              s2: d4Control.s1 + d4Control.s3,
+              s3: d4Control.s4 - d4Control.s1,
+              s4: d4Control.s3 - 1,
+            };
+          }
+
+          const end = c;
+
+          const onS1Change = vitest.fn();
+          const onS2Change = vitest.fn();
+          const onS3Change = vitest.fn();
+          const onS4Change = vitest.fn();
+
+          end.s1.add(onS1Change);
+          end.s2.add(onS2Change);
+          end.s3.add(onS3Change);
+          end.s4.add(onS4Change);
+
+          onS1Change.mockClear();
+          onS2Change.mockClear();
+          onS3Change.mockClear();
+          onS4Change.mockClear();
+
+          VSignal.startBatch();
+          start.s1.dispatch(10);
+          start.s2.dispatch(5);
+          VSignal.commitBatch();
+
+          expect(onS1Change).toHaveBeenCalledTimes(1);
+          expect(onS1Change).toHaveBeenLastCalledWith(d2Control.s1);
+          expect(onS2Change).toHaveBeenCalledTimes(1);
+          expect(onS2Change).toHaveBeenLastCalledWith(d2Control.s2);
+          expect(onS3Change).toHaveBeenCalledTimes(1);
+          expect(onS3Change).toHaveBeenLastCalledWith(d2Control.s3);
+          expect(onS4Change).toHaveBeenCalledTimes(1);
+          expect(onS4Change).toHaveBeenLastCalledWith(d2Control.s4);
+
+          VSignal.startBatch();
+          start.s3.dispatch(0);
+          start.s4.dispatch(-2);
+          VSignal.commitBatch();
+
+          expect(onS1Change).toHaveBeenCalledTimes(2);
+          expect(onS1Change).toHaveBeenLastCalledWith(d4Control.s1);
+          expect(onS2Change).toHaveBeenCalledTimes(2);
+          expect(onS2Change).toHaveBeenLastCalledWith(d4Control.s2);
+          expect(onS3Change).toHaveBeenCalledTimes(2);
+          expect(onS3Change).toHaveBeenLastCalledWith(d4Control.s3);
+          expect(onS4Change).toHaveBeenCalledTimes(2);
+          expect(onS4Change).toHaveBeenLastCalledWith(d4Control.s4);
+        });
+
+        it("listening on each layer", () => {
+          const start = {
+            s1: new VSignal(0) as VReadonlySignal<number>,
+            s2: new VSignal(1) as VReadonlySignal<number>,
+            s3: new VSignal(2) as VReadonlySignal<number>,
+            s4: new VSignal(3) as VReadonlySignal<number>,
+          };
+
+          let control = {
+            s1: 0,
+            s2: 1,
+            s3: 2,
+            s4: 3,
+          };
+          let dControl = {
+            s1: 13,
+            s2: 7,
+            s3: 5,
+            s4: 3,
+          };
+
+          let c = start;
+
+          const listeners: Mock<[v: number], void>[] = [];
+          for (let i = 0; i <= layers; i++) {
+            const next = {
+              s1: c.s2.derive(v => v + 1),
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
+              s4: c.s3.derive(v => v - 1),
+            };
+            const m1 = vitest.fn((v: number) => {
+              v;
+            });
+            const m2 = vitest.fn((v: number) => {
+              v;
+            });
+            const m3 = vitest.fn((v: number) => {
+              v;
+            });
+            const m4 = vitest.fn((v: number) => {
+              v;
+            });
+            listeners.push(
+              m1,
+              m2,
+              m3,
+              m4,
+            );
+            next.s1.add(m1);
+            next.s2.add(m2);
+            next.s3.add(m3);
+            next.s4.add(m4);
+
+            c = next;
+
+            control = {
+              s1: control.s2 + 1,
+              s2: control.s1 + control.s3,
+              s3: control.s4 - control.s1,
+              s4: control.s3 - 1,
+            };
+            dControl = {
+              s1: dControl.s2 + 1,
+              s2: dControl.s1 + dControl.s3,
+              s3: dControl.s4 - dControl.s1,
+              s4: dControl.s3 - 1,
+            };
+          }
+
+
+          for (const m of listeners) {
+            m.mockClear();
+          }
+
+          const end = c;
+
+          expect(end.s1.current()).toBe(control.s1);
+          expect(end.s2.current()).toBe(control.s2);
+          expect(end.s3.current()).toBe(control.s3);
+          expect(end.s4.current()).toBe(control.s4);
+
+          VSignal.startBatch();
+          start.s1.dispatch(13);
+          start.s2.dispatch(7);
+          start.s3.dispatch(5);
+          start.s4.dispatch(3);
+          VSignal.commitBatch();
+
+          expect(end.s1.current()).toBe(dControl.s1);
+          expect(end.s2.current()).toBe(dControl.s2);
+          expect(end.s3.current()).toBe(dControl.s3);
+          expect(end.s4.current()).toBe(dControl.s4);
+
+          const [m1, m2, m3, m4] = listeners.slice(-4);
+
+          expect(m1).toHaveBeenCalledTimes(1);
+          expect(m1).toHaveBeenLastCalledWith(dControl.s1);
+          expect(m2).toHaveBeenCalledTimes(1);
+          expect(m2).toHaveBeenLastCalledWith(dControl.s2);
+          expect(m3).toHaveBeenCalledTimes(1);
+          expect(m3).toHaveBeenLastCalledWith(dControl.s3);
+          expect(m4).toHaveBeenCalledTimes(1);
+          expect(m4).toHaveBeenLastCalledWith(dControl.s4);
+
+          for (const m of listeners.slice(0, -4)) {
+            expect(m).toHaveBeenCalledTimes(1);
+          }
+        });
+      });
     });
   });
 });
