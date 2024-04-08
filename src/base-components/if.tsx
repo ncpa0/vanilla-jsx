@@ -1,11 +1,28 @@
 import { sigProxy } from "../signals/proxy";
 
 export type IfProps = {
+  /** Parent element to use, if not provided a empty div will be created and used. */
   into?: Element;
+  /**
+   * Don't add the default class name to the parent element. 
+   * (`vjsx-if-container`)
+   */
   noclass?: boolean;
+  /**
+   * Signal containing the condition to check.
+   */
   condition: JSX.Signal<boolean>;
-  else?: () => JSX.Element;
+  /**
+   * Negate the condition.
+   */
   not?: true;
+  /**
+   *  A function that will return element to be rendered when the condition is false.
+   */
+  else?: () => JSX.Element;
+  /**
+   *  A function that will return element to be rendered when the condition is true.
+   */
   then: () => JSX.Element;
 };
 

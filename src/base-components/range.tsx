@@ -3,21 +3,16 @@ import { sigProxy } from "../signals/proxy";
 
 export type RangeProps<T> = {
   data: JSX.Signal<T[]>;
-  /**
-   * An HTML Element that will be used as a container
-   * for the mapped elements, and which will be
-   * returned.
-   *
-   * @example
-   * const result = <Map data={data} into={<ul />}>(v=>v)</Map>;
-   * // <ul>...</ul>
-   */
+  /** Parent element to use, if not provided a empty div will be created and used. */
   into?: Element;
   /**
-   * When enabled the container will not have the
-   * `vjsx-map-container` class added to it.
+   * Don't add the default class name to the parent element. 
+   * (`vjsx-map-container`)
    */
   noclass?: boolean;
+  /**
+   *  A function that will return the HTML element for each value in the data list provided.
+   */
   children: (value: T) => Element;
 };
 

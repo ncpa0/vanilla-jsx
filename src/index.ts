@@ -1,8 +1,8 @@
+export { If, type IfProps } from "./base-components/if";
+export { Range, type RangeProps } from "./base-components/range";
+export { Case, Switch, type CaseProps, type SwitchProps } from "./base-components/switch";
 export { $component, type ComponentApi } from "./component";
 export { Fragment, createElement, jsx, jsxs } from "./create-element";
-export { If, type IfProps } from "./intrinsic/if";
-export { Range, type RangeProps } from "./intrinsic/range";
-export { Case, Switch, type CaseProps, type SwitchProps } from "./intrinsic/switch";
 export { type ClassName } from "./jsx-namespace/jsx.types";
 export { bindSignal } from "./signals/proxy";
 export {

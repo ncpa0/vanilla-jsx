@@ -1,11 +1,18 @@
 import { jsx } from "../create-element";
-import { createEmptyElem } from "../create-empty-elem";
 import { sigProxy } from "../signals/proxy";
 
 export type SwitchProps<T> = {
   value: JSX.Signal<T>;
+  /**
+   * Children must be `Case` elements.
+   */
   children: JSX.Element[];
+  /** Parent element to use, if not provided a empty div will be created and used. */
   into?: Element;
+  /**
+   * Don't add the default class name to the parent element. 
+   * (`vjsx-switch-container`)
+   */
   noclass?: boolean;
 };
 
@@ -13,6 +20,12 @@ export type CaseRenderFn<T> = (matchedValue: T) => JSX.Element;
 
 function isFunctionMatcher<T>(v: T | ((value: T) => boolean)): v is (value: T) => boolean {
   return typeof v === "function";
+}
+
+export function createEmptyElem() {
+  const elem = document.createElement("div");
+  elem.style.display = "none";
+  return elem;
 }
 
 class CaseBuilder<T> {
@@ -60,17 +73,35 @@ function childBindingFactory<T>(builder: CaseBuilder<T>) {
 
 export type CaseProps<T = unknown> =
   & {
+    /**
+     *  A function that will return element to be rendered when the case is matched.
+     */
     children: CaseRenderFn<T>;
+    /**
+     * Don't add the default class name to the parent element.
+     * (`vjsx-switch-case`)
+     */
+    noclass?: boolean;
+    /**
+     * Parent element to use, if not provided a empty div will be created and used.
+     */
+    into?: Element;
   }
   & ({
+    /**
+     * A value or a function that will be used to match the value of the switch.
+     */
     match: T | ((value: T) => boolean);
   } | {
     default: true;
   });
 
 export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
-  const tmp = <div class="vjsx-switch-case-placeholder" />;
-  Object.defineProperty(tmp, "__vjsx_case_data", {
+  const parent = props.into || <div />;
+  if (!props.noclass) {
+    parent.classList.add("vjsx-switch-case");
+  }
+  Object.defineProperty(parent, "__vjsx_case_data", {
     value: {
       ...props,
       children: Array.isArray(props.children)
@@ -78,7 +109,7 @@ export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
         : props.children,
     },
   });
-  return tmp;
+  return parent;
 };
 
 /**
@@ -90,11 +121,15 @@ export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
  * <Switch
  *   value={MyEnum.A}
  * >
- *   {(sw) =>
- *      sw
- *        .match(MyEnum.A, () => <div>Case A</div>)
- *        .match(MyEnum.B, () => <div>Case B</div>)
- *        .default(() => <div>Default case</div>)}
+ *   <Case match={MyEnum.A}>
+ *     {() => <div>Case A</div>}
+ *   </Case>
+ *   <Case match={MyEnum.B}>
+ *     {() => <div>Case B</div>}
+ *   </Case>
+ *   <Case default>
+ *     {() => <div>Default case</div>}
+ *   </Case>
  * </Switch>
  */
 export const Switch = <T,>(props: SwitchProps<T>): JSX.Element => {
