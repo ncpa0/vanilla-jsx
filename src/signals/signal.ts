@@ -127,7 +127,7 @@ class VSignal<T> implements Signal<T> {
   private value: T;
   private deriveFn?: () => T;
   private derivedFrom: VSignal<any>[] = [];
-  private derivedIsOutOfDate = false;
+  private isDirty = false;
 
   constructor(value: T) {
     this.value = value;
@@ -147,7 +147,7 @@ class VSignal<T> implements Signal<T> {
 
   private update() {
     const v = this.deriveFn!();
-    this.derivedIsOutOfDate = false;
+    this.isDirty = false;
     if (Object.is(v, this.value)) {
       return;
     }
@@ -177,7 +177,7 @@ class VSignal<T> implements Signal<T> {
       const sig = this.derivedSignals[i]!.deref();
       if (sig) {
         if (sig.listeners.length === 0) {
-          sig.derivedIsOutOfDate = true;
+          sig.isDirty = true;
           sig.notifyChildren();
         } else {
           sig.updateAndPropagate();
@@ -198,7 +198,7 @@ class VSignal<T> implements Signal<T> {
   }
 
   public add(listener: SignalListener<T>): SignalListenerReference<T> {
-    if (this.derivedIsOutOfDate) {
+    if (this.isDirty) {
       this.update();
     }
 
@@ -240,7 +240,7 @@ class VSignal<T> implements Signal<T> {
   }
 
   public current(): T {
-    if (this.derivedIsOutOfDate) {
+    if (this.isDirty) {
       this.update();
     }
     return this.value;
@@ -255,7 +255,7 @@ class VSignal<T> implements Signal<T> {
   }
 
   public derive<U>(getDerivedValue: (current: T) => U): VReadonlySignal<U> {
-    if (this.derivedIsOutOfDate) {
+    if (this.isDirty) {
       this.update();
     }
 
