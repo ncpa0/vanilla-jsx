@@ -1,6 +1,6 @@
 export type DispatchFunc<T> = (current: T) => T;
 export type SignalListener<T> = (value: T) => void;
-export type SignalListenerReference<T> = {
+export type SignalListenerReference<T> = Readonly<{
   /**
    * Detach the listener from the signal.
    */
@@ -8,12 +8,12 @@ export type SignalListenerReference<T> = {
   /**
    * The listener that was attached to the signal.
    */
-  listener: SignalListener<T>;
+  callback: SignalListener<T>;
   /**
    * The signal that the listener was attached to.
    */
   signal: Signal<T>;
-};
+}>;
 
 export type DerivableSignal<T> = Signal<T> | ReadonlySignal<T>;
 
@@ -56,17 +56,17 @@ export interface Signal<T> extends ReadonlySignal<T> {
   dispatch(value: T | DispatchFunc<T>): void;
 }
 
+type DestroyedParentSigSubstitute = {
+  IS_SUBSTITUTE: true;
+  current(): any;
+  removeDerivedChild(s: VSignal<any>): void;
+};
+
 function isDispatchFunc<T>(value: T | DispatchFunc<T>): value is DispatchFunc<T> {
   return typeof value === "function";
 }
 
-function attempt(fn: () => void) {
-  try {
-    fn();
-  } catch (e) {
-    console.error(e);
-  }
-}
+function noop() {}
 
 type BatchQueue = InstanceType<typeof VSignal["BatchQueue"]>;
 
@@ -92,7 +92,7 @@ class VSignal<T> implements Signal<T> {
     public commit() {
       for (const [signal, newValue] of this.roots) {
         signal.value = newValue;
-        signal.batchEntry = undefined;
+        signal.notifyListeners();
       }
       /**
        * first element in the queue is always the leaf node and each subsequent
@@ -105,14 +105,18 @@ class VSignal<T> implements Signal<T> {
         if (!isObserved) {
           signal.isDirty = true;
         } else {
-          signal.update();
-          signal.notifyListeners();
+          const changed = signal.update();
+          if (changed) {
+            signal.notifyListeners();
+          }
         }
         signal.batchEntry = undefined;
       }
       this.orderedQueue.splice(0, this.orderedQueue.length);
     }
   };
+
+  private static GlobalListeners = new Set<SignalListenerReference<any>>();
 
   private static batchQueue?: BatchQueue;
 
@@ -169,72 +173,94 @@ class VSignal<T> implements Signal<T> {
   public static derive<U>(...args: any[]): VReadonlySignal<U> {
     const signals = args.slice(0, -1) as VSignal<any>[];
     const getDerivedValue = args[args.length - 1] as (...args: any[]) => U;
-    const deriveFn = () => getDerivedValue(...signals.map((s) => s.current()));
 
-    const derivedSignal = new VReadonlySignal(deriveFn());
-    derivedSignal.deriveFn = deriveFn;
+    const depValues: any[] = [];
+    for (let i = 0; i < signals.length; i++) {
+      depValues.push(signals[i]!.current());
+    }
+    const derivedSignal = new VReadonlySignal(getDerivedValue.apply(null, depValues));
+    derivedSignal.isDerived = true;
+    derivedSignal.lastUsedDeps = depValues;
+    derivedSignal.deriveFn = getDerivedValue;
     derivedSignal.derivedFrom = signals;
 
-    signals.forEach((s) => s.derivedSignals.push(new WeakRef(derivedSignal)));
+    for (let i = 0; i < signals.length; i++) {
+      signals[i]!.derivedSignals.push(new WeakRef(derivedSignal));
+    }
 
     return derivedSignal;
   }
 
-  private listeners: SignalListener<T>[] = [];
+  private static arrCompare(a: any[], b: any[]) {
+    if (a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+      if (!Object.is(a[i], b[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private listeners: SignalListenerReference<T>[] = [];
   private derivedSignals: WeakRef<VSignal<any>>[] = [];
   private value: T;
-  private deriveFn?: () => T;
-  private derivedFrom: VSignal<any>[] = [];
+  private deriveFn?: (...parentSigsVals: any[]) => T;
+  private derivedFrom: Array<
+    VSignal<any> | DestroyedParentSigSubstitute
+  > = [];
   private isDirty = false;
+  private isDerived = false;
 
   constructor(value: T) {
     this.value = value;
   }
 
-  /**
-   * Removes the child signal from the list of derived signals.
-   * (should be called by the child to inform the parent
-   * that it doesn't need to be updated anymore)
-   */
-  private removeDerivedChild(signal: VSignal<any>) {
-    this.derivedSignals = this.derivedSignals.filter((ref) => {
-      const s = ref.deref();
-      return s != null && s !== signal;
-    });
-  }
-
-  private update() {
-    if (this.deriveFn) {
-      const v = this.deriveFn!();
-      this.isDirty = false;
-      if (Object.is(v, this.value)) {
-        return;
-      }
-      this.value = v;
+  private beforeAccess() {
+    if (this.isDirty) {
+      this.update();
     }
   }
 
-  private updateAndPropagate() {
-    this.update();
-    this.propagateChange();
+  private lastUsedDeps: any[] = [];
+
+  private update(): boolean {
+    if (this.deriveFn) {
+      const depValues: any[] = [];
+      for (let i = 0; i < this.derivedFrom.length; i++) {
+        depValues.push(this.derivedFrom[i]!.current());
+      }
+      if (VSignal.arrCompare(depValues, this.lastUsedDeps)) {
+        return false;
+      }
+      this.lastUsedDeps = depValues;
+      const v = this.deriveFn.apply(null, depValues);
+      this.isDirty = false;
+      if (Object.is(v, this.value)) {
+        return false;
+      }
+      this.value = v;
+      return true;
+    }
+    return false;
   }
 
-  /**
-   * Destroys this derived signal if all of its parents were destroyed.
-   * (should be called by the parent to inform the child
-   * that it will never dispatch any changes)
-   */
-  private destroyDerived(from: VSignal<any>) {
-    this.derivedFrom = this.derivedFrom.filter((s) => s !== from);
-
-    if (this.derivedFrom.length === 0) {
-      this.destroy();
+  private updateAndPropagate() {
+    const changed = this.update();
+    if (changed) {
+      this.propagateChange();
     }
   }
 
   private notifyListeners() {
     for (let i = 0; i < this.listeners.length; i++) {
-      attempt(() => this.listeners[i]!(this.value));
+      const listenerRef = this.listeners[i]!;
+      try {
+        listenerRef.callback(this.value);
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -261,32 +287,37 @@ class VSignal<T> implements Signal<T> {
   }
 
   public add(listener: SignalListener<T>): SignalListenerReference<T> {
-    if (this.isDirty) {
-      this.update();
-    }
+    this.beforeAccess();
 
     if (typeof listener !== "function") {
       throw new Error("Signal.add(): listener must be a function");
     }
 
-    this.listeners.push(listener);
-
-    attempt(() => {
-      listener(this.value);
-    });
-
     let isDetached = false;
-    return {
+    const lRef: SignalListenerReference<T> = Object.freeze({
       signal: this,
-      listener,
+      callback: listener,
       detach: () => {
         if (isDetached) {
           return;
         }
-        this.listeners = this.listeners.filter((l) => l !== listener);
+        const idx = this.listeners.findIndex((l) => l === lRef);
+        this.listeners.splice(idx, 1);
+        VSignal.GlobalListeners.delete(lRef);
         isDetached = true;
       },
-    };
+    });
+
+    this.listeners.push(lRef);
+    VSignal.GlobalListeners.add(lRef);
+
+    try {
+      listener(this.value);
+    } catch (e) {
+      console.error(e);
+    }
+
+    return lRef;
   }
 
   private batchEntry?: BatchEntry;
@@ -308,7 +339,9 @@ class VSignal<T> implements Signal<T> {
       }
     }
 
-    batchQueue.add(this, isObserved);
+    if (this.isDerived) {
+      batchQueue.add(this, isObserved);
+    }
     return isObserved;
   }
 
@@ -351,27 +384,33 @@ class VSignal<T> implements Signal<T> {
   }
 
   public current(): T {
-    if (this.isDirty) {
-      this.update();
-    }
+    this.beforeAccess();
     return this.value;
   }
 
   public detachAll(): void {
-    this.listeners = [];
+    const detachedListeners = this.listeners.splice(0, this.listeners.length);
+    for (let i = 0; i < detachedListeners.length; i++) {
+      const lRef = detachedListeners[i]!;
+      VSignal.GlobalListeners.delete(lRef);
+    }
   }
 
   public listenerCount(): number {
     return this.listeners.length;
   }
 
+  public derivedCount(): number {
+    return this.derivedSignals.length;
+  }
+
   public derive<U>(getDerivedValue: (current: T) => U): VReadonlySignal<U> {
-    if (this.isDirty) {
-      this.update();
-    }
+    this.beforeAccess();
 
     const derivedSignal = new VReadonlySignal(getDerivedValue(this.value));
-    derivedSignal.deriveFn = () => getDerivedValue(this.current());
+    derivedSignal.isDerived = true;
+    derivedSignal.lastUsedDeps = [this.value];
+    derivedSignal.deriveFn = getDerivedValue;
     derivedSignal.derivedFrom = [this];
 
     this.derivedSignals.push(new WeakRef(derivedSignal));
@@ -380,14 +419,59 @@ class VSignal<T> implements Signal<T> {
 
   public destroy(): void {
     this.detachAll();
-    this.derivedFrom.forEach((s) => s.removeDerivedChild(this));
+    this.derivedFrom.forEach((s) => {
+      // @ts-expect-error
+      s.removeDerivedChild(this);
+    });
     this.deriveFn = undefined;
-    this.derivedFrom = [];
+    this.derivedFrom.splice(0, this.derivedFrom.length);
     this.add = this.add_destroyed;
     this.dispatch = this.dispatch_destroyed;
     this.derive = this.derive_destroyed;
-    this.derivedSignals.forEach((s) => s.deref()?.destroyDerived(this));
-    this.derivedSignals = [];
+    for (let i = 0; i < this.derivedSignals.length; i++) {
+      const childSig = this.derivedSignals[i]!;
+      childSig.deref()?.onParentDestroyed(this);
+    }
+    this.derivedSignals.splice(0, this.derivedSignals.length);
+  }
+
+  /**
+   * Destroys this derived signal if all of its parents were destroyed.
+   * (should be called by the parent to inform the child
+   * that it will never dispatch any changes)
+   */
+  private onParentDestroyed(parentSig: VSignal<any>) {
+    for (let i = 0; i < this.derivedFrom.length; i++) {
+      const s = this.derivedFrom[i]!;
+      if (s === parentSig) {
+        // since this derived sig has been destroyed it will no longer ever change
+        // we can just take it's value and lose the ref to the sig itself
+        const stableValue = parentSig.current();
+        const substitute: DestroyedParentSigSubstitute = {
+          current: () => stableValue,
+          removeDerivedChild: noop,
+          IS_SUBSTITUTE: true,
+        };
+        this.derivedFrom[i] = substitute;
+        break;
+      }
+    }
+
+    if (this.derivedFrom.every(s => "IS_SUBSTITUTE" in s)) {
+      this.destroy();
+    }
+  }
+
+  /**
+   * Removes the child signal from the list of derived signals.
+   * (should be called by the child to inform the parent
+   * that it doesn't need to be updated anymore)
+   */
+  protected removeDerivedChild(signal: VSignal<any>): void {
+    this.derivedSignals = this.derivedSignals.filter((ref) => {
+      const s = ref.deref();
+      return s != null && s !== signal;
+    });
   }
 
   private add_destroyed(_: SignalListener<T>): never {
@@ -436,5 +520,4 @@ signal.commitBatch = VSignal.commitBatch;
  */
 const sig = signal;
 
-export { VReadonlySignal, VSignal, sig, signal };
-
+export { sig, signal, VReadonlySignal, VSignal };

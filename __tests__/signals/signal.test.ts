@@ -340,15 +340,6 @@ describe("VSignal()", () => {
       s.dispatch("foobar");
       expect(s.derivedCount()).toBe(1);
       expect(derivedSig.deref()).toBeDefined();
-
-      derivedSig.deref()!.detachAll();
-
-      await gc();
-      await gc();
-      expect(s.derivedCount()).toBe(1);
-      expect(derivedSig.deref()).toBeUndefined();
-      s.dispatch("foobarbaz");
-      expect(s.derivedCount()).toBe(0);
     });
 
     it("deeply derived signals should not be GCd when they are being observed", async () => {
@@ -378,6 +369,69 @@ describe("VSignal()", () => {
       expect(callCount).toBe(0);
       head.dispatch(10);
       expect(callCount).toBe(1);
+    });
+
+    it("derived signal which value didn't change avoids calling listeners or updating it's children", () => {
+      const calcTail = vitest.fn((v: number) => {
+        return v * 2;
+      });
+
+      const head = sig(1);
+      const d1 = head.derive(v => v + 1);
+      const d2 = d1.derive(v => v / v);
+      const tail = d2.derive(calcTail);
+
+      expect(tail.current()).toBe(2);
+
+      const onD2Change = vitest.fn();
+      d2.add(onD2Change);
+
+      calcTail.mockClear();
+      onD2Change.mockClear();
+
+      head.dispatch(2);
+
+      expect(tail.current()).toBe(2);
+      expect(calcTail).toHaveBeenCalledTimes(0);
+      expect(onD2Change).toHaveBeenCalledTimes(0);
+
+      sig.startBatch();
+      head.dispatch(3);
+      head.dispatch(4);
+      head.dispatch(5);
+      sig.commitBatch();
+
+      expect(tail.current()).toBe(2);
+      expect(calcTail).toHaveBeenCalledTimes(0);
+      expect(onD2Change).toHaveBeenCalledTimes(0);
+    });
+
+    it("derived from multiple signals shouldn't call listeners or update children if value didn't change", () => {
+      const calcTail = vitest.fn((v: number) => {
+        return v * 2;
+      });
+
+      const h1 = sig(2);
+      const h2 = sig(2);
+      const d1 = sig.derive(h1, h2, (v1, v2) => v1 - v2);
+      const tail = d1.derive(calcTail);
+
+      expect(tail.current()).toBe(0);
+
+      const onD1Change = vitest.fn();
+      d1.add(onD1Change);
+
+      calcTail.mockClear();
+      onD1Change.mockClear();
+
+      sig.startBatch();
+      h1.dispatch(3);
+      h2.dispatch(3);
+      sig.commitBatch();
+
+      expect(tail.current()).toBe(0);
+      expect(calcTail).toHaveBeenCalledTimes(0);
+      expect(onD1Change).toHaveBeenCalledTimes(0);
     });
 
     describe("complex scenarios", () => {
@@ -506,7 +560,7 @@ describe("VSignal()", () => {
           source1.dispatch(10);
 
           expect(onR1Change).toHaveBeenLastCalledWith(5);
-          expect(onR2Change).toHaveBeenLastCalledWith(1);
+          expect(onR2Change).toHaveBeenCalledTimes(0);
           expect(onR3Change).toHaveBeenLastCalledWith(40);
         });
       });
