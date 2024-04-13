@@ -1,15 +1,7 @@
-import { setFlagsFromString } from "v8";
 import { describe, expect, it } from "vitest";
-import { runInNewContext } from "vm";
 import { sig } from "../../src";
 import { bindSignal } from "../../src/signals/proxy";
-
-setFlagsFromString("--expose_gc");
-const rawGC = runInNewContext("gc");
-async function gc() {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  rawGC();
-}
+import { gc } from "../gc-util";
 
 describe("signal proxy", () => {
   describe("bindSignal()", () => {

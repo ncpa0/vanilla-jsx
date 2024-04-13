@@ -1,15 +1,8 @@
-import { setFlagsFromString } from "v8";
 import { describe, expect, it, Mock, vitest } from "vitest";
-import { runInNewContext } from "vm";
 import { sig, Signal } from "../../src";
 import { ReadonlySignal, SignalListenerReference, VReadonlySignal, VSignal } from "../../src/signals/signal";
-
-setFlagsFromString("--expose_gc");
-const rawGC = runInNewContext("gc");
-async function gc() {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  rawGC();
-}
+import { gc } from "../gc-util";
+import { sleep } from "../utils";
 
 describe("VSignal()", () => {
   describe("current()", () => {
@@ -325,6 +318,68 @@ describe("VSignal()", () => {
       expect(derivedRefs).toHaveLength(0);
     });
 
+    it("derived signals should not be GCd if they are being observed", async () => {
+      const s = sig("foo") as VSignal<string>;
+      const getLength = vitest.fn((v: string) => v.length);
+      let derived: ReadonlySignal<number> | null = s.derive(getLength);
+      const derivedSig = new WeakRef(derived);
+
+      expect(derived.current()).toBe(3);
+      expect(derivedSig.deref()).toBeDefined();
+
+      derived.add(() => {});
+      derived = null;
+
+      await gc();
+      s.dispatch("foobar");
+      expect(s.derivedCount()).toBe(1);
+      expect(derivedSig.deref()).toBeDefined();
+
+      await gc();
+      await gc();
+      s.dispatch("foobar");
+      expect(s.derivedCount()).toBe(1);
+      expect(derivedSig.deref()).toBeDefined();
+
+      derivedSig.deref()!.detachAll();
+
+      await gc();
+      await gc();
+      expect(s.derivedCount()).toBe(1);
+      expect(derivedSig.deref()).toBeUndefined();
+      s.dispatch("foobarbaz");
+      expect(s.derivedCount()).toBe(0);
+    });
+
+    it("deeply derived signals should not be GCd when they are being observed", async () => {
+      const head = sig(1);
+      let callCount = 0;
+      (function() {
+        const tail = head.derive(v => v + 1).derive(v => v + 1).derive(v => ({ DERIVED: true }));
+        tail.add(() => {
+          callCount++;
+        });
+      })();
+
+      callCount = 0;
+      expect(callCount).toBe(0);
+      head.dispatch(5);
+      expect(callCount).toBe(1);
+
+      await gc();
+      await sleep(100);
+      await gc();
+      await sleep(100);
+      await gc();
+      await sleep(100);
+      await gc();
+
+      callCount = 0;
+      expect(callCount).toBe(0);
+      head.dispatch(10);
+      expect(callCount).toBe(1);
+    });
+
     describe("complex scenarios", () => {
       describe("diamond", () => {
         it("scenario 1 - reading", () => {
@@ -457,7 +512,7 @@ describe("VSignal()", () => {
       });
 
       describe("multi-layer", () => {
-        /* use small layer number, since without batching it can 
+        /* use small layer number, since without batching it can
            take a long time for too complex relations */
         const layers = 10;
 
@@ -1246,7 +1301,6 @@ describe("VSignal()", () => {
               s4: dControl.s3 - 1,
             };
           }
-
 
           for (const m of listeners) {
             m.mockClear();
