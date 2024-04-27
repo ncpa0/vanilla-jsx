@@ -178,9 +178,10 @@ class VSignal<T> implements Signal<T> {
     for (let i = 0; i < signals.length; i++) {
       depValues.push(signals[i]!.current());
     }
-    const derivedSignal = new VReadonlySignal(getDerivedValue.apply(null, depValues));
+    const derivedSignal = new VReadonlySignal<U>(null as any);
+    derivedSignal.isDirty = true;
     derivedSignal.isDerived = true;
-    derivedSignal.lastUsedDeps = depValues;
+    derivedSignal.lastUsedDeps = [];
     derivedSignal.deriveFn = getDerivedValue;
     derivedSignal.derivedFrom = signals;
 
@@ -407,9 +408,10 @@ class VSignal<T> implements Signal<T> {
   public derive<U>(getDerivedValue: (current: T) => U): VReadonlySignal<U> {
     this.beforeAccess();
 
-    const derivedSignal = new VReadonlySignal(getDerivedValue(this.value));
+    const derivedSignal = new VReadonlySignal<U>(null as any);
+    derivedSignal.isDirty = true;
     derivedSignal.isDerived = true;
-    derivedSignal.lastUsedDeps = [this.value];
+    derivedSignal.lastUsedDeps = [];
     derivedSignal.deriveFn = getDerivedValue;
     derivedSignal.derivedFrom = [this];
 
@@ -419,15 +421,18 @@ class VSignal<T> implements Signal<T> {
 
   public destroy(): void {
     this.detachAll();
+    this.add = this.add_destroyed;
+    this.dispatch = this.dispatch_destroyed;
+    this.derive = this.derive_destroyed;
+    if (this.isDirty) {
+      this.update();
+    }
+    this.deriveFn = undefined;
     this.derivedFrom.forEach((s) => {
       // @ts-expect-error
       s.removeDerivedChild(this);
     });
-    this.deriveFn = undefined;
     this.derivedFrom.splice(0, this.derivedFrom.length);
-    this.add = this.add_destroyed;
-    this.dispatch = this.dispatch_destroyed;
-    this.derive = this.derive_destroyed;
     for (let i = 0; i < this.derivedSignals.length; i++) {
       const childSig = this.derivedSignals[i]!;
       childSig.deref()?.onParentDestroyed(this);

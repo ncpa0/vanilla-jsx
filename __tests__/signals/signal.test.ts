@@ -191,7 +191,7 @@ describe("VSignal()", () => {
       const s = sig("Lorem Ipsum dolor sit amet");
       const sLen = s.derive(getLength);
 
-      expect(getLength).toHaveBeenCalledTimes(1);
+      expect(getLength).toHaveBeenCalledTimes(0);
       expect(sLen.current()).toEqual(26);
       expect(getLength).toHaveBeenCalledTimes(1);
 
@@ -211,7 +211,7 @@ describe("VSignal()", () => {
       const s = sig("Lorem Ipsum dolor sit amet");
       const sLen = s.derive(getLength);
 
-      expect(getLength).toHaveBeenCalledTimes(1);
+      expect(getLength).toHaveBeenCalledTimes(0);
       expect(sLen.current()).toEqual(26);
 
       s.dispatch("");
