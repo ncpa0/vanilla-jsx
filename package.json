@@ -47,7 +47,8 @@
     "test:tsc": "tsc --noEmit",
     "test:unit": "vitest run",
     "build": "node ./scripts/build.mjs",
-    "prepack": "yarn build"
+    "prepack": "yarn build",
+    "prepare": "husky install"
   },
   "devDependencies": {
     "@ncpa0cpl/nodepack": "^2.3.0",
