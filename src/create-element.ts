@@ -1,5 +1,5 @@
 import { ClassName } from "./jsx-namespace/jsx.types";
-import { SignalProxyListenerRef, sigProxy } from "./signals/proxy";
+import { SignalProxy, SignalProxyListenerRef, sigProxy } from "./signals/proxy";
 
 declare global {
   interface Window {
@@ -44,7 +44,7 @@ const getInitialChild = (appendTo: Element) => {
 };
 
 const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
-  return (_: unknown, value: Text | Element, sigRef?: SignalProxyListenerRef) => {
+  return (_: unknown, value: Text | Element | undefined, sigRef?: SignalProxyListenerRef) => {
     const lastNode = lastNodeRef?.deref();
     if (!lastNode) {
       return sigRef?.detach();
@@ -58,9 +58,13 @@ const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
         lastNode.replaceWith(node);
         lastNodeRef = new WeakRef(node);
       }
-    } else {
+    } else if (value) {
       lastNode.replaceWith(value);
       lastNodeRef = new WeakRef(value);
+    } else {
+      const emptyNode = document.createTextNode("");
+      lastNode.replaceWith(emptyNode);
+      lastNodeRef = new WeakRef(emptyNode);
     }
   };
 };
@@ -228,18 +232,34 @@ const attributeBindingFactory = (attributeName: string) => {
   }
 
   return (elem: HTMLElement, value: any) => {
-    if (value == null && elem.hasAttribute(attributeName)) {
-      elem.removeAttribute(attributeName);
-      return;
+    const isAttributeName = elem.hasAttribute(attributeName);
+    // prioritize setting the attribute if the value is of type string | number | boolean
+    if (isAttributeName) {
+      switch (typeof value) {
+        case "string":
+          elem.setAttribute(attributeName, value);
+          return;
+        case "number":
+          elem.setAttribute(attributeName, valToString(value));
+          return;
+        case "boolean":
+          if (value) {
+            elem.setAttribute(attributeName, attributeName);
+          } else {
+            elem.removeAttribute(attributeName);
+          }
+          return;
+        case "undefined":
+          elem.removeAttribute(attributeName);
+          return;
+      }
+      if (value == null) {
+        elem.removeAttribute(attributeName);
+      }
     }
 
     if (attributeName in elem) {
       (elem as any)[attributeName] = value;
-      return;
-    }
-
-    if (value != null) {
-      elem.setAttribute(attributeName, valToString(value));
     }
   };
 };
@@ -298,16 +318,9 @@ export function createElement(
       } else {
         if (propName.startsWith("on")) {
           const eventName = propName.substring(2).toLowerCase();
-          element.addEventListener(eventName, propValue);
-        } else if (propName === "class") {
-          // NOTE: propValue can contain signals
-          setClassName(element, propValue);
+          eventBindingFactory(eventName)(element, propValue);
         } else {
-          if (propName in element) {
-            (element as any)[propName] = propValue;
-          } else {
-            element.setAttribute(propName, propValue);
-          }
+          attributeBindingFactory(propName)(element, propValue);
         }
       }
     }
@@ -315,7 +328,7 @@ export function createElement(
 
   for (const child of childNodes) {
     if (isSignal(child)) {
-      const sig = sigProxy(child);
+      const sig = sigProxy(child) as SignalProxy<Element | Text | undefined>;
       let initialNodeRef: WeakRef<Text | Element> = getInitialChild(element);
       sig.bindTo(element, childBindingFactory(initialNodeRef));
     } else {
