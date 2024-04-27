@@ -1,5 +1,12 @@
+import { htmlElementAttributes } from "html-element-attributes";
 import { ClassName } from "./jsx-namespace/jsx.types";
 import { SignalProxy, SignalProxyListenerRef, sigProxy } from "./signals/proxy";
+
+const ElementAttributes = new Map<string, string[]>();
+
+for (const [key, value] of Object.entries(htmlElementAttributes)) {
+  ElementAttributes.set(key.toUpperCase(), value.concat(htmlElementAttributes["*"]!));
+}
 
 declare global {
   interface Window {
@@ -232,7 +239,8 @@ const attributeBindingFactory = (attributeName: string) => {
   }
 
   return (elem: HTMLElement, value: any) => {
-    const isAttributeName = elem.hasAttribute(attributeName);
+    const possibleAttributeNames = ElementAttributes.get(elem.tagName) ?? [];
+    const isAttributeName = possibleAttributeNames.includes(attributeName);
     // prioritize setting the attribute if the value is of type string | number | boolean
     if (isAttributeName) {
       switch (typeof value) {

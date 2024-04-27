@@ -1179,6 +1179,11 @@ hasown@^2.0.0:
   dependencies:
     function-bind "^1.1.2"
 
+html-element-attributes@^3.4.0:
+  version "3.4.0"
+  resolved "https://registry.yarnpkg.com/html-element-attributes/-/html-element-attributes-3.4.0.tgz#a91c8966998fa57044b08452d49d9757ae4007f2"
+  integrity sha512-u76G07278nacmHiSKs1yxbB2se0aiuQH8uJidyDMc6har3HRpFAR/sDKrZR426p03vu7QuvPAcaLMhp4kWcRbg==
+
 htmlparser2@^6.1.0:
   version "6.1.0"
   resolved "https://registry.yarnpkg.com/htmlparser2/-/htmlparser2-6.1.0.tgz#c4d762b6c3371a05dbe65e94ae43a9f845fb8fb7"
