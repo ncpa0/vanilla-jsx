@@ -135,6 +135,117 @@ describe("signal handling", () => {
     expect(elem2.value).toEqual("foo");
   });
 
+  it("correctly binds an array of Elements", () => {
+    const s = sig(["foo", "bar", "baz"]);
+
+    const elem = (
+      <div>
+        <p>Before</p>
+        {s.derive(v => v.map((v) => <span>{v}</span>))}
+        <p>After</p>
+      </div>
+    );
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><span>foo</span><span>bar</span><span>baz</span><p>After</p></div>",
+    );
+
+    s.dispatch(["qux", "coorge", "foo", "bar", "baz"]);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><span>qux</span><span>coorge</span><span>foo</span><span>bar</span><span>baz</span><p>After</p></div>",
+    );
+
+    s.dispatch(["qux", "coorge", "bar", "baz"]);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><span>qux</span><span>coorge</span><span>bar</span><span>baz</span><p>After</p></div>",
+    );
+
+    s.dispatch(["bar", "qux", "baz", "coorge"]);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><span>bar</span><span>qux</span><span>baz</span><span>coorge</span><p>After</p></div>",
+    );
+
+    s.dispatch([]);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><p>After</p></div>",
+    );
+
+    s.dispatch(["foo", "bar", "baz"]);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><span>foo</span><span>bar</span><span>baz</span><p>After</p></div>",
+    );
+  });
+
+  it("correctly handles when switching between an Element and an array", () => {
+
+    const s = sig<Text | Element | Array<Text | Element> | undefined>(undefined);
+
+    const elem = (
+      <div>
+        <p>Before</p>
+        {s}
+        <p>After</p>
+      </div>
+    );
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><p>After</p></div>",
+    );
+
+    s.dispatch(document.createTextNode("Hello World"));
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p>Hello World<p>After</p></div>",
+    );
+
+    s.dispatch([document.createTextNode("Bye"), <span>I am free now</span>]);
+  
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p>Bye<span>I am free now</span><p>After</p></div>",
+    );
+
+    s.dispatch(document.createTextNode("Hello again"));
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p>Hello again<p>After</p></div>",
+    );
+
+    s.dispatch([document.createTextNode("1"), document.createTextNode("2")]);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p>12<p>After</p></div>",
+    );
+
+    s.dispatch(undefined);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><p>After</p></div>",
+    );
+
+    s.dispatch([<div/>, <h1/>, document.createTextNode("1"), document.createTextNode("2"), <br/>])
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><div></div><h1></h1>12<br><p>After</p></div>",
+    );
+
+    s.dispatch(<span>Foo bar baz</span>)
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><span>Foo bar baz</span><p>After</p></div>",
+    );
+
+    s.dispatch(undefined);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><p>Before</p><p>After</p></div>",
+    );
+  })
+
   describe("for class name", () => {
     describe("arrays", () => {
       it("correctly handles string arrays", () => {

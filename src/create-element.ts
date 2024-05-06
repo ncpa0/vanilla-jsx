@@ -2,6 +2,8 @@ import { htmlElementAttributes } from "html-element-attributes";
 import { ClassName } from "./jsx-namespace/jsx.types";
 import { SignalProxy, SignalProxyListenerRef, sigProxy } from "./signals/proxy";
 
+type MaybeArray<T> = T | T[];
+
 const ElementAttributes = new Map<string, string[]>();
 
 for (const [key, value] of Object.entries(htmlElementAttributes)) {
@@ -50,11 +52,32 @@ const getInitialChild = (appendTo: Element) => {
   return new WeakRef(initialChild);
 };
 
-const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
-  return (_: unknown, value: Text | Element | undefined, sigRef?: SignalProxyListenerRef) => {
+function validateNotFragment(value: any) {
+  if (value instanceof DocumentFragment) {
+    throw new Error(
+      "DocumentFragment cannot be placed into an element via signals since Fragments are not replaceable.",
+    );
+  }
+}
+
+const childBindingFactory = (
+  lastNodeRef: WeakRef<Text | Element>,
+  rest: WeakRef<Text | Element>[] = [],
+) => {
+  return (_: unknown, value: MaybeArray<Text | Element | undefined>, sigRef?: SignalProxyListenerRef) => {
     const lastNode = lastNodeRef?.deref();
     if (!lastNode) {
       return sigRef?.detach();
+    }
+
+    if (rest.length > 0) {
+      for (const ref of rest) {
+        const node = ref.deref();
+        if (node) {
+          node.remove();
+        }
+      }
+      rest.splice(0, rest.length);
     }
 
     if (typeof value === "string") {
@@ -66,8 +89,36 @@ const childBindingFactory = (lastNodeRef: WeakRef<Text | Element>) => {
         lastNodeRef = new WeakRef(node);
       }
     } else if (value) {
-      lastNode.replaceWith(value);
-      lastNodeRef = new WeakRef(value);
+      if (Array.isArray(value)) {
+        const [firstNode] = value;
+        if (firstNode) {
+          validateNotFragment(firstNode);
+          
+          const fragment = document.createDocumentFragment();
+          fragment.appendChild(firstNode);
+          lastNodeRef = new WeakRef(firstNode);
+
+          for (let i = 1; i < value.length; i++) {
+            const node = value[i];
+            validateNotFragment(node);
+
+            if (node) {
+              fragment.appendChild(node);
+              rest.push(new WeakRef(node));
+            }
+          }
+
+          lastNode.replaceWith(fragment);
+        } else {
+          const emptyNode = document.createTextNode("");
+          lastNode.replaceWith(emptyNode);
+          lastNodeRef = new WeakRef(emptyNode);
+        }
+      } else {
+        validateNotFragment(value);
+        lastNode.replaceWith(value);
+        lastNodeRef = new WeakRef(value);
+      }
     } else {
       const emptyNode = document.createTextNode("");
       lastNode.replaceWith(emptyNode);
