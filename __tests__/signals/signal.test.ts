@@ -5,6 +5,15 @@ import { gc } from "../gc-util";
 import { sleep } from "../utils";
 
 describe("VSignal()", () => {
+  it("sub-type signals are assignable to their super types", () => {
+    const acceptStringOrNull = (s: ReadonlySignal<string | null>) => {}
+
+    const stringSig = sig("foo");
+
+    // should not throw type errors
+    acceptStringOrNull(stringSig);
+  })
+
   describe("current()", () => {
     it("should return the current value", () => {
       const signal = sig(1);

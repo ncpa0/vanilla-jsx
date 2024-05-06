@@ -8,11 +8,11 @@ export type SignalListenerReference<T> = Readonly<{
   /**
    * The listener that was attached to the signal.
    */
-  callback: SignalListener<T>;
+  callback: SignalListener<unknown>;
   /**
    * The signal that the listener was attached to.
    */
-  signal: Signal<T>;
+  signal: ReadonlySignal<T>;
 }>;
 
 export type DerivableSignal<T> = Signal<T> | ReadonlySignal<T>;
@@ -297,7 +297,7 @@ class VSignal<T> implements Signal<T> {
     let isDetached = false;
     const lRef: SignalListenerReference<T> = Object.freeze({
       signal: this,
-      callback: listener,
+      callback: listener as SignalListener<unknown>,
       detach: () => {
         if (isDetached) {
           return;

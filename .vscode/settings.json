@@ -15,10 +15,7 @@
   "[json]": {
     "editor.defaultFormatter": "dprint.dprint"
   },
-  "editor.codeActionsOnSave": [
-    "source.organizeImports",
-    "source.fixAll.eslint"
-  ],
+  "editor.codeActionsOnSave": ["source.fixAll.eslint"],
   "json.schemas": [
     {
       "fileMatch": ["git-hook-tasks.config.json"],
