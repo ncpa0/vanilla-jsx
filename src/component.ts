@@ -26,12 +26,10 @@ class ComponentNode extends HTMLElement {
   disconnectedCallback() {
     this._emitter.dispatchEvent(new Event(ComponentNode.UNMOUNTED));
   }
+}
 
-  static {
-    if (typeof window !== "undefined") {
-      window.customElements.define(ComponentNode.TAG_NAME, ComponentNode);
-    }
-  }
+if (typeof window !== "undefined") {
+  window.customElements.define(ComponentNode.TAG_NAME, ComponentNode);
 }
 
 export interface OnChangeCallback {

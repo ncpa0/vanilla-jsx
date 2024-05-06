@@ -146,4 +146,74 @@ describe("jsx-runtime", () => {
     s.dispatch("baz");
     expect(d.outerHTML).toEqual("<div><span>bazbaz</span></div>");
   });
+
+  it("correctly sets the data attributes", () => {
+    const sig1 = sig<string | undefined>("foo");
+    const sig2 = sig<number | null>(2);
+
+    const div = <div data-foo={sig1} data-bar={sig2} data-baz="baz" data-qux={3}></div> as HTMLDivElement;
+
+    expect(div.outerHTML).toEqual("<div data-foo=\"foo\" data-bar=\"2\" data-baz=\"baz\" data-qux=\"3\"></div>");
+    expect(div.dataset).toMatchObject({
+      foo: "foo",
+      bar: "2",
+      baz: "baz",
+      qux: "3",
+    });
+
+    sig1.dispatch("oof");
+    sig2.dispatch(123);
+
+    expect(div.dataset).toMatchObject({
+      foo: "oof",
+      bar: "123",
+      baz: "baz",
+      qux: "3",
+    });
+
+    sig1.dispatch(undefined);
+    sig2.dispatch(null);
+
+    expect(div.dataset).toEqual({
+      baz: "baz",
+      qux: "3",
+    });
+    expect(div.outerHTML).toEqual("<div data-baz=\"baz\" data-qux=\"3\"></div>");
+
+    sig2.dispatch(0);
+
+    expect(div.dataset).toEqual({
+      bar: "0",
+      baz: "baz",
+      qux: "3",
+    });
+    expect(div.outerHTML).toEqual("<div data-baz=\"baz\" data-qux=\"3\" data-bar=\"0\"></div>");
+  });
+
+  it("correctly sets custom attributes", () => {
+    const sig1 = sig<string | undefined>("foo");
+    const sig2 = sig<number | null>(2);
+
+    const div = <div my-attr1={sig1} my-other-attr1={sig2} my-attr2="baz" my-other-attr2={3}></div> as HTMLDivElement;
+
+    expect(div.outerHTML).toEqual(
+      "<div my-attr1=\"foo\" my-other-attr1=\"2\" my-attr2=\"baz\" my-other-attr2=\"3\"></div>",
+    );
+
+    sig1.dispatch("oof");
+    sig2.dispatch(123);
+
+    expect(div.outerHTML).toEqual(
+      "<div my-attr2=\"baz\" my-other-attr2=\"3\" my-attr1=\"oof\" my-other-attr1=\"123\"></div>",
+    );
+
+    sig1.dispatch(undefined);
+    sig2.dispatch(null);
+
+    expect(div.outerHTML).toEqual("<div my-attr2=\"baz\" my-other-attr2=\"3\"></div>");
+
+    sig2.dispatch(0);
+
+    expect(div.outerHTML).toEqual("<div my-attr2=\"baz\" my-other-attr2=\"3\" my-other-attr1=\"0\"></div>");
+  });
 });
