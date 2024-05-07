@@ -47,7 +47,7 @@ const getRenderFn = <T,>(props: { children: any }): (elem: T) => JSX.Element => 
     return props.children;
   }
 
-  throw new Error("<Map>: Invalid children");
+  throw new Error("<Range>: Invalid children");
 };
 
 const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
@@ -114,7 +114,7 @@ export function Range<T>(props: RangeProps<T>) {
   const signal = sigProxy(props.data);
 
   if (!props.noclass) {
-    parent.classList.add("vjsx-map-container");
+    parent.classList.add("vjsx-range-container");
   }
 
   signal.bindTo(parent, mapBindingFactory(memo, props));
