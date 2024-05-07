@@ -22,29 +22,20 @@ const bindFactory = <T>(signal: JSX.Signal<T>, add: SignalProxy<T>["add"]) => {
     elementRef: WeakRef<E>,
     cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
   ) => {
+    let ref: {
+      detach(): void;
+    };
+
     const onChange = (value: T) => {
       const elem = elementRef.deref();
       if (elem) {
         cb(elem, value, ref);
       } else {
-        ref.detach();
+        ref?.detach();
       }
     };
-    const onFirstCall = (value: T) => {
-      const elem = elementRef.deref();
-      if (elem) {
-        cb(elem, value);
-      }
-      cbRef.cb = onChange;
-    };
 
-    const cbRef = {
-      cb: onFirstCall,
-    };
-
-    const ref = add((value) => {
-      cbRef.cb(value);
-    });
+    ref = add(onChange);
   };
 
   const bindTo: SignalProxy<T>["bindTo"] = (element, cb) => {
