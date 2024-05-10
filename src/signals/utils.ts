@@ -12,4 +12,4 @@ export function registerBoundSignal(element: object, signal: JSX.Signal<any>) {
   signals.push(signal);
 }
 
- export const ElemMap = new WeakMap<object, JSX.Signal<any>[]>();
+export const ElemMap = new WeakMap<object, JSX.Signal<any>[]>();

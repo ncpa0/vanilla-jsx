@@ -24,15 +24,15 @@ export interface ReadonlySignal<T> {
    * Add a listener to the signal. The listener will be called immediately with
    * the current value, and on every subsequent change, until the listener is
    * detached.
-   * 
+   *
    * !!CAUTION!!
-   * 
-   * Be cautious when adding listeners to non-referenced derived signals, as 
+   *
+   * Be cautious when adding listeners to non-referenced derived signals, as
    * those can get garbage collected and the listener will stop being called.
-   * 
+   *
    * ex. `mySignal.derive((v) => v * 2).add(console.log);`
-   * 
-   * in here a derived signal is created but there's nothing that holds a 
+   *
+   * in here a derived signal is created but there's nothing that holds a
    * reference to it, so it will soon get garbage collected. After the derived
    * signal is collected all of it's listeners will disappear along with it.
    * Use the `observe()` instead if you want to keep the signal alive even
@@ -40,7 +40,7 @@ export interface ReadonlySignal<T> {
    */
   add(listener: SignalListener<T>): SignalListenerReference<T>;
   /**
-   * Similar to `add()` but additionally ensures that the Signal will not be 
+   * Similar to `add()` but additionally ensures that the Signal will not be
    * GC'd as longs as the listener is attached.
    */
   observe(listener: SignalListener<T>): SignalListenerReference<T>;
@@ -75,6 +75,38 @@ export interface Signal<T> extends ReadonlySignal<T> {
    */
   dispatch(value: T | DispatchFunc<T>): void;
 }
+
+/**
+ * Get the type of the value carried by the signal.
+ *
+ * @example
+ * type Result = SignalOf<Signal<number>>; // => number
+ */
+export type SignalOf<T> = T extends ReadonlySignal<infer U> ? U : T;
+/**
+ * Create a type that matches either `T or a `ReadonlySignal<T>`.
+ *
+ * @example
+ * type Result = MaybeReadonlySignal<number>; // => number | ReadonlySignal<number>
+ */
+export type MaybeReadonlySignal<T> = T | ReadonlySignal<T>;
+/**
+ * Create a type that matches either `T` or a `Signal<T>`.
+ *
+ * @example
+ * type Result = MaybeSignal<number>; // => number | Signal<number>
+ */
+export type MaybeSignal<T> = T | Signal<T>;
+/**
+ * Casts to a `ReadonlySignal<T>` if it's not a `ReadonlySignal<T>` already.
+ */
+export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U> ? ReadonlySignal<U> : ReadonlySignal<T>;
+/**
+ * Casts to a `ReadonlySignal<T>` if it's not a `Signal<T>` already.
+ */
+export type AsSignal<T> = T extends Signal<infer U> ? T
+  : T extends ReadonlySignal<infer K> ? ReadonlySignal<K>
+  : ReadonlySignal<T>;
 
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
@@ -251,6 +283,21 @@ class VSignal<T> implements Signal<T> {
     });
 
     registerBoundSignal(element, signal);
+  }
+
+  public static as<T>(v: T | ReadonlySignal<T>): ReadonlySignal<T> {
+    if (v instanceof VSignal) {
+      return v;
+    }
+
+    const s = new VReadonlySignal(v as T);
+
+    s.isDerived = true;
+    s.lastUsedDeps = [];
+    s.deriveFn = () => v as T;
+    s.derivedFrom = [];
+
+    return s;
   }
 
   private static arrCompare(a: any[], b: any[]) {
@@ -573,15 +620,15 @@ class VSignal<T> implements Signal<T> {
   }
 
   private add_destroyed(_: SignalListener<T>): never {
-    throw new Error("Signal.add(): cannot add listeners to a destroyed signal");
+    throw new Error("VSignal.add(): cannot add listeners to a destroyed signal");
   }
 
   private dispatch_destroyed(_: T | DispatchFunc<T>): never {
-    throw new Error("Signal.dispatch(): cannot dispatch on a destroyed signal");
+    throw new Error("VSignal.dispatch(): cannot dispatch on a destroyed signal");
   }
 
   private derive_destroyed(_: (current: any) => any): never {
-    throw new Error("Signal.derive(): cannot derive from a destroyed signal");
+    throw new Error("VSignal.derive(): cannot derive from a destroyed signal");
   }
 }
 
@@ -590,7 +637,7 @@ class VSignal<T> implements Signal<T> {
  */
 class VReadonlySignal<T> extends VSignal<T> {
   public dispatch(_: T | DispatchFunc<T>): void {
-    throw new Error("Signal.dispatch(): cannot dispatch on a derived signal");
+    throw new Error("VSignal.dispatch(): cannot dispatch on a read-only signal");
   }
 }
 
@@ -637,6 +684,14 @@ interface SignalConstructor {
    * Similar to `sig.bind()` but for HTML Element attributes.
    */
   bindAttribute: typeof VSignal.bindAttribute;
+
+  /**
+   * Returns the given value as a Readonly Signal.
+   *
+   * If the given value is already a signal it will return it as is,
+   * otherwise it will create a new read-only signal.
+   */
+  as: typeof VSignal.as;
 }
 
 /**
@@ -652,6 +707,7 @@ signal.startBatch = VSignal.startBatch;
 signal.commitBatch = VSignal.commitBatch;
 signal.bind = VSignal.bind;
 signal.bindAttribute = VSignal.bindAttribute;
+signal.as = VSignal.as;
 
 /**
  * Alias for `signal()`.
