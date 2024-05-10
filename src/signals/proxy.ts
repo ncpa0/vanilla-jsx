@@ -1,3 +1,5 @@
+import { registerBoundSignal } from "./utils";
+
 export type SignalProxyListenerRef = {
   /** Detaches the listener from the Signal. */
   detach(): void;
@@ -6,15 +8,6 @@ export type SignalProxyListenerRef = {
 export interface SignalProxy<T> {
   add(cb: (value: T) => void): { detach(): void };
   bindTo<E extends Element | Text>(elem: E, cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void): void;
-}
-
-function addBoundSignal(element: Element | Text, signal: JSX.Signal<any>) {
-  let signals = Reflect.get(element, "__vjsx_signals");
-  if (!signals) {
-    signals = [];
-    Reflect.set(element, "__vjsx_signals", signals);
-  }
-  signals.push(signal);
 }
 
 const bindFactory = <T>(signal: JSX.Signal<T>, add: SignalProxy<T>["add"]) => {
@@ -39,7 +32,7 @@ const bindFactory = <T>(signal: JSX.Signal<T>, add: SignalProxy<T>["add"]) => {
   };
 
   const bindTo: SignalProxy<T>["bindTo"] = (element, cb) => {
-    addBoundSignal(element, signal);
+    registerBoundSignal(element, signal);
     const elemRef = new WeakRef(element);
     addSelfDetachingListener(elemRef, cb);
   };

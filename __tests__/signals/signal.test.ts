@@ -6,13 +6,13 @@ import { sleep } from "../utils";
 
 describe("VSignal()", () => {
   it("sub-type signals are assignable to their super types", () => {
-    const acceptStringOrNull = (s: ReadonlySignal<string | null>) => {}
+    const acceptStringOrNull = (s: ReadonlySignal<string | null>) => {};
 
     const stringSig = sig("foo");
 
     // should not throw type errors
     acceptStringOrNull(stringSig);
-  })
+  });
 
   describe("current()", () => {
     it("should return the current value", () => {
@@ -1136,6 +1136,202 @@ describe("VSignal()", () => {
       expect(derivedRefs1).toHaveLength(0);
       expect(derivedRefs2).toHaveLength(0);
       expect(derivedRefs3).toHaveLength(0);
+    });
+  });
+
+  describe("sig.bind()", () => {
+    it("updates the specified object property whenever the signal changes", () => {
+      const obj = { prop: "foo" };
+      const s = sig("bar");
+
+      sig.bind(s, obj, "prop");
+
+      expect(obj.prop).toBe("bar");
+
+      s.dispatch("baz");
+
+      expect(obj.prop).toBe("baz");
+    });
+
+    it("works correctly with derived signals", () => {
+      const obj = { v: 0 };
+      const s1 = sig(1);
+      const s2 = sig(2);
+      const derived = sig.derive(s1, s2, (v1, v2) => v1 * v2);
+
+      sig.bind(derived, obj, "v");
+
+      expect(obj.v).toBe(2);
+
+      s1.dispatch(3);
+
+      expect(obj.v).toBe(6);
+
+      s2.dispatch(4);
+
+      expect(obj.v).toBe(12);
+    });
+
+    it("bound objects can be garbage collected", async () => {
+      let obj: { prop: string } | null = { prop: "foo" };
+      const ref = new WeakRef(obj);
+      const s = sig("bar");
+
+      sig.bind(s, obj, "prop");
+
+      expect(obj.prop).toBe("bar");
+
+      obj = null;
+      await gc();
+
+      expect(ref.deref()).toBeUndefined();
+      expect((s as VSignal<string>)["listeners"]).toHaveLength(1);
+
+      s.dispatch("baz");
+      expect((s as VSignal<string>)["listeners"]).toHaveLength(0);
+    });
+
+    it("bound signal should never get garbage collected", async () => {
+      let obj: { prop: string } | null = { prop: "bar" };
+      const source = sig("foo");
+
+      // don't keep ref to the derived signal
+      const derivedRef = new WeakRef(source.derive(t => t.toUpperCase()));
+      sig.bind(derivedRef.deref()!, obj, "prop");
+
+      expect(obj.prop).toBe("FOO");
+
+      // run garbage collection, it should not delete the derived signal
+      // despite that we don't hold any references to it
+      await gc();
+
+      expect(derivedRef.deref()).toBeDefined();
+
+      source.dispatch("baz");
+      expect(obj.prop).toBe("BAZ");
+
+      obj = null;
+
+      // gc should delete the object
+      await gc();
+
+      // the listener is still attached, so it didn't get garbage collected yet
+      expect(derivedRef.deref()).toBeDefined();
+
+      // a dispatch to the source should detach the registered listener
+      source.dispatch("qux");
+      
+      // at this point there should be no references to the derived signal
+      // so the gc should delete it
+      await gc();
+
+      expect(derivedRef.deref()).toBeUndefined();
+    });
+  });
+
+  describe("sig.bindAttribute()", () => {
+    const elemMock = (): Element => {
+      const attributes = new Map<string, string>();
+
+      return {
+        getAttribute(k: string) {
+          return attributes.get(k);
+        },
+        setAttribute(k: string, v: string) {
+          attributes.set(k, v);
+        },
+        removeAttribute(k: string) {
+          attributes.delete(k);
+        },
+      } as any;
+    };
+
+    it("updates the specified object property whenever the signal changes", () => {
+      const obj = elemMock();
+      const s = sig("bar");
+
+      sig.bindAttribute(s, obj, "data-test");
+
+      expect(obj.getAttribute("data-test")).toBe("bar");
+
+      s.dispatch("baz");
+
+      expect(obj.getAttribute("data-test")).toBe("baz");
+    });
+
+    it("works correctly with derived signals", () => {
+      const obj = elemMock();
+      const s1 = sig(1);
+      const s2 = sig(2);
+      const derived = sig.derive(s1, s2, (v1, v2) => String(v1 * v2));
+
+      sig.bindAttribute(derived, obj, "data-test");
+
+      expect(obj.getAttribute("data-test")).toBe("2");
+
+      s1.dispatch(3);
+
+      expect(obj.getAttribute("data-test")).toBe("6");
+
+      s2.dispatch(4);
+
+      expect(obj.getAttribute("data-test")).toBe("12");
+    });
+
+    it("bound objects can be garbage collected", async () => {
+      let obj: Element | null = elemMock();
+      const ref = new WeakRef(obj);
+      const s = sig("bar");
+
+      sig.bindAttribute(s, obj, "data-test");
+
+      expect(obj.getAttribute("data-test")).toBe("bar");
+
+      obj = null;
+      await gc();
+
+      expect(ref.deref()).toBeUndefined();
+      expect((s as VSignal<string>)["listeners"]).toHaveLength(1);
+
+      s.dispatch("baz");
+      expect((s as VSignal<string>)["listeners"]).toHaveLength(0);
+    });
+
+    it("bound signal should never get garbage collected", async () => {
+      let obj: Element | null = elemMock();
+      const source = sig("foo");
+
+      // don't keep ref to the derived signal
+      const derivedRef = new WeakRef(source.derive(t => t.toUpperCase()));
+      sig.bindAttribute(derivedRef.deref()!, obj, "data-test");
+
+      expect(obj.getAttribute("data-test")).toBe("FOO");
+
+      // run garbage collection, it should not delete the derived signal
+      // despite that we don't hold any references to it
+      await gc();
+
+      expect(derivedRef.deref()).toBeDefined();
+
+      source.dispatch("baz");
+      expect(obj.getAttribute("data-test")).toBe("BAZ");
+
+      obj = null;
+
+      // gc should delete the object
+      await gc();
+
+      // the listener is still attached, so it didn't get garbage collected yet
+      expect(derivedRef.deref()).toBeDefined();
+
+      // a dispatch to the source should detach the registered listener
+      source.dispatch("qux");
+      
+      // at this point there should be no references to the derived signal
+      // so the gc should delete it
+      await gc();
+
+      expect(derivedRef.deref()).toBeUndefined();
     });
   });
 

@@ -1,3 +1,5 @@
+import { registerBoundSignal } from "./utils";
+
 export type DispatchFunc<T> = (current: T) => T;
 export type SignalListener<T> = (value: T) => void;
 export type SignalListenerReference<T> = Readonly<{
@@ -190,6 +192,48 @@ class VSignal<T> implements Signal<T> {
     }
 
     return derivedSignal;
+  }
+
+  public static bind<const E extends object, const K extends keyof E>(
+    signal: ReadonlySignal<E[K]>,
+    element: E,
+    key: K,
+  ) {
+    const elemRef = new WeakRef(element);
+
+    const l = signal.add((value) => {
+      const element = elemRef.deref();
+      if (element) {
+        element[key] = value;
+      } else {
+        l?.detach();
+      }
+    });
+
+    registerBoundSignal(element, signal);
+  }
+
+  public static bindAttribute<const E extends Element>(
+    signal: ReadonlySignal<string | undefined> | ReadonlySignal<string>,
+    element: E,
+    key: string,
+  ) {
+    const elemRef = new WeakRef(element);
+
+    const l = signal.add((value) => {
+      const element = elemRef.deref();
+      if (element) {
+        if (value == null) {
+          element.removeAttribute(key);
+        } else {
+          element.setAttribute(key, value);
+        }
+      } else {
+        l?.detach();
+      }
+    });
+
+    registerBoundSignal(element, signal);
   }
 
   private static arrCompare(a: any[], b: any[]) {
@@ -503,9 +547,47 @@ class VReadonlySignal<T> extends VSignal<T> {
 
 interface SignalConstructor {
   <T>(value: T): Signal<T>;
-  derive: typeof VSignal.derive;
+
+  /**
+   * A batch allows to group signal dispatches together.
+   *
+   * Batching prevents listener from being called more than once
+   * if a signal was was dispatched to multiple times in the same batch,
+   * or if a signal has multiple source signals that were dispatched to.
+   *
+   * Also reading values of signals within a batch will always return the
+   * values as they were before the batch started, ignoring any dispatches
+   * made after the batch started.
+   *
+   * To apply the changes made within the batch call `commitBatch()`.
+   */
   startBatch(): void;
   commitBatch(): void;
+
+  /**
+   * Allows to create a derived signal from more than one source signal.
+   *
+   * @example
+   *
+   * const source1 = sig(1);
+   * const source2 = sig(2);
+   *
+   * const derived = sig.derive(source1, source2, (v1, v2) => v1 + v2);
+   */
+  derive: typeof VSignal.derive;
+
+  /**
+   * Binds the value carried by the Signal to the given object's property
+   * using a Weak Reference. This relation using Weak Reference does not
+   * prevent the element from being Garbage Collected making it safe to
+   * bind-and-forget, removing the need to manually detach the listener.
+   */
+  bind: typeof VSignal.bind;
+
+  /**
+   * Similar to `sig.bind()` but for HTML Element attributes.
+   */
+  bindAttribute: typeof VSignal.bindAttribute;
 }
 
 /**
@@ -519,6 +601,8 @@ const signal: SignalConstructor = function signal<T>(value: T): Signal<T> {
 signal.derive = VSignal.derive;
 signal.startBatch = VSignal.startBatch;
 signal.commitBatch = VSignal.commitBatch;
+signal.bind = VSignal.bind;
+signal.bindAttribute = VSignal.bindAttribute;
 
 /**
  * Alias for `signal()`.
