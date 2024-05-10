@@ -22,10 +22,28 @@ export type DerivableSignal<T> = Signal<T> | ReadonlySignal<T>;
 export interface ReadonlySignal<T> {
   /**
    * Add a listener to the signal. The listener will be called immediately with
-   * the current value, and on every subsequent dispatch, until the listener is
+   * the current value, and on every subsequent change, until the listener is
    * detached.
+   * 
+   * !!CAUTION!!
+   * 
+   * Be cautious when adding listeners to non-referenced derived signals, as 
+   * those can get garbage collected and the listener will stop being called.
+   * 
+   * ex. `mySignal.derive((v) => v * 2).add(console.log);`
+   * 
+   * in here a derived signal is created but there's nothing that holds a 
+   * reference to it, so it will soon get garbage collected. After the derived
+   * signal is collected all of it's listeners will disappear along with it.
+   * Use the `observe()` instead if you want to keep the signal alive even
+   * after losing all references to it.
    */
   add(listener: SignalListener<T>): SignalListenerReference<T>;
+  /**
+   * Similar to `add()` but additionally ensures that the Signal will not be 
+   * GC'd as longs as the listener is attached.
+   */
+  observe(listener: SignalListener<T>): SignalListenerReference<T>;
   /**
    * Get the current value of the signal.
    */
@@ -199,6 +217,7 @@ class VSignal<T> implements Signal<T> {
     element: E,
     key: K,
   ) {
+    registerBoundSignal(element, signal);
     const elemRef = new WeakRef(element);
 
     const l = signal.add((value) => {
@@ -209,8 +228,6 @@ class VSignal<T> implements Signal<T> {
         l?.detach();
       }
     });
-
-    registerBoundSignal(element, signal);
   }
 
   public static bindAttribute<const E extends Element>(
@@ -332,6 +349,38 @@ class VSignal<T> implements Signal<T> {
   }
 
   public add(listener: SignalListener<T>): SignalListenerReference<T> {
+    this.beforeAccess();
+
+    if (typeof listener !== "function") {
+      throw new Error("Signal.add(): listener must be a function");
+    }
+
+    let isDetached = false;
+    const lRef: SignalListenerReference<T> = Object.freeze({
+      signal: this,
+      callback: listener as SignalListener<unknown>,
+      detach: () => {
+        if (isDetached) {
+          return;
+        }
+        const idx = this.listeners.findIndex((l) => l === lRef);
+        this.listeners.splice(idx, 1);
+        isDetached = true;
+      },
+    });
+
+    this.listeners.push(lRef);
+
+    try {
+      listener(this.value);
+    } catch (e) {
+      console.error(e);
+    }
+
+    return lRef;
+  }
+
+  public observe(listener: SignalListener<T>): SignalListenerReference<T> {
     this.beforeAccess();
 
     if (typeof listener !== "function") {

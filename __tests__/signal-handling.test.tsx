@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ClassName, sig } from "../src";
+import { ClassName, VSignal, sig } from "../src";
 import { Fragment, jsx } from "../src/jsx-runtime";
 import { gc } from "./gc-util";
 
@@ -182,7 +182,6 @@ describe("signal handling", () => {
   });
 
   it("correctly handles when switching between an Element and an array", () => {
-
     const s = sig<Text | Element | Array<Text | Element> | undefined>(undefined);
 
     const elem = (
@@ -204,7 +203,7 @@ describe("signal handling", () => {
     );
 
     s.dispatch([document.createTextNode("Bye"), <span>I am free now</span>]);
-  
+
     expect(elem.outerHTML).toEqual(
       "<div><p>Before</p>Bye<span>I am free now</span><p>After</p></div>",
     );
@@ -227,13 +226,13 @@ describe("signal handling", () => {
       "<div><p>Before</p><p>After</p></div>",
     );
 
-    s.dispatch([<div/>, <h1/>, document.createTextNode("1"), document.createTextNode("2"), <br/>])
+    s.dispatch([<div />, <h1 />, document.createTextNode("1"), document.createTextNode("2"), <br />]);
 
     expect(elem.outerHTML).toEqual(
       "<div><p>Before</p><div></div><h1></h1>12<br><p>After</p></div>",
     );
 
-    s.dispatch(<span>Foo bar baz</span>)
+    s.dispatch(<span>Foo bar baz</span>);
 
     expect(elem.outerHTML).toEqual(
       "<div><p>Before</p><span>Foo bar baz</span><p>After</p></div>",
@@ -244,7 +243,48 @@ describe("signal handling", () => {
     expect(elem.outerHTML).toEqual(
       "<div><p>Before</p><p>After</p></div>",
     );
-  })
+  });
+
+  it("should keep a reference to the bound signal", async () => {
+    const source = sig(0) as VSignal<number>;
+
+    let elem: Element | null = (
+      <div data-test={source.derive(n => n + 5)}>
+        {source.derive(n => String(n * 2))}
+      </div>
+    );
+
+    expect(elem!.outerHTML).toEqual("<div data-test=\"5\">0</div>");
+    expect(source['derivedSignals'].length).toEqual(2);
+
+    source.dispatch(1);
+    expect(elem!.outerHTML).toEqual("<div data-test=\"6\">2</div>");
+    expect(source['derivedSignals'].length).toEqual(2);
+
+    // the derived signals should not get collected
+    await gc();
+    await gc();
+
+    source.dispatch(3);
+    expect(elem!.outerHTML).toEqual("<div data-test=\"8\">6</div>");
+    expect(source['derivedSignals'].length).toEqual(2);
+
+    await gc();
+    await gc();
+
+    source.dispatch(5);
+    expect(elem!.outerHTML).toEqual("<div data-test=\"10\">10</div>");
+    expect(source['derivedSignals'].length).toEqual(2);
+
+    elem = null;
+
+    // now there should not be any refs to the derived signals anymore
+    await gc();
+    await gc();
+    
+    source.dispatch(7);
+    expect(source['derivedSignals'].length).toEqual(0);
+  });
 
   describe("for class name", () => {
     describe("arrays", () => {

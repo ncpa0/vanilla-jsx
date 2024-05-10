@@ -60,6 +60,38 @@ describe("VSignal()", () => {
     });
   });
 
+  describe("observe()", () => {
+    it("should add a listener that is immediately called", () => {
+      const signal = sig("001");
+      const listener = vitest.fn();
+
+      signal.observe(listener);
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith("001");
+
+      signal.dispatch("002");
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(listener).toHaveBeenCalledWith("002");
+
+      signal.dispatch("003");
+      expect(listener).toHaveBeenCalledTimes(3);
+      expect(listener).toHaveBeenCalledWith("003");
+    });
+
+    it("should return a detach function", () => {
+      const signal = sig("001");
+      const listener = vitest.fn();
+
+      const listenerRef = signal.observe(listener);
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith("001");
+
+      listenerRef.detach();
+      signal.dispatch("002");
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("dispatch()", () => {
     it("should call all listeners with the new value", () => {
       const signal = sig("001");
@@ -331,24 +363,24 @@ describe("VSignal()", () => {
       const s = sig("foo") as VSignal<string>;
       const getLength = vitest.fn((v: string) => v.length);
       let derived: ReadonlySignal<number> | null = s.derive(getLength);
-      const derivedSig = new WeakRef(derived);
+      const derivedRef = new WeakRef(derived);
 
       expect(derived.current()).toBe(3);
-      expect(derivedSig.deref()).toBeDefined();
+      expect(derivedRef.deref()).toBeDefined();
 
-      derived.add(() => {});
+      derived.observe(() => {});
       derived = null;
 
       await gc();
       s.dispatch("foobar");
       expect(s.derivedCount()).toBe(1);
-      expect(derivedSig.deref()).toBeDefined();
+      expect(derivedRef.deref()).toBeDefined();
 
       await gc();
       await gc();
       s.dispatch("foobar");
       expect(s.derivedCount()).toBe(1);
-      expect(derivedSig.deref()).toBeDefined();
+      expect(derivedRef.deref()).toBeDefined();
     });
 
     it("deeply derived signals should not be GCd when they are being observed", async () => {
@@ -356,7 +388,7 @@ describe("VSignal()", () => {
       let callCount = 0;
       (function() {
         const tail = head.derive(v => v + 1).derive(v => v + 1).derive(v => ({ DERIVED: true }));
-        tail.add(() => {
+        tail.observe(() => {
           callCount++;
         });
       })();
@@ -1212,17 +1244,7 @@ describe("VSignal()", () => {
 
       obj = null;
 
-      // gc should delete the object
-      await gc();
-
-      // the listener is still attached, so it didn't get garbage collected yet
-      expect(derivedRef.deref()).toBeDefined();
-
-      // a dispatch to the source should detach the registered listener
-      source.dispatch("qux");
-      
-      // at this point there should be no references to the derived signal
-      // so the gc should delete it
+      // gc should collect the object and the derived signal
       await gc();
 
       expect(derivedRef.deref()).toBeUndefined();
@@ -1318,17 +1340,7 @@ describe("VSignal()", () => {
 
       obj = null;
 
-      // gc should delete the object
-      await gc();
-
-      // the listener is still attached, so it didn't get garbage collected yet
-      expect(derivedRef.deref()).toBeDefined();
-
-      // a dispatch to the source should detach the registered listener
-      source.dispatch("qux");
-      
-      // at this point there should be no references to the derived signal
-      // so the gc should delete it
+      // gc should collect the object and the derived signal
       await gc();
 
       expect(derivedRef.deref()).toBeUndefined();
