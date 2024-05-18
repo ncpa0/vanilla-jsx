@@ -18,6 +18,11 @@
       "import": "./dist/esm/jsx-dev-runtime.mjs",
       "require": "./dist/cjs/jsx-dev-runtime.cjs",
       "types": "./dist/types/jsx-runtime.d.ts"
+    },
+    "./signals": {
+      "import": "./dist/esm/signals.mjs",
+      "require": "./dist/cjs/signals.cjs",
+      "types": "./dist/types/signals.d.ts"
     }
   },
   "files": [
@@ -64,5 +69,6 @@
   "sideEffects": false,
   "dependencies": {
     "html-element-attributes": "^3.4.0"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
 }

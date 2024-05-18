@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { $component, If, sig } from "../src";
+import { $component, If } from "../src";
 import { Fragment, jsx } from "../src/jsx-runtime";
+import { sig } from "../src/signals";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

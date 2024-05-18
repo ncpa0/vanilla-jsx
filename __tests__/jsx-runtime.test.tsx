@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { sig } from "../src";
 import { Fragment, jsx } from "../src/jsx-runtime";
+import { sig } from "../src/signals";
 import { gc } from "./gc-util";
 
 describe("jsx-runtime", () => {

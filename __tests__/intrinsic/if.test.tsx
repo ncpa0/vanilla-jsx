@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { If, sig } from "../../src";
+import { If } from "../../src";
 import { Fragment, jsx } from "../../src/jsx-runtime";
+import { sig } from "../../src/signals";
 import { gc } from "../gc-util";
 
 describe("If", () => {

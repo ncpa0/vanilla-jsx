@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Case, sig, Switch } from "../../src";
+import { Case, Switch } from "../../src";
 import { Fragment, jsx } from "../../src/jsx-runtime";
+import { sig } from "../../src/signals";
 
 describe("Switch", () => {
   it("renders the first matching render", () => {

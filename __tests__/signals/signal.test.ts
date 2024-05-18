@@ -1,5 +1,5 @@
 import { describe, expect, it, Mock, vitest } from "vitest";
-import { sig, Signal } from "../../src";
+import { sig, Signal } from "../../src/signals";
 import { ReadonlySignal, SignalListenerReference, VReadonlySignal, VSignal } from "../../src/signals/signal";
 import { gc } from "../gc-util";
 import { sleep } from "../utils";

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Range, sig } from "../../src";
+import { Range } from "../../src";
 import { Fragment, jsx } from "../../src/jsx-runtime";
+import { sig } from "../../src/signals";
 
 describe("Map", () => {
   it("renders elements", () => {

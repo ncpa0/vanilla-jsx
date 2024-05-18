@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sig } from "../../src";
+import { sig } from "../../src/signals";
 import { bindSignal } from "../../src/signals/proxy";
 import { gc } from "../gc-util";
 

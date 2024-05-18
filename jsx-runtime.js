@@ -1,1 +1,1 @@
-export * from "./dist/esm/jsx-runtime.mjs";
+module.exports = require("./dist/legacy/jsx-runtime.js");

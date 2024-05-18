@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ClassName, VSignal, sig } from "../src";
+import { ClassName } from "../src";
 import { Fragment, jsx } from "../src/jsx-runtime";
+import { sig, VSignal } from "../src/signals";
 import { gc } from "./gc-util";
 
 describe("signal handling", () => {
@@ -255,11 +256,11 @@ describe("signal handling", () => {
     );
 
     expect(elem!.outerHTML).toEqual("<div data-test=\"5\">0</div>");
-    expect(source['derivedSignals'].length).toEqual(2);
+    expect(source["derivedSignals"].length).toEqual(2);
 
     source.dispatch(1);
     expect(elem!.outerHTML).toEqual("<div data-test=\"6\">2</div>");
-    expect(source['derivedSignals'].length).toEqual(2);
+    expect(source["derivedSignals"].length).toEqual(2);
 
     // the derived signals should not get collected
     await gc();
@@ -267,23 +268,23 @@ describe("signal handling", () => {
 
     source.dispatch(3);
     expect(elem!.outerHTML).toEqual("<div data-test=\"8\">6</div>");
-    expect(source['derivedSignals'].length).toEqual(2);
+    expect(source["derivedSignals"].length).toEqual(2);
 
     await gc();
     await gc();
 
     source.dispatch(5);
     expect(elem!.outerHTML).toEqual("<div data-test=\"10\">10</div>");
-    expect(source['derivedSignals'].length).toEqual(2);
+    expect(source["derivedSignals"].length).toEqual(2);
 
     elem = null;
 
     // now there should not be any refs to the derived signals anymore
     await gc();
     await gc();
-    
+
     source.dispatch(7);
-    expect(source['derivedSignals'].length).toEqual(0);
+    expect(source["derivedSignals"].length).toEqual(0);
   });
 
   describe("for class name", () => {
