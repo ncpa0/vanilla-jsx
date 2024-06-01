@@ -17,8 +17,6 @@ export type SignalListenerReference<T> = Readonly<{
   signal: ReadonlySignal<T>;
 }>;
 
-export type DerivableSignal<T> = Signal<T> | ReadonlySignal<T>;
-
 export interface ReadonlySignal<T> {
   /**
    * Add a listener to the signal. The listener will be called immediately with
@@ -184,45 +182,45 @@ class VSignal<T> implements Signal<T> {
   }
 
   public static derive<E, U>(
-    sig1: DerivableSignal<E>,
+    sig1: ReadonlySignal<E>,
     getDerivedValue: (v1: E) => U,
-  ): VReadonlySignal<U>;
+  ): ReadonlySignal<U>;
   public static derive<E, F, U>(
-    sig1: DerivableSignal<E>,
-    sig2: DerivableSignal<F>,
+    sig1: ReadonlySignal<E>,
+    sig2: ReadonlySignal<F>,
     getDerivedValue: (v1: E, v2: F) => U,
-  ): VReadonlySignal<U>;
+  ): ReadonlySignal<U>;
   public static derive<E, F, G, U>(
-    sig1: DerivableSignal<E>,
-    sig2: DerivableSignal<F>,
-    sig3: DerivableSignal<G>,
+    sig1: ReadonlySignal<E>,
+    sig2: ReadonlySignal<F>,
+    sig3: ReadonlySignal<G>,
     getDerivedValue: (v1: E, v2: F, v3: G) => U,
-  ): VReadonlySignal<U>;
+  ): ReadonlySignal<U>;
   public static derive<E, F, G, H, U>(
-    sig1: DerivableSignal<E>,
-    sig2: DerivableSignal<F>,
-    sig3: DerivableSignal<G>,
-    sig4: DerivableSignal<H>,
+    sig1: ReadonlySignal<E>,
+    sig2: ReadonlySignal<F>,
+    sig3: ReadonlySignal<G>,
+    sig4: ReadonlySignal<H>,
     getDerivedValue: (v1: E, v2: F, v3: G, v4: H) => U,
-  ): VReadonlySignal<U>;
+  ): ReadonlySignal<U>;
   public static derive<E, F, G, H, I, U>(
-    sig1: DerivableSignal<E>,
-    sig2: DerivableSignal<F>,
-    sig3: DerivableSignal<G>,
-    sig4: DerivableSignal<H>,
-    sig5: DerivableSignal<I>,
+    sig1: ReadonlySignal<E>,
+    sig2: ReadonlySignal<F>,
+    sig3: ReadonlySignal<G>,
+    sig4: ReadonlySignal<H>,
+    sig5: ReadonlySignal<I>,
     getDerivedValue: (v1: E, v2: F, v3: G, v4: H, v5: I) => U,
-  ): VReadonlySignal<U>;
+  ): ReadonlySignal<U>;
   public static derive<E, F, G, H, I, J, U>(
-    sig1: DerivableSignal<E>,
-    sig2: DerivableSignal<F>,
-    sig3: DerivableSignal<G>,
-    sig4: DerivableSignal<H>,
-    sig5: DerivableSignal<I>,
-    sig6: DerivableSignal<J>,
+    sig1: ReadonlySignal<E>,
+    sig2: ReadonlySignal<F>,
+    sig3: ReadonlySignal<G>,
+    sig4: ReadonlySignal<H>,
+    sig5: ReadonlySignal<I>,
+    sig6: ReadonlySignal<J>,
     getDerivedValue: (v1: E, v2: F, v3: G, v4: H, v5: I, v6: J) => U,
-  ): VReadonlySignal<U>;
-  public static derive<U>(...args: any[]): VReadonlySignal<U> {
+  ): ReadonlySignal<U>;
+  public static derive<U>(...args: any[]): ReadonlySignal<U> {
     const signals = args.slice(0, -1) as VSignal<any>[];
     const getDerivedValue = args[args.length - 1] as (...args: any[]) => U;
 
