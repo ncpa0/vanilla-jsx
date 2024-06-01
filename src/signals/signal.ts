@@ -64,6 +64,10 @@ export interface ReadonlySignal<T> {
    * prevent any new dispatches from being made.
    */
   destroy(): void;
+  /**
+   * Return itself.
+   */
+  readonly(): ReadonlySignal<T>;
 }
 
 export interface Signal<T> extends ReadonlySignal<T> {
@@ -72,6 +76,10 @@ export interface Signal<T> extends ReadonlySignal<T> {
    * all listeners and derived signals.
    */
   dispatch(value: T | DispatchFunc<T>): void;
+  /**
+   * Return itself as a readonly signal.
+   */
+  readonly(): ReadonlySignal<T>;
 }
 
 /**
@@ -543,7 +551,7 @@ class VSignal<T> implements Signal<T> {
     return this.derivedSignals.length;
   }
 
-  public derive<U>(getDerivedValue: (current: T) => U): VReadonlySignal<U> {
+  public derive<U>(getDerivedValue: (current: T) => U): ReadonlySignal<U> {
     this.beforeAccess();
 
     const derivedSignal = new VReadonlySignal<U>(null as any);
@@ -555,6 +563,10 @@ class VSignal<T> implements Signal<T> {
 
     this.derivedSignals.push(new WeakRef(derivedSignal));
     return derivedSignal;
+  }
+
+  public readonly(): ReadonlySignal<T> {
+    return this.derive(v => v);
   }
 
   public destroy(): void {
@@ -636,6 +648,10 @@ class VSignal<T> implements Signal<T> {
 class VReadonlySignal<T> extends VSignal<T> {
   public dispatch(_: T | DispatchFunc<T>): void {
     throw new Error("VSignal.dispatch(): cannot dispatch on a read-only signal");
+  }
+
+  public readonly(): ReadonlySignal<T> {
+    return this;
   }
 }
 

@@ -654,10 +654,10 @@ describe("VSignal()", () => {
 
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1),
-              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
-              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
-              s4: c.s3.derive(v => v - 1),
+              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3) as VReadonlySignal<number>,
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1) as VReadonlySignal<number>,
+              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
             };
             c = next;
 
@@ -772,10 +772,10 @@ describe("VSignal()", () => {
 
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1),
-              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
-              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
-              s4: c.s3.derive(v => v - 1),
+              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3) as VReadonlySignal<number>,
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1) as VReadonlySignal<number>,
+              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
             };
             c = next;
 
@@ -901,10 +901,10 @@ describe("VSignal()", () => {
           const listeners: SignalListenerReference<number>[] = [];
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1),
-              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
-              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
-              s4: c.s3.derive(v => v - 1),
+              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3) as VReadonlySignal<number>,
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1) as VReadonlySignal<number>,
+              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
             };
             listeners.push(
               next.s1.add((v) => {
@@ -991,6 +991,30 @@ describe("VSignal()", () => {
           expect(end.s4.current()).toBe(d4Control.s4);
         });
       });
+    });
+  });
+
+  describe("readonly()", () => {
+    it("should return a readonly version of the current Signal<T>", () => {
+      const s = sig("foo");
+      const readonlyS = s.readonly();
+
+      expect(readonlyS.current()).toBe("foo");
+
+      s.dispatch("bar");
+
+      expect(readonlyS.current()).toBe("bar");
+
+      // @ts-expect-error
+      expect(() => readonlyS.dispatch("bar")).toThrowError();
+    });
+
+    it("should return itself when called on a readonly signal", () => {
+      const s = sig("foo");
+      const readonlyS = s.readonly();
+      const readonlyS2 = readonlyS.readonly();
+
+      expect(readonlyS).toBe(readonlyS2);
     });
   });
 
@@ -1430,10 +1454,10 @@ describe("VSignal()", () => {
 
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1),
-              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
-              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
-              s4: c.s3.derive(v => v - 1),
+              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3) as VReadonlySignal<number>,
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1) as VReadonlySignal<number>,
+              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
             };
             c = next;
 
@@ -1529,10 +1553,10 @@ describe("VSignal()", () => {
           const listeners: Mock<[v: number], void>[] = [];
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1),
-              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3),
-              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1),
-              s4: c.s3.derive(v => v - 1),
+              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s2: VSignal.derive(c.s1, c.s3, (v1, v3) => v1 + v3) as VReadonlySignal<number>,
+              s3: VSignal.derive(c.s4, c.s1, (v4, v1) => v4 - v1) as VReadonlySignal<number>,
+              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
             };
             const m1 = vitest.fn((v: number) => {
               v;
