@@ -1,6 +1,6 @@
 {
   "name": "@ncpa0cpl/vanilla-jsx",
-  "version": "0.0.1-alpha.18",
+  "version": "0.0.1-alpha.19",
   "main": "./dist/legacy/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
@@ -34,7 +34,8 @@
     "jsx-runtime.d.ts",
     "jsx-dev-runtime.js",
     "jsx-dev-runtime.d.ts",
-    "signals.js"
+    "signals.js",
+    "signals.d.ts"
   ],
   "keywords": [],
   "repository": {
