@@ -216,4 +216,32 @@ describe("jsx-runtime", () => {
 
     expect(div.outerHTML).toEqual("<div my-attr2=\"baz\" my-other-attr2=\"3\" my-other-attr1=\"0\"></div>");
   });
+
+  it("correctly sets custom attributes without dash character", () => {
+    const sig1 = sig<string | undefined>("foo");
+    const sig2 = sig<number | null>(2);
+
+    // @ts-expect-error
+    const div = <div myattr1={sig1} myotherattr1={sig2} myattr2="baz" myotherattr2={3}></div> as HTMLDivElement;
+
+    expect(div.outerHTML).toEqual(
+      "<div myattr1=\"foo\" myotherattr1=\"2\" myattr2=\"baz\" myotherattr2=\"3\"></div>",
+    );
+
+    sig1.dispatch("oof");
+    sig2.dispatch(123);
+
+    expect(div.outerHTML).toEqual(
+      "<div myattr2=\"baz\" myotherattr2=\"3\" myattr1=\"oof\" myotherattr1=\"123\"></div>",
+    );
+
+    sig1.dispatch(undefined);
+    sig2.dispatch(null);
+
+    expect(div.outerHTML).toEqual("<div myattr2=\"baz\" myotherattr2=\"3\"></div>");
+
+    sig2.dispatch(0);
+
+    expect(div.outerHTML).toEqual("<div myattr2=\"baz\" myotherattr2=\"3\" myotherattr1=\"0\"></div>");
+  });
 });

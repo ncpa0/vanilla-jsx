@@ -93,7 +93,7 @@ const childBindingFactory = (
         const [firstNode] = value;
         if (firstNode) {
           validateNotFragment(firstNode);
-          
+
           const fragment = document.createDocumentFragment();
           fragment.appendChild(firstNode);
           lastNodeRef = new WeakRef(firstNode);
@@ -284,6 +284,22 @@ const setClassName = (elem: HTMLElement, value: ClassName) => {
   }
 };
 
+const setDataAttributeFactory = (dataName: string) => (elem: HTMLElement, value: any) => {
+  if (value == null) {
+    delete elem.dataset[dataName];
+  } else {
+    elem.dataset[dataName] = String(value);
+  }
+};
+
+const setAttributeFactory = (attributeName: string) => (elem: HTMLElement, value: any) => {
+  if (value != null) {
+    elem.setAttribute(attributeName, valToString(value));
+  } else {
+    elem.removeAttribute(attributeName);
+  }
+};
+
 const attributeBindingFactory = (attributeName: string) => {
   if (attributeName === "class") {
     return setClassName;
@@ -292,24 +308,11 @@ const attributeBindingFactory = (attributeName: string) => {
   if (attributeName.includes("data-")) {
     // data attributes can be set using the `dataset` Element property
     const dataName = attributeName.substring(5);
-    return (elem: HTMLElement, value: any) => {
-      if (value == null) {
-        delete elem.dataset[dataName];
-      } else {
-        elem.dataset[dataName] = String(value);
-      }
-    };
+    return setDataAttributeFactory(dataName);
   }
 
   if (attributeName.includes("-")) {
-    // custom attribute should always be set using the setAttribute method
-    return (elem: HTMLElement, value: any) => {
-      if (value != null) {
-        elem.setAttribute(attributeName, valToString(value));
-      } else {
-        elem.removeAttribute(attributeName);
-      }
-    };
+    return setAttributeFactory(attributeName);
   }
 
   return (elem: HTMLElement, value: any) => {
@@ -342,6 +345,8 @@ const attributeBindingFactory = (attributeName: string) => {
 
     if (attributeName in elem) {
       (elem as any)[attributeName] = value;
+    } else {
+      setAttributeFactory(attributeName)(elem, value);
     }
   };
 };
