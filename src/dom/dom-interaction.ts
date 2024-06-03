@@ -13,35 +13,7 @@ for (const [key, value] of Object.entries(htmlElementAttributes)) {
 export class DomInteraction
   implements InteractionInterface<Element, Text, DocumentFragment, Event>
 {
-  private UnsafeHtmlParser = class {
-    private static prepareHtml;
-
-    static {
-      const prepareHtmlFactory = typeof window.trustedTypes !== "undefined"
-        ? () => {
-          const unsafePolicy = window.trustedTypes.createPolicy("unsafe", {
-            createHTML: (html: string) => html,
-          });
-          return (html: string) => {
-            return unsafePolicy.createHTML(html);
-          };
-        }
-        : () => (html: string) => {
-          return html;
-        };
-
-      this.prepareHtml = prepareHtmlFactory();
-    }
-
-    public static parseHtml(
-      unsafehtml: string,
-    ): Iterable<Element> {
-      const html = this.prepareHtml(unsafehtml);
-      const tmp = document.createElement("div");
-      tmp.innerHTML = html;
-      return tmp.childNodes as Iterable<Element>;
-    }
-  };
+  private static domparser = new DOMParser();
 
   private toStr(value: Primitive): string {
     return value == null ? "" : String(value);
@@ -159,13 +131,21 @@ export class DomInteraction
     element.removeEventListener(event, listener);
   }
 
-  parseUnsafe(content: string): Iterable<Element> {
-    return this.UnsafeHtmlParser.parseHtml(content);
+  parseUnsafe(unsafehtml: string): Iterable<Element> {
+    const tmp = DomInteraction.domparser.parseFromString(
+      unsafehtml,
+      "text/html",
+    );
+    return tmp.body.children as Iterable<Element>;
   }
 
   isFragment(
     element: Element | DocumentFragment | Text,
   ): element is DocumentFragment {
     return element instanceof DocumentFragment;
+  }
+
+  isText(element: Element | Text | DocumentFragment): element is Text {
+    return element instanceof Text;
   }
 }

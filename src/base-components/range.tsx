@@ -1,4 +1,4 @@
-import { jsx } from "../create-element";
+import { jsx } from "../reconciler/reconciler";
 import { sigProxy } from "../signals/proxy";
 
 export type RangeProps<T> = {

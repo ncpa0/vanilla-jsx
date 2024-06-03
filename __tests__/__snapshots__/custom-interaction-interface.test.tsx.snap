@@ -1,0 +1,73 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`correctly works with a custom InteractionInterface > should render a more complex element structure 1`] = `
+CustomElement {
+  "attributes": [
+    [
+      "id",
+      "root",
+    ],
+    [
+      "draggable",
+      "true",
+    ],
+  ],
+  "children": [
+    CustomElement {
+      "attributes": [],
+      "children": [
+        CustomTextNode {
+          "content": "Hello",
+          "parent": [Circular],
+        },
+      ],
+      "classNames": Set {
+        "header",
+        "text",
+      },
+      "dataset": {},
+      "listeners": [],
+      "parent": [Circular],
+      "tagName": "p",
+    },
+    CustomFragment {
+      "children": [
+        CustomElement {
+          "attributes": [],
+          "children": [
+            CustomTextNode {
+              "content": "World",
+              "parent": [Circular],
+            },
+          ],
+          "classNames": Set {},
+          "dataset": {
+            "foo": "1",
+          },
+          "listeners": [],
+          "parent": [Circular],
+          "tagName": "span",
+        },
+      ],
+      "parent": [Circular],
+    },
+  ],
+  "classNames": Set {},
+  "dataset": {},
+  "listeners": [],
+  "parent": undefined,
+  "tagName": "div",
+}
+`;
+
+exports[`correctly works with a custom InteractionInterface > should render a simple element 1`] = `
+CustomElement {
+  "attributes": [],
+  "children": [],
+  "classNames": Set {},
+  "dataset": {},
+  "listeners": [],
+  "parent": undefined,
+  "tagName": "div",
+}
+`;

@@ -1,10 +1,10 @@
 export type Primitive = string | number | bigint | boolean | null | undefined;
 
 export interface InteractionInterface<
-  Element,
-  TextElement,
-  FragmentElement,
-  Ev,
+  Element extends object,
+  TextElement extends object,
+  FragmentElement extends object,
+  Ev extends object,
 > {
   create(tag: string): Element;
   createText(content: Primitive): TextElement;
@@ -45,4 +45,7 @@ export interface InteractionInterface<
   isFragment(
     element: Element | TextElement | FragmentElement,
   ): element is FragmentElement;
+  isText(
+    element: Element | TextElement | FragmentElement,
+  ): element is TextElement;
 }

@@ -1,4 +1,4 @@
-import { createElement } from "./create-element";
+import { createElement } from "./reconciler/reconciler";
 import { sigProxy } from "./signals/proxy";
 
 declare global {

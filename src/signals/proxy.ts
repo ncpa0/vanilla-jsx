@@ -7,14 +7,14 @@ export type SignalProxyListenerRef = {
 
 export interface SignalProxy<T> {
   add(cb: (value: T) => void): { detach(): void };
-  bindTo<E extends Element | Text>(
+  bindTo<E extends object>(
     elem: E,
     cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
   ): void;
 }
 
 const bindFactory = <T>(signal: JSX.Signal<T>, add: SignalProxy<T>["add"]) => {
-  const addSelfDetachingListener = <E extends Element | Text>(
+  const addSelfDetachingListener = <E extends object>(
     elementRef: WeakRef<E>,
     cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
   ) => {
