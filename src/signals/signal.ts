@@ -106,7 +106,9 @@ export type MaybeSignal<T> = T | Signal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `ReadonlySignal<T>` already.
  */
-export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U> ? ReadonlySignal<U> : ReadonlySignal<T>;
+export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U>
+  ? ReadonlySignal<U>
+  : ReadonlySignal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `Signal<T>` already.
  */
@@ -120,7 +122,9 @@ type DestroyedParentSigSubstitute = {
   removeDerivedChild(s: VSignal<any>): void;
 };
 
-function isDispatchFunc<T>(value: T | DispatchFunc<T>): value is DispatchFunc<T> {
+function isDispatchFunc<T>(
+  value: T | DispatchFunc<T>,
+): value is DispatchFunc<T> {
   return typeof value === "function";
 }
 
@@ -492,7 +496,10 @@ class VSignal<T> implements Signal<T> {
     return isObserved;
   }
 
-  private dispatchBatched(value: T | DispatchFunc<T>, batchQueue: BatchQueue): void {
+  private dispatchBatched(
+    value: T | DispatchFunc<T>,
+    batchQueue: BatchQueue,
+  ): void {
     const prevValue = this.value;
     let newValue: T;
     if (isDispatchFunc(value)) {
@@ -630,11 +637,15 @@ class VSignal<T> implements Signal<T> {
   }
 
   private add_destroyed(_: SignalListener<T>): never {
-    throw new Error("VSignal.add(): cannot add listeners to a destroyed signal");
+    throw new Error(
+      "VSignal.add(): cannot add listeners to a destroyed signal",
+    );
   }
 
   private dispatch_destroyed(_: T | DispatchFunc<T>): never {
-    throw new Error("VSignal.dispatch(): cannot dispatch on a destroyed signal");
+    throw new Error(
+      "VSignal.dispatch(): cannot dispatch on a destroyed signal",
+    );
   }
 
   private derive_destroyed(_: (current: any) => any): never {
@@ -647,7 +658,9 @@ class VSignal<T> implements Signal<T> {
  */
 class VReadonlySignal<T> extends VSignal<T> {
   public dispatch(_: T | DispatchFunc<T>): void {
-    throw new Error("VSignal.dispatch(): cannot dispatch on a read-only signal");
+    throw new Error(
+      "VSignal.dispatch(): cannot dispatch on a read-only signal",
+    );
   }
 
   public readonly(): ReadonlySignal<T> {

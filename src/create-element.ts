@@ -1,4 +1,5 @@
 import { htmlElementAttributes } from "html-element-attributes";
+import { DomInteraction } from "./dom/dom-interaction";
 import { ClassName } from "./jsx-namespace/jsx.types";
 import { SignalProxy, SignalProxyListenerRef, sigProxy } from "./signals/proxy";
 
@@ -7,13 +8,19 @@ type MaybeArray<T> = T | T[];
 const ElementAttributes = new Map<string, string[]>();
 
 for (const [key, value] of Object.entries(htmlElementAttributes)) {
-  ElementAttributes.set(key.toUpperCase(), value.concat(htmlElementAttributes["*"]!));
+  ElementAttributes.set(
+    key.toUpperCase(),
+    value.concat(htmlElementAttributes["*"]!),
+  );
 }
 
 declare global {
   interface Window {
     trustedTypes: {
-      createPolicy: (name: string, policy: { createHTML: (html: string) => string }) => {
+      createPolicy: (
+        name: string,
+        policy: { createHTML: (html: string) => string },
+      ) => {
         createHTML: (html: string) => string;
       };
     };
@@ -30,11 +37,14 @@ type CreateElementProps = {
 
 type ChildNode = Element | DocumentFragment | Text | JSX.Signal<Text | Element>;
 
+const dom = new DomInteraction();
+
 function asArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-const isArray = <T, O>(maybeArray: T[] | O): maybeArray is T[] => Array.isArray(maybeArray);
+const isArray = <T, O>(maybeArray: T[] | O): maybeArray is T[] =>
+  Array.isArray(maybeArray);
 
 function isSignal(o: object): o is JSX.Signal {
   return (
@@ -42,20 +52,16 @@ function isSignal(o: object): o is JSX.Signal {
   );
 }
 
-function valToString(value: JSX.SignalValue): string {
-  return value == null ? "" : String(value);
-}
-
 const getInitialChild = (appendTo: Element) => {
-  const initialChild = document.createTextNode("");
-  appendTo.appendChild(initialChild);
+  const initialChild = dom.createText("");
+  dom.append(appendTo, initialChild);
   return new WeakRef(initialChild);
 };
 
 function validateNotFragment(value: any) {
-  if (value instanceof DocumentFragment) {
+  if (dom.isFragment(value)) {
     throw new Error(
-      "DocumentFragment cannot be placed into an element via signals since Fragments are not replaceable.",
+      "Fragment cannot be placed into an element via signals since Fragments are not replaceable.",
     );
   }
 }
@@ -64,7 +70,11 @@ const childBindingFactory = (
   lastNodeRef: WeakRef<Text | Element>,
   rest: WeakRef<Text | Element>[] = [],
 ) => {
-  return (_: unknown, value: MaybeArray<Text | Element | undefined>, sigRef?: SignalProxyListenerRef) => {
+  return (
+    _: unknown,
+    value: MaybeArray<Text | Element | undefined>,
+    sigRef?: SignalProxyListenerRef,
+  ) => {
     const lastNode = lastNodeRef?.deref();
     if (!lastNode) {
       return sigRef?.detach();
@@ -74,7 +84,7 @@ const childBindingFactory = (
       for (const ref of rest) {
         const node = ref.deref();
         if (node) {
-          node.remove();
+          dom.remove(node);
         }
       }
       rest.splice(0, rest.length);
@@ -82,10 +92,10 @@ const childBindingFactory = (
 
     if (typeof value === "string") {
       if (lastNode instanceof Text) {
-        lastNode.textContent = valToString(value);
+        dom.setText(lastNode, value);
       } else {
-        const node = document.createTextNode(valToString(value));
-        lastNode.replaceWith(node);
+        const node = dom.createText(value);
+        dom.replace(lastNode, node);
         lastNodeRef = new WeakRef(node);
       }
     } else if (value) {
@@ -94,8 +104,8 @@ const childBindingFactory = (
         if (firstNode) {
           validateNotFragment(firstNode);
 
-          const fragment = document.createDocumentFragment();
-          fragment.appendChild(firstNode);
+          const fragment = dom.createFragment();
+          dom.append(fragment, firstNode);
           lastNodeRef = new WeakRef(firstNode);
 
           for (let i = 1; i < value.length; i++) {
@@ -103,50 +113,28 @@ const childBindingFactory = (
             validateNotFragment(node);
 
             if (node) {
-              fragment.appendChild(node);
+              dom.append(fragment, node);
               rest.push(new WeakRef(node));
             }
           }
 
-          lastNode.replaceWith(fragment);
+          dom.replace(lastNode, fragment);
         } else {
-          const emptyNode = document.createTextNode("");
-          lastNode.replaceWith(emptyNode);
+          const emptyNode = dom.createText("");
+          dom.replace(lastNode, emptyNode);
           lastNodeRef = new WeakRef(emptyNode);
         }
       } else {
         validateNotFragment(value);
-        lastNode.replaceWith(value);
+        dom.replace(lastNode, value);
         lastNodeRef = new WeakRef(value);
       }
     } else {
-      const emptyNode = document.createTextNode("");
-      lastNode.replaceWith(emptyNode);
+      const emptyNode = dom.createText("");
+      dom.replace(lastNode, emptyNode);
       lastNodeRef = new WeakRef(emptyNode);
     }
   };
-};
-
-const prepareHtmlFactory = typeof window.trustedTypes !== "undefined"
-  ? () => {
-    const unsafePolicy = window.trustedTypes.createPolicy("unsafe", {
-      createHTML: (html: string) => html,
-    });
-    return (html: string) => {
-      return unsafePolicy.createHTML(html);
-    };
-  }
-  : () => (html: string) => {
-    return html;
-  };
-
-const prepareHtml = prepareHtmlFactory();
-
-const parseHtml = (unsafehtml: string): Iterable<globalThis.ChildNode> => {
-  const html = prepareHtml(unsafehtml);
-  const tmp = document.createElement("div");
-  tmp.innerHTML = html;
-  return tmp.childNodes;
 };
 
 const mapChildren = (
@@ -160,17 +148,17 @@ const mapChildren = (
     switch (typeof child) {
       case "string":
         if (unsafe) {
-          const nodes = parseHtml(child);
+          const nodes = dom.parseUnsafe(child);
           for (const node of nodes) {
             accumulator.push(node as ChildNode);
           }
         } else {
-          accumulator.push(document.createTextNode(child));
+          accumulator.push(dom.createText(child));
         }
         break;
       case "number":
       case "bigint":
-        accumulator.push(document.createTextNode(valToString(child)));
+        accumulator.push(dom.createText(child));
       case "boolean":
       case "undefined":
         break;
@@ -190,31 +178,31 @@ const mapChildren = (
 
 const eventBindingFactory = (eventName: string) => {
   let prevListener: (e: Event) => void;
-  return (elem: HTMLElement, value: any) => {
+  return (elem: HTMLElement, fn: (ev: Event) => void) => {
     if (prevListener) {
-      elem.removeEventListener(eventName, prevListener);
+      dom.off(elem, eventName, prevListener);
     }
-    if (value == null) {
+    if (fn == null) {
       return;
     }
-    elem.addEventListener(eventName, value as any);
-    prevListener = value as any;
+    dom.on(elem, eventName, fn);
+    prevListener = fn;
   };
 };
 
 const setSimpleClassNameFactory = () => {
   let lastNames: string[] = [];
   return (elem: HTMLElement, cname: string | number | boolean) => {
-    elem.classList.remove(...lastNames);
+    dom.removeClassName(elem, ...lastNames);
     switch (typeof cname) {
       case "string":
         const names = cname.split(" ").filter(Boolean);
-        elem.classList.add(...names);
+        dom.addClassName(elem, ...names);
         lastNames = names;
         break;
       case "number":
         const name = String(cname);
-        elem.classList.add(name);
+        dom.addClassName(elem, name);
         lastNames = [name];
         break;
       default:
@@ -227,9 +215,9 @@ const setClassNameConditionallyFactory = (cname: string) => {
   const names = cname.split(" ").filter(Boolean);
   return (elem: HTMLElement, condition: any) => {
     if (!!condition) {
-      elem.classList.add(...names);
+      dom.addClassName(elem, ...names);
     } else {
-      elem.classList.remove(...names);
+      dom.removeClassName(elem, ...names);
     }
   };
 };
@@ -237,23 +225,23 @@ const setClassNameConditionallyFactory = (cname: string) => {
 const setClassName = (elem: HTMLElement, value: ClassName) => {
   switch (typeof value) {
     case "string":
-      elem.className = value;
+      dom.setClass(elem, value);
       return;
     case "number":
-      elem.className = String(value);
+      dom.setClass(elem, String(value));
       return;
     case "object":
       if (isArray(value)) {
-        elem.className = "";
+        dom.setClass(elem, "");
         for (let i = 0; i < value.length; i++) {
           const cname = value[i];
           switch (typeof cname) {
             case "string":
               const names = cname.split(" ").filter(Boolean);
-              elem.classList.add(...names);
+              dom.addClassName(elem, ...names);
               break;
             case "number":
-              elem.classList.add(String(cname));
+              dom.addClassName(elem, String(cname));
               break;
             case "object":
               if (cname != null) {
@@ -271,7 +259,7 @@ const setClassName = (elem: HTMLElement, value: ClassName) => {
         return;
       }
       const entries = Object.entries(value);
-      elem.className = "";
+      dom.setClass(elem, "");
       for (const [cname, condition] of entries) {
         const setCname = setClassNameConditionallyFactory(cname);
         if (typeof condition === "object" && isSignal(condition)) {
@@ -284,21 +272,15 @@ const setClassName = (elem: HTMLElement, value: ClassName) => {
   }
 };
 
-const setDataAttributeFactory = (dataName: string) => (elem: HTMLElement, value: any) => {
-  if (value == null) {
-    delete elem.dataset[dataName];
-  } else {
-    elem.dataset[dataName] = String(value);
-  }
-};
+const setDataAttributeFactory =
+  (dataName: string) => (elem: HTMLElement, value: any) => {
+    dom.setData(elem, dataName, value);
+  };
 
-const setAttributeFactory = (attributeName: string) => (elem: HTMLElement, value: any) => {
-  if (value != null) {
-    elem.setAttribute(attributeName, valToString(value));
-  } else {
-    elem.removeAttribute(attributeName);
-  }
-};
+const setAttributeFactory =
+  (attributeName: string) => (elem: HTMLElement, value: any) => {
+    dom.setAttribute(elem, attributeName, value);
+  };
 
 const attributeBindingFactory = (attributeName: string) => {
   if (attributeName === "class") {
@@ -316,38 +298,7 @@ const attributeBindingFactory = (attributeName: string) => {
   }
 
   return (elem: HTMLElement, value: any) => {
-    const possibleAttributeNames = ElementAttributes.get(elem.tagName) ?? [];
-    const isAttributeName = possibleAttributeNames.includes(attributeName);
-    // prioritize setting the attribute if the value is of type string | number | boolean
-    if (isAttributeName) {
-      switch (typeof value) {
-        case "string":
-          elem.setAttribute(attributeName, value);
-          return;
-        case "number":
-          elem.setAttribute(attributeName, valToString(value));
-          return;
-        case "boolean":
-          if (value) {
-            elem.setAttribute(attributeName, attributeName);
-          } else {
-            elem.removeAttribute(attributeName);
-          }
-          return;
-        case "undefined":
-          elem.removeAttribute(attributeName);
-          return;
-      }
-      if (value == null) {
-        elem.removeAttribute(attributeName);
-      }
-    }
-
-    if (attributeName in elem) {
-      (elem as any)[attributeName] = value;
-    } else {
-      setAttributeFactory(attributeName)(elem, value);
-    }
+    dom.setAttribute(elem, attributeName, value);
   };
 };
 
@@ -364,24 +315,28 @@ export function createElement(
     return tag(forwardedProps);
   }
 
-  children = children.length > 0 ? children : props ? asArray(props?.children) : [];
+  children = children.length > 0
+    ? children
+    : props
+    ? asArray(props?.children)
+    : [];
 
   const childNodes: Array<ChildNode> = [];
 
   mapChildren(children, childNodes, props?.unsafeHTML);
 
   if (tag === "") {
-    const fragment = document.createDocumentFragment();
+    const fragment = dom.createFragment();
     for (const child of childNodes) {
       if (isSignal(child)) {
         throw new Error("Signals cannot be used as children of fragments.");
       }
-      fragment.appendChild(child);
+      dom.append(fragment, child);
     }
     return fragment as any;
   }
 
-  const element = document.createElement(tag);
+  const element = dom.create(tag);
 
   if (props) {
     for (const [propName, propValue] of Object.entries(props)) {
@@ -419,7 +374,7 @@ export function createElement(
       let initialNodeRef: WeakRef<Text | Element> = getInitialChild(element);
       sig.bindTo(element, childBindingFactory(initialNodeRef));
     } else {
-      element.appendChild(child);
+      dom.append(element, child);
     }
   }
 

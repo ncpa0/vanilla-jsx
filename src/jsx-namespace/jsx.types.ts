@@ -85,7 +85,13 @@ declare global {
       | SignalWithDetach<V>
       | SignalWithDetachRef<V>;
 
-    type VanillaValue = Signal<any> | null | undefined | boolean | string | number;
+    type VanillaValue =
+      | Signal<any>
+      | null
+      | undefined
+      | boolean
+      | string
+      | number;
 
     type Element = globalThis.Element;
 
@@ -252,7 +258,9 @@ declare global {
     interface BodyTagProps extends PropsForElement<HTMLBodyElement> {}
     interface BrTagProps extends PropsForElement<HTMLBRElement> {}
     interface BTagProps extends PropsForElement<HTMLElement> {}
-    interface CaptionTagProps extends PropsForElement<HTMLTableCaptionElement> {}
+    interface CaptionTagProps
+      extends PropsForElement<HTMLTableCaptionElement>
+    {}
     interface CiteTagProps extends PropsForElement<HTMLElement> {}
     interface CodeTagProps extends PropsForElement<HTMLElement> {}
     interface DatalistTagProps extends PropsForElement<HTMLDataListElement> {}
