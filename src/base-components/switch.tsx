@@ -77,15 +77,6 @@ export type CaseProps<T = unknown> =
      *  A function that will return element to be rendered when the case is matched.
      */
     children: CaseRenderFn<T>;
-    /**
-     * Don't add the default class name to the parent element.
-     * (`vjsx-switch-case`)
-     */
-    noclass?: boolean;
-    /**
-     * Parent element to use, if not provided a empty div will be created and used.
-     */
-    into?: Element;
   }
   & ({
     /**
@@ -97,11 +88,8 @@ export type CaseProps<T = unknown> =
   });
 
 export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
-  const parent = props.into || <div />;
-  if (!props.noclass) {
-    parent.classList.add("vjsx-switch-case");
-  }
-  Object.defineProperty(parent, "__vjsx_case_data", {
+  const tmp = <div />;
+  Object.defineProperty(tmp, "__vjsx_case_data", {
     value: {
       ...props,
       children: Array.isArray(props.children)
@@ -109,7 +97,7 @@ export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
         : props.children,
     },
   });
-  return parent;
+  return tmp;
 };
 
 /**
