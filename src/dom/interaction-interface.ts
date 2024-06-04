@@ -19,11 +19,21 @@ export interface InteractionInterface<
     parent: Element | FragmentElement,
     child: Element | TextElement | FragmentElement,
   ): void;
+  insertBefore(
+    parent: Element | FragmentElement,
+    child: Element | TextElement | FragmentElement,
+    before: Element | TextElement | FragmentElement,
+  ): void;
   replace(
     oldChild: Element | TextElement,
     newChild: Element | TextElement | FragmentElement,
   ): void;
+  replaceAllChildren(
+    parent: Element | FragmentElement,
+    ...children: Array<Element | TextElement | FragmentElement>
+  ): void;
   remove(child: Element | TextElement): void;
+  hide(element: Element): void;
   on(
     element: Element,
     event: string,

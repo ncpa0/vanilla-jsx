@@ -1,10 +1,10 @@
-import { jsx } from "../reconciler/reconciler";
+import { GetElement, Reconciler, jsx } from "../reconciler/reconciler";
 import { sigProxy } from "../signals/proxy";
 
 export type RangeProps<T> = {
   data: JSX.Signal<T[]>;
   /** Parent element to use, if not provided a empty div will be created and used. */
-  into?: Element;
+  into?: GetElement;
   /**
    * Don't add the default class name to the parent element. 
    * (`vjsx-map-container`)
@@ -13,11 +13,11 @@ export type RangeProps<T> = {
   /**
    *  A function that will return the HTML element for each value in the data list provided.
    */
-  children: (value: T) => Element;
+  children: (value: T) => GetElement;
 };
 
 class RenderMemory<T> {
-  elements: Array<[value: T, element: Element]> = [];
+  elements: Array<[value: T, element: GetElement]> = [];
 
   findIndexForValue(value: T): number {
     for (let i = 0; i < this.elements.length; i++) {
@@ -55,7 +55,7 @@ const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
     for (let i = 0; i < memo.elements.length; i++) {
       const [value, element] = memo.elements[i]!;
       if (list.indexOf(value) === -1) {
-        element.remove();
+        Reconciler.interactions().remove(element)
         memo.elements.splice(i, 1);
         i--;
       }
@@ -75,9 +75,9 @@ const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
         const [, element] = memo.elements[prevIdx]!;
         const beforeElem = memo.elements[i];
         if (beforeElem) {
-          container.insertBefore(element, beforeElem[1]);
+          Reconciler.interactions().insertBefore(container, element, beforeElem[1]);
         } else {
-          container.appendChild(element);
+          Reconciler.interactions().append(container, element);
         }
         memo.moveBefore(prevIdx, i);
         continue;
@@ -88,9 +88,9 @@ const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
       const element = render(value);
       const beforeElem = memo.elements[i];
       if (beforeElem) {
-        container.insertBefore(element, beforeElem[1]);
+        Reconciler.interactions().insertBefore(container, element, beforeElem[1]);
       } else {
-        container.append(element);
+        Reconciler.interactions().append(container, element);
       }
       memo.add(i, value, element);
     }
@@ -114,7 +114,7 @@ export function Range<T>(props: RangeProps<T>) {
   const signal = sigProxy(props.data);
 
   if (!props.noclass) {
-    parent.classList.add("vjsx-range-container");
+    Reconciler.interactions().addClassName(parent, "vjsx-range-container");
   }
 
   signal.bindTo(parent, mapBindingFactory(memo, props));

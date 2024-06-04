@@ -10,16 +10,17 @@ declare global {
   }
 }
 
-type GetElement = VanillaJSX.Types extends { Element: infer T extends object }
-  ? T
+export type GetElement = VanillaJSX.Types extends
+  { Element: infer T extends object } ? T
   : Element;
-type GetTextElement = VanillaJSX.Types extends
+export type GetTextElement = VanillaJSX.Types extends
   { TextElement: infer T extends object } ? T
   : Text;
-type GetFragmentElement = VanillaJSX.Types extends
+export type GetFragmentElement = VanillaJSX.Types extends
   { FragmentElement: infer T extends object } ? T
   : DocumentFragment;
-type GetEvent = VanillaJSX.Types extends { Ev: infer T extends object } ? T
+export type GetEvent = VanillaJSX.Types extends { Ev: infer T extends object }
+  ? T
   : Event;
 
 type FunctionComponent = (props: object) => JSX.Element;
@@ -36,7 +37,7 @@ type ChildElement =
   | GetFragmentElement
   | JSX.Signal;
 
-class Reconciler {
+export class Reconciler {
   private static instance?: Reconciler;
 
   public static setInteractionInterface(
@@ -55,6 +56,15 @@ class Reconciler {
       Reconciler.instance = new Reconciler(new DomInteraction());
     }
     return Reconciler.instance;
+  }
+
+  public static interactions(): InteractionInterface<
+    GetElement,
+    GetTextElement,
+    GetFragmentElement,
+    GetEvent
+  > {
+    return Reconciler.getInstance().dom;
   }
 
   private factories;

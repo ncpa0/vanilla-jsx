@@ -1,10 +1,11 @@
+import { GetElement, jsx, Reconciler } from "../reconciler/reconciler";
 import { sigProxy } from "../signals/proxy";
 
 export type IfProps = {
   /** Parent element to use, if not provided a empty div will be created and used. */
-  into?: Element;
+  into?: GetElement;
   /**
-   * Don't add the default class name to the parent element. 
+   * Don't add the default class name to the parent element.
    * (`vjsx-if-container`)
    */
   noclass?: boolean;
@@ -35,23 +36,29 @@ export type IfProps = {
  * />
  */
 export function If(props: IfProps) {
-  const parent = props.into ?? document.createElement("div");
+  const parent = props.into ?? <div />;
 
   if (!props.noclass) {
-    parent.classList.add("vjsx-if-container");
+    Reconciler.interactions().addClassName(parent, "vjsx-if-container");
   }
 
   const sig = sigProxy(props.condition);
 
   const onConditionMet = (parent?: JSX.Element) => {
-    parent?.replaceChildren(props.then());
+    Reconciler.interactions().replaceAllChildren(
+      parent as HTMLElement,
+      props.then(),
+    );
   };
 
   const onConditionNotMet = (parent?: JSX.Element) => {
     if (props.else) {
-      parent?.replaceChildren(props.else());
+      Reconciler.interactions().replaceAllChildren(
+        parent as HTMLElement,
+        props.else(),
+      );
     } else {
-      parent?.replaceChildren();
+      Reconciler.interactions().replaceAllChildren(parent as HTMLElement);
     }
   };
 

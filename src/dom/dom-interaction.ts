@@ -38,6 +38,14 @@ export class DomInteraction
     parent.appendChild(child);
   }
 
+  insertBefore(
+    parent: Element | DocumentFragment,
+    child: Element | DocumentFragment | Text,
+    before: Element | DocumentFragment | Text,
+  ): void {
+    parent.insertBefore(child, before);
+  }
+
   replace(
     oldChild: Element | Text,
     newChild: Element | DocumentFragment | Text,
@@ -45,10 +53,21 @@ export class DomInteraction
     oldChild.replaceWith(newChild);
   }
 
+  replaceAllChildren(
+    parent: Element | DocumentFragment,
+    ...children: (Element | DocumentFragment | Text)[]
+  ): void {
+    parent.replaceChildren(...children);
+  }
+
   remove(
     child: Element | Text,
   ): void {
     child.remove();
+  }
+
+  hide(element: Element): void {
+    (element as HTMLElement).style.display = "none";
   }
 
   setAttribute(

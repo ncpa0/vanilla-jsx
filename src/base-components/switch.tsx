@@ -1,4 +1,4 @@
-import { jsx } from "../reconciler/reconciler";
+import { GetElement, jsx, Reconciler } from "../reconciler/reconciler";
 import { sigProxy } from "../signals/proxy";
 
 export type SwitchProps<T> = {
@@ -8,9 +8,9 @@ export type SwitchProps<T> = {
    */
   children: JSX.Element[];
   /** Parent element to use, if not provided a empty div will be created and used. */
-  into?: Element;
+  into?: GetElement;
   /**
-   * Don't add the default class name to the parent element. 
+   * Don't add the default class name to the parent element.
    * (`vjsx-switch-container`)
    */
   noclass?: boolean;
@@ -18,13 +18,15 @@ export type SwitchProps<T> = {
 
 export type CaseRenderFn<T> = (matchedValue: T) => JSX.Element;
 
-function isFunctionMatcher<T>(v: T | ((value: T) => boolean)): v is (value: T) => boolean {
+function isFunctionMatcher<T>(
+  v: T | ((value: T) => boolean),
+): v is (value: T) => boolean {
   return typeof v === "function";
 }
 
 export function createEmptyElem() {
-  const elem = document.createElement("div");
-  elem.style.display = "none";
+  const elem = <div />;
+  Reconciler.interactions().hide(elem);
   return elem;
 }
 
@@ -46,7 +48,10 @@ class CaseBuilder<T> {
     return this;
   }
 
-  static findCase<T>(v: T, builder: CaseBuilder<T>): undefined | (CaseRenderFn<T>) {
+  static findCase<T>(
+    v: T,
+    builder: CaseBuilder<T>,
+  ): undefined | (CaseRenderFn<T>) {
     for (let i = 0; i < builder.cases.length; i++) {
       const [matcher, render] = builder.cases[i]!;
       if (isFunctionMatcher(matcher)) {
@@ -67,7 +72,7 @@ function childBindingFactory<T>(builder: CaseBuilder<T>) {
   return (element: Element, v: T) => {
     const matchingCase = CaseBuilder.findCase(v, builder);
     const newChild = matchingCase ? matchingCase(v) : emptyFragment;
-    element.replaceChildren(newChild);
+    Reconciler.interactions().replaceAllChildren(element, newChild);
   };
 }
 
@@ -87,15 +92,15 @@ export type CaseProps<T = unknown> =
     default: true;
   });
 
+const CaseData = new WeakMap<object, CaseProps<any>>();
+
 export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
   const tmp = <div />;
-  Object.defineProperty(tmp, "__vjsx_case_data", {
-    value: {
-      ...props,
-      children: Array.isArray(props.children)
-        ? props.children[0]!
-        : props.children,
-    },
+  CaseData.set(tmp, {
+    ...props,
+    children: Array.isArray(props.children)
+      ? props.children[0]!
+      : props.children,
   });
   return tmp;
 };
@@ -123,17 +128,16 @@ export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
 export const Switch = <T,>(props: SwitchProps<T>): JSX.Element => {
   const parent = props.into || <div />;
   if (!props.noclass) {
-    parent.classList.add("vjsx-switch-container");
+    Reconciler.interactions().addClassName(parent, "vjsx-switch-container");
   }
 
   const builder = new CaseBuilder<T>();
 
   for (let i = 0; i < props.children.length; i++) {
-    const child = props.children[i]! as { __vjsx_case_data?: CaseProps<T> };
+    const child = props.children[i]!;
+    const caseData = CaseData.get(child);
 
-    if ("__vjsx_case_data" in child) {
-      const caseData = child.__vjsx_case_data!;
-
+    if (caseData) {
       if ("default" in caseData) {
         builder.default(caseData.children);
       } else {
