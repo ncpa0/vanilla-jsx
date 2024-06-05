@@ -1,5 +1,5 @@
 import { GetElement, jsx, Reconciler } from "../reconciler/reconciler";
-import { sigProxy } from "../signals/proxy";
+import { sigProxy } from "../sig-proxy/_proxy";
 
 export type IfProps = {
   /** Parent element to use, if not provided a empty div will be created and used. */

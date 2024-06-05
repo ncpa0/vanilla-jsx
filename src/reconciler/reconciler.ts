@@ -1,8 +1,8 @@
 import { DomInteraction } from "../dom/dom-interaction";
 import { InteractionInterface } from "../dom/interaction-interface";
-import { SignalProxy, sigProxy } from "../signals/proxy";
+import { SignalProxy, SignalsReg, sigProxy } from "../sig-proxy/_proxy";
 import { BindingFactories } from "./factories";
-import { asArray, isSignal } from "./utils";
+import { asArray } from "./utils";
 
 declare global {
   namespace VanillaJSX {
@@ -150,7 +150,7 @@ export class Reconciler {
     if (tag === "") {
       const fragment = this.dom.createFragment();
       for (const child of childNodes) {
-        if (isSignal(child)) {
+        if (SignalsReg.isSignal(child)) {
           throw new Error("Signals cannot be used as children of fragments.");
         }
         this.dom.append(fragment, child);
@@ -169,7 +169,7 @@ export class Reconciler {
         if (
           typeof propValue === "object"
           && propValue !== null
-          && isSignal(propValue)
+          && SignalsReg.isSignal(propValue)
         ) {
           const sig = sigProxy(propValue);
 
@@ -194,7 +194,7 @@ export class Reconciler {
     }
 
     for (const child of childNodes) {
-      if (isSignal(child)) {
+      if (SignalsReg.isSignal(child)) {
         const sig = sigProxy(child) as SignalProxy<Element | Text | undefined>;
         let initialNodeRef = this.appendEmptyTextRef(element);
         sig.bindTo(element, this.factories.createChildBinding(initialNodeRef));

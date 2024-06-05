@@ -62,28 +62,21 @@ export type ClassName =
   | JSX.Signal<Array<string | number | null | undefined | boolean>>
   | JSX.Signal<Record<string, any>>;
 
+type Values<Obj> = Obj[keyof Obj];
+
 declare global {
   namespace JSX {
     type SignalValue = null | undefined | boolean | string | number;
 
-    interface SignalWithRemove<V> {
-      add(listener: (value: V) => void): void;
-      remove(listener: (value: V) => void): void;
-    }
-
-    interface SignalWithDetach<V> {
-      add(listener: (value: V) => void): void;
-      detach(listener: (value: V) => void): void;
-    }
-
-    interface SignalWithDetachRef<V> {
+    interface VJSXSignal<V> {
       add(listener: (value: V) => void): { detach(): void };
     }
 
-    type Signal<V = any> =
-      | SignalWithRemove<V>
-      | SignalWithDetach<V>
-      | SignalWithDetachRef<V>;
+    interface SupportedSignals<V> {
+      default: VJSXSignal<V>;
+    }
+
+    type Signal<V = any> = Values<SupportedSignals<V>>;
 
     type VanillaValue =
       | Signal<any>

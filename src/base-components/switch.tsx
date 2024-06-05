@@ -1,5 +1,5 @@
 import { GetElement, jsx, Reconciler } from "../reconciler/reconciler";
-import { sigProxy } from "../signals/proxy";
+import { sigProxy } from "../sig-proxy/_proxy";
 
 export type SwitchProps<T> = {
   value: JSX.Signal<T>;

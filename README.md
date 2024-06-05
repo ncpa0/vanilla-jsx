@@ -48,29 +48,53 @@ esbuild
 
 On top of the basic syntax sugar it is also possible to easily bind signals to element attributes, children and listeners.
 
-VanillaJSX does not enforce any specific signal implementation, but it does provide one if you wish to use it. For a given signal to be able to be used it only needs to adhere to one of the following interfaces:
+VanillaJSX does not enforce any specific signal implementation, but it does provide one if you wish to use it. For a given signal to be able to be used it needs to be registered with the `SignalsReg`:
 
 ```typescript
-interface SignalWithRemove<V> {
-    add(listener: (value: V) => void): void;
-    remove(listener: (value: V) => void): void;
+import { SignalsReg } from "@ncpa0cpl/vanilla-jsx";
+import { MySignal } from "./my-signal";
+
+class MySignalInterop {
+    is(maybeSignal: unknown): maybeSignal is MySignal<unknown> {
+        return maybeSignal instanceof MySignal;
+    }
+    add(signal: MySignal<any>, listener: (value: any) => void) {
+        signal.addListener(listener);
+        listener(signal.value);
+        return () => signal.removeListener(listener);
+    }
 }
 
-interface SignalWithDetach<V> {
-    add(listener: (value: V) => void): void;
-    detach(listener: (value: V) => void): void;
-}
+SignalsReg.register(new MySignalInterop());
 
-interface SignalWithDetachRef<V> {
-    add(listener: (value: V) => void): { detach(): void };
+declare global {
+    namespace JSX {
+        interface SupportedSignals<V> {
+            mySignal: MySignal<V>;
+        }
+    }
 }
 ```
 
-It is also assumed that a listener added to a signal will be called once after being added, since signal interfaces don't require for any way to read from the signal, this is necessary to set the initial values.
+#### Provided interops
 
-These interfaces and behavior expectations already align with libraries like [mini-signals](https://www.npmjs.com/package/mini-signals) or [js-signals](https://millermedeiros.github.io/js-signals/), which can be used with VanillaJSX out of the box.
+There's a few interops provided by default that can be imported and registered:
 
-#### Example
+
+```typescript
+import {
+    SignalsReg,
+    JsSignalInterop,
+    MiniSignalInterop,
+    PreactSignalInterop,
+} from "@ncpa0cpl/vanilla-jsx";
+
+SignalsReg.register(new JsSignalInterop());
+SignalsReg.register(new MiniSignalInterop());
+SignalsReg.register(new PreactSignalInterop());
+```
+
+### VanillaJSX Signals usage example
 
 ```tsx
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";

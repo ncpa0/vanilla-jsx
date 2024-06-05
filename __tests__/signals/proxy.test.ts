@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sig } from "../../src/signals";
-import { bindSignal } from "../../src/signals/proxy";
+import { bindSignal } from "../../src/sig-proxy/_proxy";
 import { gc } from "../gc-util";
 
 describe("signal proxy", () => {

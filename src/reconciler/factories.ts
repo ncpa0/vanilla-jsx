@@ -1,8 +1,12 @@
 import { InteractionInterface } from "../dom/interaction-interface";
 import { ClassName } from "../jsx-namespace/jsx.types";
-import { SignalProxyListenerRef, sigProxy } from "../signals/proxy";
+import {
+  SignalProxyListenerRef,
+  SignalsReg,
+  sigProxy,
+} from "../sig-proxy/_proxy";
 import { VanillaJSXReconcilerError } from "./reconciller-error";
-import { isArray, isSignal, MaybeArray } from "./utils";
+import { isArray, MaybeArray } from "./utils";
 
 export class BindingFactories<
   Element extends object,
@@ -60,7 +64,7 @@ export class BindingFactories<
           }
           return;
         }
-        if (isSignal(value)) {
+        if (SignalsReg.isSignal(value)) {
           const signal = sigProxy(value);
           signal.bindTo(elem, this.setClassName.bind(this));
           return;
@@ -69,7 +73,7 @@ export class BindingFactories<
         this.dom.setClass(elem, "");
         for (const [cname, condition] of entries) {
           const setCname = this.createConditionalClassNameBinding(cname);
-          if (typeof condition === "object" && isSignal(condition)) {
+          if (typeof condition === "object" && SignalsReg.isSignal(condition)) {
             const signal = sigProxy(condition);
             signal.bindTo(elem, setCname);
           } else {

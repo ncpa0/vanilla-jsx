@@ -1,5 +1,5 @@
 import { GetElement, Reconciler, jsx } from "../reconciler/reconciler";
-import { sigProxy } from "../signals/proxy";
+import { sigProxy } from "../sig-proxy/_proxy";
 
 export type RangeProps<T> = {
   data: JSX.Signal<T[]>;

@@ -59,6 +59,7 @@
   },
   "devDependencies": {
     "@ncpa0cpl/nodepack": "^2.3.0",
+    "@preact/signals-core": "^1.6.0",
     "dprint": "^0.43.2",
     "esbuild": "^0.19.8",
     "git-hook-tasks": "ncpa0cpl/git-hook-tasks#4fada71",

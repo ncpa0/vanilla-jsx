@@ -1,4 +1,31 @@
-import { registerBoundSignal } from "./utils";
+import { registerBoundSignal } from "../signals/utils";
+import { SignalInteropInterface } from "./_interface";
+import { VanillaJSXSignalInterop } from "./vanilla-jsx-interop";
+
+/**
+ * Registry of signal interop implementations.
+ */
+export class SignalsReg {
+  private static interops: SignalInteropInterface<any>[] = [
+    new VanillaJSXSignalInterop(),
+  ];
+
+  public static register(interop: SignalInteropInterface<any>) {
+    this.interops.unshift(interop);
+  }
+
+  public static find(signal: any): SignalInteropInterface<any> {
+    const result = this.interops.find(interop => interop.is(signal));
+    if (result) {
+      return result;
+    }
+    throw new Error("Unsupported signal implementation");
+  }
+
+  public static isSignal(signal: any): signal is JSX.Signal<any> {
+    return this.interops.some(interop => interop.is(signal));
+  }
+}
 
 export type SignalProxyListenerRef = {
   /** Detaches the listener from the Signal. */
@@ -6,14 +33,16 @@ export type SignalProxyListenerRef = {
 };
 
 export interface SignalProxy<T> {
-  add(cb: (value: T) => void): { detach(): void };
+  add(cb: (value: T) => void): () => void;
   bindTo<E extends object>(
     elem: E,
     cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
   ): void;
 }
 
-const bindFactory = <T>(signal: JSX.Signal<T>, add: SignalProxy<T>["add"]) => {
+export function sigProxy<T>(signal: JSX.Signal<T>): SignalProxy<T> {
+  const s = SignalsReg.find(signal);
+
   const addSelfDetachingListener = <E extends object>(
     elementRef: WeakRef<E>,
     cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
@@ -31,68 +60,19 @@ const bindFactory = <T>(signal: JSX.Signal<T>, add: SignalProxy<T>["add"]) => {
       }
     };
 
-    ref = add(onChange);
+    ref = { detach: s.add(signal, onChange) };
   };
 
-  const bindTo: SignalProxy<T>["bindTo"] = (element, cb) => {
-    registerBoundSignal(element, signal);
-    const elemRef = new WeakRef(element);
-    addSelfDetachingListener(elemRef, cb);
+  return {
+    add(cb) {
+      return s.add(signal, cb);
+    },
+    bindTo(element, cb) {
+      registerBoundSignal(element, signal);
+      const elemRef = new WeakRef(element);
+      addSelfDetachingListener(elemRef, cb);
+    },
   };
-
-  return bindTo;
-};
-
-const hasRemoveFn = <T>(s: JSX.Signal<T>): s is JSX.SignalWithRemove<T> => {
-  return "remove" in s && typeof s["remove"] === "function";
-};
-
-const hasDetachFn = <T>(s: JSX.Signal<T>): s is JSX.SignalWithDetach<T> => {
-  return "detach" in s && typeof s["detach"] === "function";
-};
-
-export function sigProxy<T>(s: JSX.Signal<T>): SignalProxy<T> {
-  const hasRemove = hasRemoveFn(s);
-  const hasDetach = hasDetachFn(s);
-
-  if (!hasRemove && !hasDetach) {
-    const add: SignalProxy<T>["add"] = (cb) => {
-      return s.add(cb);
-    };
-
-    return {
-      add,
-      bindTo: bindFactory(s, add),
-    };
-  } else if (hasDetach) {
-    const add: SignalProxy<T>["add"] = (cb) => {
-      s.add(cb);
-      return {
-        detach() {
-          s.detach(cb);
-        },
-      };
-    };
-
-    return {
-      add,
-      bindTo: bindFactory(s, add),
-    };
-  } else {
-    const add: SignalProxy<T>["add"] = (cb) => {
-      s.add(cb);
-      return {
-        detach() {
-          s.remove(cb);
-        },
-      };
-    };
-
-    return {
-      add,
-      bindTo: bindFactory(s, add),
-    };
-  }
 }
 
 /**

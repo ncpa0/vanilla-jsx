@@ -1,5 +1,5 @@
 import { createElement } from "./reconciler/reconciler";
-import { sigProxy } from "./signals/proxy";
+import { sigProxy } from "./sig-proxy/_proxy";
 
 declare global {
   namespace JSX {

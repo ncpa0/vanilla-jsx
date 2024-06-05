@@ -7,9 +7,3 @@ export function asArray<T>(value: T | T[]): T[] {
 export function isArray<T, O>(maybeArray: T[] | O): maybeArray is T[] {
   return Array.isArray(maybeArray);
 }
-
-export function isSignal(o: object): o is JSX.Signal {
-  return (
-    "add" in o && typeof o["add"] === "function"
-  );
-}
