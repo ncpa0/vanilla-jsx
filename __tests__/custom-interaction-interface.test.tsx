@@ -33,6 +33,7 @@ class CustomElement extends CustomFragment {
   listeners: Array<[string, (event: CustomEvent) => void]> = [];
   dataset: Record<string, string> = {};
   classNames = new Set<string>();
+  isHidden = false;
 
   constructor(
     public readonly tagName: string,
@@ -208,6 +209,35 @@ class CustomInteractions implements
     element: CustomElement | CustomFragment | CustomTextNode,
   ): element is CustomFragment {
     return element instanceof CustomFragment;
+  }
+
+  hide(element: CustomElement): void {
+    element.isHidden = true;
+  }
+
+  replaceAllChildren(
+    parent: CustomElement | CustomFragment,
+    ...children: (CustomElement | CustomFragment | CustomTextNode)[]
+  ): void {
+    for (const child of parent.children) {
+      child.parent = undefined;
+    }
+    parent.children = children;
+    for (const child of children) {
+      child.parent = parent;
+    }
+  }
+
+  insertBefore(
+    parent: CustomElement | CustomFragment,
+    child: CustomElement | CustomTextNode | CustomFragment,
+    before: CustomElement | CustomTextNode | CustomFragment,
+  ): void {
+    const index = parent.children.indexOf(before);
+    if (index !== -1) {
+      parent.children.splice(index, 0, child);
+      child.parent = parent;
+    }
   }
 }
 
