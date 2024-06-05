@@ -1,4 +1,4 @@
-import { Signal, VSignal } from "../signals";
+import { Signal, VSignal } from "../signals/signal";
 import { SignalInteropInterface } from "./_interface";
 
 export class VanillaJSXSignalInterop
