@@ -60,14 +60,13 @@
   "devDependencies": {
     "@ncpa0cpl/nodepack": "^2.3.0",
     "@preact/signals-core": "^1.6.0",
-    "dprint": "^0.43.2",
-    "esbuild": "^0.19.8",
+    "dprint": "^0.47.0",
+    "esbuild": "^0.23.0",
     "git-hook-tasks": "ncpa0cpl/git-hook-tasks#4fada71",
-    "happy-dom": "^12.10.3",
+    "happy-dom": "^14.12.3",
     "husky": "^8.0.3",
-    "ts-jest": "^29.1.1",
-    "typescript": "^5.3.2",
-    "vitest": "^1.1.2"
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0"
   },
   "sideEffects": false,
   "dependencies": {
