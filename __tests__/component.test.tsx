@@ -135,6 +135,13 @@ describe("component", () => {
       </div>
     );
 
+    // elem is not yet connected
+    await sleep(0);
+    expect(changeCount).toBe(0);
+
+    window.document.body.appendChild(elem);
+
+    // elem is now connected
     await sleep(0);
     expect(changeCount).toBe(1);
 
@@ -155,5 +162,76 @@ describe("component", () => {
     await sleep(0);
 
     expect(changeCount).toBe(4);
+  });
+
+  it("does not fire change handlers after the element was disconnected", async () => {
+    let changeCount = 0;
+
+    const s1 = sig(0);
+    const s2 = sig("");
+
+    const TestComp = $component((_, api) => {
+      api.onChange(() => {
+        changeCount++;
+      }, [s1, s2]);
+
+      return <div />;
+    });
+
+    const elem = (
+      <div>
+        <TestComp />
+      </div>
+    );
+
+    window.document.body.appendChild(elem);
+
+    await sleep(0);
+    expect(changeCount).toBe(1);
+
+    window.document.body.removeChild(elem);
+
+    s1.dispatch(1);
+    s2.dispatch("world");
+    await sleep(0);
+
+    expect(changeCount).toBe(1);
+  });
+
+  it("fires change handlers after the element was reconnected", async () => {
+    let changeCount = 0;
+
+    const s1 = sig(0);
+    const s2 = sig("");
+
+    const TestComp = $component((_, api) => {
+      api.onChange(() => {
+        changeCount++;
+      }, [s1, s2]);
+
+      return <div />;
+    });
+
+    const elem = (
+      <div>
+        <TestComp />
+      </div>
+    );
+
+    window.document.body.appendChild(elem);
+    await sleep(0);
+    window.document.body.removeChild(elem);
+    await sleep(0);
+
+    changeCount = 0;
+    window.document.body.appendChild(elem);
+
+    await sleep(0);
+    expect(changeCount).toBe(1);
+
+    s1.dispatch(1);
+    s2.dispatch("world");
+    await sleep(0);
+    expect(changeCount).toBe(2);
   });
 });

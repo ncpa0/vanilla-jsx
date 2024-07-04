@@ -37,7 +37,7 @@ export interface SignalProxy<T> {
   bindTo<E extends object>(
     elem: E,
     cb: (element: E, value: T, sigRef?: SignalProxyListenerRef) => void,
-  ): void;
+  ): () => void;
 }
 
 export function sigProxy<T>(signal: JSX.Signal<T>): SignalProxy<T> {
@@ -61,6 +61,7 @@ export function sigProxy<T>(signal: JSX.Signal<T>): SignalProxy<T> {
     };
 
     ref = { detach: s.add(signal, onChange) };
+    return ref;
   };
 
   return {
@@ -70,7 +71,8 @@ export function sigProxy<T>(signal: JSX.Signal<T>): SignalProxy<T> {
     bindTo(element, cb) {
       registerBoundSignal(element, signal);
       const elemRef = new WeakRef(element);
-      addSelfDetachingListener(elemRef, cb);
+      const ref = addSelfDetachingListener(elemRef, cb);
+      return () => ref.detach();
     },
   };
 }

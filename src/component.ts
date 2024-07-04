@@ -1,5 +1,5 @@
 import { createElement } from "./reconciler/reconciler";
-import { sigProxy } from "./sig-proxy/_proxy";
+import { SignalProxy, sigProxy } from "./sig-proxy/_proxy";
 
 declare global {
   namespace JSX {
@@ -20,11 +20,15 @@ class ComponentNode extends HTMLElement {
 
   connectedCallback() {
     this.style.display = "contents";
-    this._emitter.dispatchEvent(new Event(ComponentNode.MOUNTED));
+    this._emitter.dispatchEvent(
+      new CustomEvent(ComponentNode.MOUNTED, { detail: { target: this } }),
+    );
   }
 
   disconnectedCallback() {
-    this._emitter.dispatchEvent(new Event(ComponentNode.UNMOUNTED));
+    this._emitter.dispatchEvent(
+      new CustomEvent(ComponentNode.UNMOUNTED, { detail: { target: this } }),
+    );
   }
 }
 
@@ -59,6 +63,7 @@ export interface ComponentApi {
   onUnmount(listener: OnUnmountCallback): void;
   /**
    * Register a callback to be called when the given dependencies change.
+   * This callback will only be invoked while the component is mounted.
    */
   onChange(cb: OnChangeCallback, deps: Array<JSX.Signal>): void;
 }
@@ -67,7 +72,9 @@ const noop = () => {};
 
 class CAPI implements ComponentApi {
   private isConnected = false;
-  private changeHandlers: Array<[cb: OnChangeCallback, deps: JSX.Signal<any>[]]> = [];
+  private changeHandlers: Array<
+    [cb: OnChangeCallback, deps: JSX.Signal<any>[]]
+  > = [];
   private mountHandlers: OnMountCallback[] = [];
   private unmountHandlers: OnUnmountCallback[] = [];
 
@@ -102,9 +109,8 @@ class CAPI implements ComponentApi {
       let isQueued = false;
       let cleanup: () => void = noop;
 
-      for (let j = 0; j < deps.length; j++) {
-        const signal = sigProxy(deps[j]!);
-        signal.bindTo(element, (element, value) => {
+      const addBinding = (signal: SignalProxy<any>, elem: ComponentNode) => {
+        const unbind = signal.add(() => {
           if (isQueued) return;
           isQueued = true;
           queueMicrotask(() => {
@@ -113,6 +119,22 @@ class CAPI implements ComponentApi {
             cleanup = cb() ?? noop;
           });
         });
+
+        elem._emitter.addEventListener(ComponentNode.UNMOUNTED, () => {
+          unbind();
+          cleanup();
+        }, {
+          once: true,
+        });
+      };
+
+      for (let j = 0; j < deps.length; j++) {
+        const signal = sigProxy(deps[j]!);
+
+        element._emitter.addEventListener(ComponentNode.MOUNTED, (ev) => {
+          const event = ev as CustomEvent<{ target: ComponentNode }>;
+          addBinding(signal, event.detail.target);
+        });
       }
     }
     this.changeHandlers.splice(0, this.changeHandlers.length);
@@ -120,21 +142,27 @@ class CAPI implements ComponentApi {
 
   onChange(...args: [cb: OnChangeCallback, deps: JSX.Signal<any>[]]): void {
     if (this.isConnected) {
-      throw new Error("Cannot register onChange handler after component initialization.");
+      throw new Error(
+        "Cannot register onChange handler after component initialization.",
+      );
     }
     this.changeHandlers.push(args);
   }
 
   onMount(listener: OnMountCallback): void {
     if (this.isConnected) {
-      throw new Error("Cannot register onMount handler after component initialization.");
+      throw new Error(
+        "Cannot register onMount handler after component initialization.",
+      );
     }
     this.mountHandlers.push(listener);
   }
 
   onUnmount(listener: OnUnmountCallback): void {
     if (this.isConnected) {
-      throw new Error("Cannot register onUnmount handler after component initialization.");
+      throw new Error(
+        "Cannot register onUnmount handler after component initialization.",
+      );
     }
     this.unmountHandlers.push(listener);
   }
@@ -166,10 +194,16 @@ class CAPI implements ComponentApi {
  *   return <div>{props.foo}</div>;
  * });
  */
-export const $component = <P>(component: (props: P, api: ComponentApi) => JSX.Element) => {
+export const $component = <P>(
+  component: (props: P, api: ComponentApi) => JSX.Element,
+) => {
   return (props: P) => {
     const api = new CAPI();
-    const elem = createElement(ComponentNode.TAG_NAME, {}, component(props, api)) as ComponentNode;
+    const elem = createElement(
+      ComponentNode.TAG_NAME,
+      {},
+      component(props, api),
+    ) as ComponentNode;
     api.connect(elem);
     return elem;
   };

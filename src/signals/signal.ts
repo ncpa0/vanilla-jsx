@@ -56,8 +56,22 @@ export interface ReadonlySignal<T> {
   derive<U>(getDerivedValue: (current: T) => U): ReadonlySignal<U>;
   /**
    * Detach all listeners from the signal.
+   *
+   * @param deep - If true, it will also detach all listeners from
+   *  derived signals any levels deep.
    */
-  detachAll(): void;
+  detachListeners(deep: boolean): void;
+  /**
+   * Detach all derived signals from this signal.
+   *
+   * @param deep - If true, it will also detach all derived signals from
+   *  derived signals any levels deep.
+   */
+  detachSinks(deep: boolean): void;
+  /**
+   * Detach all listeners and derived signals from this signal.
+   */
+  detachAll(deep: boolean): void;
   /**
    * Completely destroy the signal. This will detach all listeners, destroy
    * all derived signals, prevent any new listeners from being added, and
@@ -383,16 +397,11 @@ class VSignal<T> implements Signal<T> {
     }
   }
 
-  private notifyChildren() {
+  private forEachSink(fn: (sinkSig: VSignal<any>) => void) {
     for (let i = 0; i < this.derivedSignals.length; i++) {
       const sig = this.derivedSignals[i]!.deref();
       if (sig) {
-        if (sig.listeners.length === 0) {
-          sig.isDirty = true;
-          sig.notifyChildren();
-        } else {
-          sig.updateAndPropagate();
-        }
+        fn(sig);
       } else {
         this.derivedSignals.splice(i, 1);
         i--;
@@ -400,9 +409,20 @@ class VSignal<T> implements Signal<T> {
     }
   }
 
+  private notifySinks() {
+    this.forEachSink((sig) => {
+      if (sig.listeners.length === 0) {
+        sig.isDirty = true;
+        sig.notifySinks();
+      } else {
+        sig.updateAndPropagate();
+      }
+    });
+  }
+
   private propagateChange() {
     this.notifyListeners();
-    this.notifyChildren();
+    this.notifySinks();
   }
 
   public add(listener: SignalListener<T>): SignalListenerReference<T> {
@@ -542,12 +562,35 @@ class VSignal<T> implements Signal<T> {
     return this.value;
   }
 
-  public detachAll(): void {
+  public detachListeners(deep = false): void {
     const detachedListeners = this.listeners.splice(0, this.listeners.length);
     for (let i = 0; i < detachedListeners.length; i++) {
       const lRef = detachedListeners[i]!;
       VSignal.GlobalListeners.delete(lRef);
     }
+    if (deep) {
+      this.forEachSink(sig => {
+        sig.detachListeners(deep);
+      });
+    }
+  }
+
+  public detachSinks(deep = false) {
+    this.forEachSink(sig => {
+      sig.onParentDestroyed(this);
+      if (deep) {
+        sig.detachSinks(deep);
+      }
+    });
+    this.derivedSignals.splice(
+      0,
+      this.derivedSignals.length,
+    );
+  }
+
+  public detachAll(deep = false) {
+    this.detachListeners(deep);
+    this.detachSinks(deep);
   }
 
   public listenerCount(): number {
@@ -577,7 +620,7 @@ class VSignal<T> implements Signal<T> {
   }
 
   public destroy(): void {
-    this.detachAll();
+    this.detachListeners();
     this.add = this.add_destroyed;
     this.dispatch = this.dispatch_destroyed;
     this.derive = this.derive_destroyed;
