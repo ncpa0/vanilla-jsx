@@ -615,8 +615,14 @@ class VSignal<T> implements Signal<T> {
     return derivedSignal;
   }
 
+  private _readonlySelf?: WeakRef<ReadonlySignal<T>>;
   public readonly(): ReadonlySignal<T> {
-    return this.derive(v => v);
+    let result = this._readonlySelf?.deref();
+    if (!result) {
+      result = this.derive(v => v);
+      this._readonlySelf = new WeakRef(result);
+    }
+    return result;
   }
 
   public destroy(): void {
