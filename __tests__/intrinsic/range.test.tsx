@@ -259,7 +259,7 @@ describe("Map", () => {
         "<div><ul id=\"list\" class=\"vjsx-range-container\"><li>Element: foo</li><li>Element: bar</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
       );
 
-      s.current()[1]!.dispatch("Hello");
+      s.get()[1]!.dispatch("Hello");
 
       expect(d.outerHTML).toEqual(
         "<div><ul id=\"list\" class=\"vjsx-range-container\"><li>Element: foo</li><li>Element: Hello</li><li>Element: baz</li><li>Element: qux</li></ul></div>",
@@ -273,7 +273,7 @@ describe("Map", () => {
         "<div><ul id=\"list\" class=\"vjsx-range-container\"><li>Element: qux</li><li>Element: baz</li><li>Element: Hello</li><li>Element: foo</li></ul></div>",
       );
 
-      s.current()[3]!.dispatch("World");
+      s.get()[3]!.dispatch("World");
 
       expect(d.outerHTML).toEqual(
         "<div><ul id=\"list\" class=\"vjsx-range-container\"><li>Element: qux</li><li>Element: baz</li><li>Element: Hello</li><li>Element: World</li></ul></div>",

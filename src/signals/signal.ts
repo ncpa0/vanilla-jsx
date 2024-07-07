@@ -45,7 +45,7 @@ export interface ReadonlySignal<T> {
   /**
    * Get the current value of the signal.
    */
-  current(): T;
+  get(): T;
   /**
    * Get the number of listeners attached to the signal.
    */
@@ -60,18 +60,18 @@ export interface ReadonlySignal<T> {
    * @param deep - If true, it will also detach all listeners from
    *  derived signals any levels deep.
    */
-  detachListeners(deep: boolean): void;
+  detachListeners(deep?: boolean): void;
   /**
    * Detach all derived signals from this signal.
    *
    * @param deep - If true, it will also detach all derived signals from
    *  derived signals any levels deep.
    */
-  detachSinks(deep: boolean): void;
+  detachSinks(deep?: boolean): void;
   /**
    * Detach all listeners and derived signals from this signal.
    */
-  detachAll(deep: boolean): void;
+  detachAll(deep?: boolean): void;
   /**
    * Completely destroy the signal. This will detach all listeners, destroy
    * all derived signals, prevent any new listeners from being added, and
@@ -132,7 +132,7 @@ export type AsSignal<T> = T extends Signal<infer U> ? T
 
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
-  current(): any;
+  get(): any;
   removeDerivedChild(s: VSignal<any>): void;
 };
 
@@ -252,7 +252,7 @@ class VSignal<T> implements Signal<T> {
 
     const depValues: any[] = [];
     for (let i = 0; i < signals.length; i++) {
-      depValues.push(signals[i]!.current());
+      depValues.push(signals[i]!.get());
     }
     const derivedSignal = new VReadonlySignal<U>(null as any);
     derivedSignal.isDirty = true;
@@ -362,7 +362,7 @@ class VSignal<T> implements Signal<T> {
     if (this.deriveFn) {
       const depValues: any[] = [];
       for (let i = 0; i < this.derivedFrom.length; i++) {
-        depValues.push(this.derivedFrom[i]!.current());
+        depValues.push(this.derivedFrom[i]!.get());
       }
       if (VSignal.arrCompare(depValues, this.lastUsedDeps)) {
         return false;
@@ -557,7 +557,7 @@ class VSignal<T> implements Signal<T> {
     }
   }
 
-  public current(): T {
+  public get(): T {
     this.beforeAccess();
     return this.value;
   }
@@ -651,9 +651,9 @@ class VSignal<T> implements Signal<T> {
       if (s === parentSig) {
         // since this derived sig has been destroyed it will no longer ever change
         // we can just take it's value and lose the ref to the sig itself
-        const stableValue = parentSig.current();
+        const stableValue = parentSig.get();
         const substitute: DestroyedParentSigSubstitute = {
-          current: () => stableValue,
+          get: () => stableValue,
           removeDerivedChild: noop,
           IS_SUBSTITUTE: true,
         };

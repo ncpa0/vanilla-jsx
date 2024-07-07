@@ -39,7 +39,7 @@ Similar options will need to be set in the build tool you are using. For example
 ```javascript
 esbuild
   .build({
-    jsxImportSource: "jsxte",
+    jsxImportSource: "@ncpa0cpl/vanilla-jsx",
     ...rest
   })
 ```

@@ -5,11 +5,11 @@ import {
   signal,
 } from "@preact/signals-core";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { ClassName } from "../src";
 import { Fragment, jsx } from "../src/jsx-runtime";
 import { SignalInteropInterface } from "../src/sig-proxy/_interface";
 import { SignalsReg } from "../src/sig-proxy/_proxy";
 import { gc } from "./gc-util";
-import { ClassName } from "../src";
 
 declare global {
   namespace JSX {
@@ -303,7 +303,9 @@ describe("Custom interop signals", () => {
 
     let elem: Element | null = (
       <div data-test={computed(() => source.value + 5)}>
-        {computed(() => String(source.value * 2))}
+        {computed(() =>
+          String(source.value * 2)
+        )}
       </div>
     );
 
