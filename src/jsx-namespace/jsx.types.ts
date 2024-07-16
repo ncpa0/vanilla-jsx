@@ -260,7 +260,8 @@ declare global {
     interface BrTagProps extends PropsForElement<HTMLBRElement> {}
     interface BTagProps extends PropsForElement<HTMLElement> {}
     interface CaptionTagProps
-      extends PropsForElement<HTMLTableCaptionElement> {}
+      extends PropsForElement<HTMLTableCaptionElement>
+    {}
     interface CiteTagProps extends PropsForElement<HTMLElement> {}
     interface CodeTagProps extends PropsForElement<HTMLElement> {}
     interface DatalistTagProps extends PropsForElement<HTMLDataListElement> {}

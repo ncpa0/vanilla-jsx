@@ -125,15 +125,15 @@ describe("VSignal()", () => {
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener).toHaveBeenCalledWith("001");
 
-      signal.dispatch(v => v + "2");
+      signal.dispatch((v) => v + "2");
       expect(listener).toHaveBeenCalledTimes(2);
       expect(listener).toHaveBeenCalledWith("0012");
 
-      signal.dispatch(v => v + "3");
+      signal.dispatch((v) => v + "3");
       expect(listener).toHaveBeenCalledTimes(3);
       expect(listener).toHaveBeenCalledWith("00123");
 
-      signal.dispatch(v => v);
+      signal.dispatch((v) => v);
       expect(listener).toHaveBeenCalledTimes(3);
       expect(listener).toHaveBeenCalledWith("00123");
     });
@@ -192,7 +192,7 @@ describe("VSignal()", () => {
   describe("derive()", () => {
     it("should return a derived signal", () => {
       const signal = sig("001");
-      const dSignal = signal.derive(v => Number(v));
+      const dSignal = signal.derive((v) => Number(v));
 
       expect(dSignal.get()).toBe(1);
 
@@ -205,8 +205,8 @@ describe("VSignal()", () => {
 
     it("should update all derived signals", () => {
       const signal = sig("010");
-      const dSignal1 = signal.derive(v => Number(v));
-      const dSignal2 = dSignal1.derive(v => String(v).length);
+      const dSignal1 = signal.derive((v) => Number(v));
+      const dSignal2 = dSignal1.derive((v) => String(v).length);
 
       expect(dSignal1.get()).toBe(10);
       expect(dSignal2.get()).toBe(2);
@@ -226,7 +226,7 @@ describe("VSignal()", () => {
 
     it("derived signal should error if dispatched to", () => {
       const signal = sig("001");
-      const dSignal = signal.derive(v => Number(v)) as Signal<number>;
+      const dSignal = signal.derive((v) => Number(v)) as Signal<number>;
 
       expect(() => dSignal.dispatch(6)).toThrowError();
     });
@@ -282,10 +282,10 @@ describe("VSignal()", () => {
     it("should update or not down the chain derived signals depending on if they are observed", () => {
       const head = sig(0) as VSignal<number>;
 
-      const d1 = head.derive(v => v + 1) as VSignal<number>;
-      const d2 = d1.derive(v => v + 1) as VSignal<number>;
-      const d3 = d2.derive(v => v + 1) as VSignal<number>;
-      const d4 = d3.derive(v => v + 1) as VSignal<number>;
+      const d1 = head.derive((v) => v + 1) as VSignal<number>;
+      const d2 = d1.derive((v) => v + 1) as VSignal<number>;
+      const d3 = d2.derive((v) => v + 1) as VSignal<number>;
+      const d4 = d3.derive((v) => v + 1) as VSignal<number>;
 
       expect(head.get()).toBe(0);
       expect(d1.get()).toBe(1);
@@ -333,7 +333,7 @@ describe("VSignal()", () => {
 
     it("should destroy the derived signal when the parent signal is destroyed", () => {
       const signal = sig("foo");
-      const dSignal = signal.derive(v => v.repeat(2));
+      const dSignal = signal.derive((v) => v.repeat(2));
       const destroySpy = vitest.spyOn(dSignal, "destroy");
 
       expect(dSignal.get()).toBe("foofoo");
@@ -347,7 +347,7 @@ describe("VSignal()", () => {
     it("derived signals should be possible to garbage collect", async () => {
       const s = sig("foo") as VSignal<string>;
       const derivedRefs = s["derivedSignals"];
-      let derived: ReadonlySignal<string> | null = s.derive(v => v.repeat(2));
+      let derived: ReadonlySignal<string> | null = s.derive((v) => v.repeat(2));
 
       expect(derived.get()).toBe("foofoo");
       expect(derivedRefs[0]!.deref()).toBeDefined();
@@ -391,10 +391,13 @@ describe("VSignal()", () => {
     it("deeply derived signals should not be GCd when they are being observed", async () => {
       const head = sig(1);
       let callCount = 0;
-      (function() {
-        const tail = head.derive(v => v + 1).derive(v => v + 1).derive(v => ({
-          DERIVED: true,
-        }));
+      (function () {
+        const tail = head
+          .derive((v) => v + 1)
+          .derive((v) => v + 1)
+          .derive((v) => ({
+            DERIVED: true,
+          }));
         tail.observe(() => {
           callCount++;
         });
@@ -425,8 +428,8 @@ describe("VSignal()", () => {
       });
 
       const head = sig(1);
-      const d1 = head.derive(v => v + 1);
-      const d2 = d1.derive(v => v / v);
+      const d1 = head.derive((v) => v + 1);
+      const d2 = d1.derive((v) => v / v);
       const tail = d2.derive(calcTail);
 
       expect(tail.get()).toBe(2);
@@ -487,9 +490,9 @@ describe("VSignal()", () => {
         it("scenario 1 - reading", () => {
           const head = new VSignal(0);
 
-          const d1 = head.derive(v => v + 1);
-          const d2 = head.derive(v => v + 2);
-          const d3 = head.derive(v => v + 3);
+          const d1 = head.derive((v) => v + 1);
+          const d2 = head.derive((v) => v + 2);
+          const d3 = head.derive((v) => v + 3);
           const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
 
           expect(d4.get()).toBe(6);
@@ -510,9 +513,9 @@ describe("VSignal()", () => {
         it("scenario 2 - listener", () => {
           const head = new VSignal(0);
 
-          const d1 = head.derive(v => v + 1);
-          const d2 = head.derive(v => v + 2);
-          const d3 = head.derive(v => v + 3);
+          const d1 = head.derive((v) => v + 1);
+          const d2 = head.derive((v) => v + 2);
+          const d3 = head.derive((v) => v + 3);
           const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
 
           const onD4Change = vitest.fn();
@@ -528,11 +531,11 @@ describe("VSignal()", () => {
         it("scenario 3 - derived listener", () => {
           const head = new VSignal(0);
 
-          const d1 = head.derive(v => v + 1);
-          const d2 = head.derive(v => v + 2);
-          const d3 = head.derive(v => v + 3);
+          const d1 = head.derive((v) => v + 1);
+          const d2 = head.derive((v) => v + 2);
+          const d3 = head.derive((v) => v + 3);
           const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
-          const tail = d4.derive(v => v * 2);
+          const tail = d4.derive((v) => v * 2);
 
           const onTailChange = vitest.fn();
           tail.add(onTailChange);
@@ -560,9 +563,9 @@ describe("VSignal()", () => {
             (v1, v2, v3, v4) => v1 + v2 + v3 + v4,
           );
 
-          const r1 = join.derive(v => v / 4);
-          const r2 = join.derive(v => v / v);
-          const r3 = join.derive(v => v * 2);
+          const r1 = join.derive((v) => v / 4);
+          const r2 = join.derive((v) => v / v);
+          const r3 = join.derive((v) => v * 2);
 
           expect(r1.get()).toBe(2.5);
           expect(r2.get()).toBe(1);
@@ -589,9 +592,9 @@ describe("VSignal()", () => {
             (v1, v2, v3, v4) => v1 + v2 + v3 + v4,
           );
 
-          const r1 = join.derive(v => v / 4);
-          const r2 = join.derive(v => v / v);
-          const r3 = join.derive(v => v * 2);
+          const r1 = join.derive((v) => v / 4);
+          const r2 = join.derive((v) => v / v);
+          const r3 = join.derive((v) => v * 2);
 
           const onR1Change = vitest.fn();
           const onR2Change = vitest.fn();
@@ -661,7 +664,7 @@ describe("VSignal()", () => {
 
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s1: c.s2.derive((v) => v + 1) as VReadonlySignal<number>,
               s2: VSignal.derive(
                 c.s1,
                 c.s3,
@@ -672,7 +675,7 @@ describe("VSignal()", () => {
                 c.s1,
                 (v4, v1) => v4 - v1,
               ) as VReadonlySignal<number>,
-              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
+              s4: c.s3.derive((v) => v - 1) as VReadonlySignal<number>,
             };
             c = next;
 
@@ -787,7 +790,7 @@ describe("VSignal()", () => {
 
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s1: c.s2.derive((v) => v + 1) as VReadonlySignal<number>,
               s2: VSignal.derive(
                 c.s1,
                 c.s3,
@@ -798,7 +801,7 @@ describe("VSignal()", () => {
                 c.s1,
                 (v4, v1) => v4 - v1,
               ) as VReadonlySignal<number>,
-              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
+              s4: c.s3.derive((v) => v - 1) as VReadonlySignal<number>,
             };
             c = next;
 
@@ -924,7 +927,7 @@ describe("VSignal()", () => {
           const listeners: SignalListenerReference<number>[] = [];
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s1: c.s2.derive((v) => v + 1) as VReadonlySignal<number>,
               s2: VSignal.derive(
                 c.s1,
                 c.s3,
@@ -935,7 +938,7 @@ describe("VSignal()", () => {
                 c.s1,
                 (v4, v1) => v4 - v1,
               ) as VReadonlySignal<number>,
-              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
+              s4: c.s3.derive((v) => v - 1) as VReadonlySignal<number>,
             };
             listeners.push(
               next.s1.add((v) => {
@@ -1083,13 +1086,13 @@ describe("VSignal()", () => {
       const signal = sig("001");
       signal.destroy();
 
-      expect(() => signal.derive(v => v)).toThrowError();
+      expect(() => signal.derive((v) => v)).toThrowError();
     });
 
     it("should also destroy all derived signals", () => {
       const signal = sig("001");
-      const dSignal = signal.derive(v => Number(v));
-      const dSignal2 = dSignal.derive(v => String(v).length);
+      const dSignal = signal.derive((v) => Number(v));
+      const dSignal2 = dSignal.derive((v) => String(v).length);
 
       signal.destroy();
       expect(() => dSignal.add(() => {})).toThrowError();
@@ -1098,7 +1101,7 @@ describe("VSignal()", () => {
 
     it("detaches itself from the parent signal", () => {
       const signal = sig("001");
-      const dSignal = signal.derive(v => Number(v));
+      const dSignal = signal.derive((v) => Number(v));
 
       dSignal.destroy();
       signal.dispatch("002");
@@ -1127,12 +1130,8 @@ describe("VSignal()", () => {
       const sig3 = sig("baz");
       const sig4 = sig(2);
 
-      const derived = sig.derive(
-        sig1,
-        sig2,
-        sig3,
-        sig4,
-        (v1, v2, v3, v4) => `[${v1} ${v2} ${v3}]`.repeat(v4),
+      const derived = sig.derive(sig1, sig2, sig3, sig4, (v1, v2, v3, v4) =>
+        `[${v1} ${v2} ${v3}]`.repeat(v4),
       );
       expect(derived.get()).toBe("[foo bar baz][foo bar baz]");
 
@@ -1304,7 +1303,7 @@ describe("VSignal()", () => {
       const source = sig("foo");
 
       // don't keep ref to the derived signal
-      const derivedRef = new WeakRef(source.derive(t => t.toUpperCase()));
+      const derivedRef = new WeakRef(source.derive((t) => t.toUpperCase()));
       sig.bind(derivedRef.deref()!, obj, "prop");
 
       expect(obj.prop).toBe("FOO");
@@ -1400,7 +1399,7 @@ describe("VSignal()", () => {
       const source = sig("foo");
 
       // don't keep ref to the derived signal
-      const derivedRef = new WeakRef(source.derive(t => t.toUpperCase()));
+      const derivedRef = new WeakRef(source.derive((t) => t.toUpperCase()));
       sig.bindAttribute(derivedRef.deref()!, obj, "data-test");
 
       expect(obj.getAttribute("data-test")).toBe("FOO");
@@ -1420,6 +1419,26 @@ describe("VSignal()", () => {
       await gc();
 
       expect(derivedRef.deref()).toBeUndefined();
+    });
+  });
+
+  describe("sig.literal", () => {
+    it("creates a derived signal from templpate literal", () => {
+      const arg1 = sig("foo");
+      const arg2 = sig("bar");
+      const arg3 = sig("baz");
+
+      const result = sig.literal`1: ${arg1}, 2: ${arg2}, 3: ${arg3}`;
+      expect(result.get()).toEqual("1: foo, 2: bar, 3: baz");
+
+      arg1.dispatch("FOO");
+      expect(result.get()).toEqual("1: FOO, 2: bar, 3: baz");
+
+      arg2.dispatch("BAR");
+      expect(result.get()).toEqual("1: FOO, 2: BAR, 3: baz");
+
+      arg3.dispatch("BAZ");
+      expect(result.get()).toEqual("1: FOO, 2: BAR, 3: BAZ");
     });
   });
 
@@ -1454,9 +1473,9 @@ describe("VSignal()", () => {
     it("should minimize updates to diamond structure", () => {
       const head = new VSignal(0);
 
-      const d1 = head.derive(v => v + 1);
-      const d2 = head.derive(v => v + 2);
-      const d3 = head.derive(v => v + 3);
+      const d1 = head.derive((v) => v + 1);
+      const d2 = head.derive((v) => v + 2);
+      const d3 = head.derive((v) => v + 3);
       const d4 = sig.derive(d1, d2, d3, (v1, v2, v3) => v1 + v2 + v3);
 
       const onD4Change = vitest.fn();
@@ -1506,7 +1525,7 @@ describe("VSignal()", () => {
 
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s1: c.s2.derive((v) => v + 1) as VReadonlySignal<number>,
               s2: VSignal.derive(
                 c.s1,
                 c.s3,
@@ -1517,7 +1536,7 @@ describe("VSignal()", () => {
                 c.s1,
                 (v4, v1) => v4 - v1,
               ) as VReadonlySignal<number>,
-              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
+              s4: c.s3.derive((v) => v - 1) as VReadonlySignal<number>,
             };
             c = next;
 
@@ -1613,7 +1632,7 @@ describe("VSignal()", () => {
           const listeners: Mock<[v: number], void>[] = [];
           for (let i = 0; i <= layers; i++) {
             const next = {
-              s1: c.s2.derive(v => v + 1) as VReadonlySignal<number>,
+              s1: c.s2.derive((v) => v + 1) as VReadonlySignal<number>,
               s2: VSignal.derive(
                 c.s1,
                 c.s3,
@@ -1624,7 +1643,7 @@ describe("VSignal()", () => {
                 c.s1,
                 (v4, v1) => v4 - v1,
               ) as VReadonlySignal<number>,
-              s4: c.s3.derive(v => v - 1) as VReadonlySignal<number>,
+              s4: c.s3.derive((v) => v - 1) as VReadonlySignal<number>,
             };
             const m1 = vitest.fn((v: number) => {
               v;
@@ -1638,12 +1657,7 @@ describe("VSignal()", () => {
             const m4 = vitest.fn((v: number) => {
               v;
             });
-            listeners.push(
-              m1,
-              m2,
-              m3,
-              m4,
-            );
+            listeners.push(m1, m2, m3, m4);
             next.s1.add(m1);
             next.s2.add(m2);
             next.s3.add(m3);

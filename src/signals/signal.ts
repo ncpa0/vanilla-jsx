@@ -144,7 +144,7 @@ function isDispatchFunc<T>(
 
 function noop() {}
 
-type BatchQueue = InstanceType<typeof VSignal["BatchQueue"]>;
+type BatchQueue = InstanceType<(typeof VSignal)["BatchQueue"]>;
 
 type BatchEntry = [signal: VSignal<any>, isObserved: boolean];
 
@@ -195,6 +195,27 @@ class VSignal<T> implements Signal<T> {
   private static GlobalListeners = new Set<SignalListenerReference<any>>();
 
   private static batchQueue?: BatchQueue;
+
+  public static literal(
+    template: ReadonlyArray<string>,
+    ...args: (string | Signal<any>)[]
+  ): Signal<string> {
+    const deriveFn = (...values: any[]) => {
+      let result = "";
+      for (let i = 0; i < template.length; i++) {
+        result += template[i]!;
+        if (i < values.length) {
+          const value = values[i];
+          result += String(value);
+        }
+      }
+      return result;
+    };
+    return VSignal.derive.apply(null, [
+      ...args.map((a) => (a instanceof VSignal ? a : VSignal.as(a))),
+      deriveFn,
+    ] as any) as any;
+  }
 
   public static startBatch() {
     VSignal.batchQueue = new VSignal.BatchQueue();
@@ -340,9 +361,7 @@ class VSignal<T> implements Signal<T> {
   private derivedSignals: WeakRef<VSignal<any>>[] = [];
   private value: T;
   private deriveFn?: (...parentSigsVals: any[]) => T;
-  private derivedFrom: Array<
-    VSignal<any> | DestroyedParentSigSubstitute
-  > = [];
+  private derivedFrom: Array<VSignal<any> | DestroyedParentSigSubstitute> = [];
   private isDirty = false;
   private isDerived = false;
 
@@ -569,23 +588,20 @@ class VSignal<T> implements Signal<T> {
       VSignal.GlobalListeners.delete(lRef);
     }
     if (deep) {
-      this.forEachSink(sig => {
+      this.forEachSink((sig) => {
         sig.detachListeners(deep);
       });
     }
   }
 
   public detachSinks(deep = false) {
-    this.forEachSink(sig => {
+    this.forEachSink((sig) => {
       sig.onParentDestroyed(this);
       if (deep) {
         sig.detachSinks(deep);
       }
     });
-    this.derivedSignals.splice(
-      0,
-      this.derivedSignals.length,
-    );
+    this.derivedSignals.splice(0, this.derivedSignals.length);
   }
 
   public detachAll(deep = false) {
@@ -619,7 +635,7 @@ class VSignal<T> implements Signal<T> {
   public readonly(): ReadonlySignal<T> {
     let result = this._readonlySelf?.deref();
     if (!result) {
-      result = this.derive(v => v);
+      result = this.derive((v) => v);
       this._readonlySelf = new WeakRef(result);
     }
     return result;
@@ -668,7 +684,7 @@ class VSignal<T> implements Signal<T> {
       }
     }
 
-    if (this.derivedFrom.every(s => "IS_SUBSTITUTE" in s)) {
+    if (this.derivedFrom.every((s) => "IS_SUBSTITUTE" in s)) {
       this.destroy();
     }
   }
@@ -768,6 +784,8 @@ interface SignalConstructor {
    * otherwise it will create a new read-only signal.
    */
   as: typeof VSignal.as;
+
+  literal: typeof VSignal.literal;
 }
 
 /**
@@ -784,6 +802,7 @@ signal.commitBatch = VSignal.commitBatch;
 signal.bind = VSignal.bind;
 signal.bindAttribute = VSignal.bindAttribute;
 signal.as = VSignal.as;
+signal.literal = VSignal.literal;
 
 /**
  * Alias for `signal()`.
