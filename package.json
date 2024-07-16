@@ -1,6 +1,6 @@
 {
   "name": "@ncpa0cpl/vanilla-jsx",
-  "version": "0.0.1-alpha.22",
+  "version": "0.0.1-alpha.24",
   "main": "./dist/legacy/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
