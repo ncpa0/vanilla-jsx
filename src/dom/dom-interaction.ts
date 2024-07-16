@@ -60,9 +60,7 @@ export class DomInteraction
     parent.replaceChildren(...children);
   }
 
-  remove(
-    child: Element | Text,
-  ): void {
+  remove(child: Element | Text): void {
     child.remove();
   }
 
@@ -70,11 +68,7 @@ export class DomInteraction
     (element as HTMLElement).style.display = "none";
   }
 
-  setAttribute(
-    element: Element,
-    name: string,
-    value: Primitive,
-  ): void {
+  setAttribute(element: Element, name: string, value: Primitive): void {
     const possibleAttributeNames = ElementAttributes.get(element.tagName) ?? [];
     const isAttributeName = possibleAttributeNames.includes(name);
 
@@ -117,11 +111,21 @@ export class DomInteraction
     element.classList.remove(...value);
   }
 
-  setData(
+  setStyle(
     element: Element,
-    name: string,
-    value: Primitive,
+    styleKey: string,
+    value: string | undefined,
   ): void {
+    console.log(`set style[${styleKey}] to ${value}`);
+    (element as any).style[styleKey] = value ?? "";
+  }
+
+  clearStyle(element: Element): void {
+    console.log("clearing style");
+    (element as HTMLElement).style.cssText = "";
+  }
+
+  setData(element: Element, name: string, value: Primitive): void {
     if (value == null) {
       delete (element as HTMLElement).dataset[name];
       return;

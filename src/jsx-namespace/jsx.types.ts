@@ -62,6 +62,17 @@ export type ClassName =
   | JSX.Signal<Array<string | number | null | undefined | boolean>>
   | JSX.Signal<Record<string, any>>;
 
+export type CssPropertyKey = keyof CSSStyleDeclaration;
+
+export type StyleDict = {
+  [K in CssPropertyKey]?:
+    | string
+    | undefined
+    | JSX.Signal<string | undefined>
+    | JSX.Signal<undefined>
+    | JSX.Signal<string>;
+};
+
 type Values<Obj> = Obj[keyof Obj];
 
 declare global {
@@ -90,9 +101,7 @@ declare global {
 
     type Children = Element | VanillaValue | Array<Element | VanillaValue>;
 
-    type HTMLProps<P> =
-      & BaseAttributes
-      & WithSignals<P>;
+    type HTMLProps<P> = BaseAttributes & WithSignals<P>;
 
     interface ElementChildrenAttribute {
       children?: {}; // specify children name to use
@@ -220,9 +229,7 @@ declare global {
       svg: HTMLProps<VanillaJSX.SvgTagProps>;
     }
 
-    type EventHandlerFunction<E extends Event = Event> = (
-      event: E,
-    ) => void;
+    type EventHandlerFunction<E extends Event = Event> = (event: E) => void;
 
     type PropsWithChildren<P = {}> = {
       children?: Children;
@@ -231,6 +238,7 @@ declare global {
     interface BaseAttributes {
       id?: string | JSX.Signal<string | undefined>;
       class?: ClassName;
+      style?: string | StyleDict | JSX.Signal<Partial<CSSStyleDeclaration>>;
       children?: Children | Children[];
       /**
        * When true, all strings directly within this element will be
@@ -252,8 +260,7 @@ declare global {
     interface BrTagProps extends PropsForElement<HTMLBRElement> {}
     interface BTagProps extends PropsForElement<HTMLElement> {}
     interface CaptionTagProps
-      extends PropsForElement<HTMLTableCaptionElement>
-    {}
+      extends PropsForElement<HTMLTableCaptionElement> {}
     interface CiteTagProps extends PropsForElement<HTMLElement> {}
     interface CodeTagProps extends PropsForElement<HTMLElement> {}
     interface DatalistTagProps extends PropsForElement<HTMLDataListElement> {}

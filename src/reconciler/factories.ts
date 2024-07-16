@@ -1,5 +1,5 @@
 import { InteractionInterface } from "../dom/interaction-interface";
-import { ClassName } from "../jsx-namespace/jsx.types";
+import { ClassName, StyleDict } from "../jsx-namespace/jsx.types";
 import {
   SignalProxyListenerRef,
   SignalsReg,
@@ -23,9 +23,7 @@ export class BindingFactories<
     >,
   ) {}
 
-  private assertNotFragment<T>(
-    elem: T,
-  ): asserts elem is T {
+  private assertNotFragment<T>(elem: T): asserts elem is T {
     if (this.dom.isFragment(elem as any)) {
       throw new VanillaJSXReconcilerError(
         "Fragment cannot be placed into an element via signals since Fragments are not replaceable.",
@@ -206,9 +204,43 @@ export class BindingFactories<
     };
   }
 
-  public createAttributeBinding(attributeName: string) {
+  public createStyleKeyBinding(stylekey: string) {
+    return (elem: Element, value: string | undefined) => {
+      this.dom.setStyle(elem, stylekey, value);
+    };
+  }
+
+  public setStyle(
+    elem: Element,
+    value: Exclude<StyleDict, JSX.Signal<any>> | string | undefined,
+  ) {
+    if (typeof value !== "object") {
+      this.dom.setAttribute(elem, "style", value);
+      return;
+    }
+
+    this.dom.clearStyle(elem);
+    const entries = Object.entries(value);
+    for (let i = 0; entries.length > i; i++) {
+      const [key, v] = entries[i]!;
+      if (SignalsReg.isSignal(v)) {
+        const s = sigProxy(v);
+        s.bindTo(elem, this.createStyleKeyBinding(key));
+      } else {
+        this.dom.setStyle(elem, key, v);
+      }
+    }
+  }
+
+  public createAttributeBinding(
+    attributeName: string,
+  ): (elem: Element, v: any) => void {
     if (attributeName === "class") {
       return this.setClassName.bind(this);
+    }
+
+    if (attributeName === "style") {
+      return this.setStyle.bind(this);
     }
 
     if (attributeName.includes("data-")) {

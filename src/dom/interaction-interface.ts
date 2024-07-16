@@ -14,6 +14,8 @@ export interface InteractionInterface<
   addClassName(element: Element, ...value: string[]): void;
   removeClassName(element: Element, ...value: string[]): void;
   setData(element: Element, name: string, value: Primitive): void;
+  setStyle(element: Element, styleKey: string, value: string | undefined): void;
+  clearStyle(element: Element): void;
   setText(element: TextElement, value: Primitive): void;
   append(
     parent: Element | FragmentElement,
@@ -34,21 +36,9 @@ export interface InteractionInterface<
   ): void;
   remove(child: Element | TextElement): void;
   hide(element: Element): void;
-  on(
-    element: Element,
-    event: string,
-    listener: (event: Ev) => void,
-  ): void;
-  once(
-    element: Element,
-    event: string,
-    listener: (event: Ev) => void,
-  ): void;
-  off(
-    element: Element,
-    event: string,
-    listener: (event: Ev) => void,
-  ): void;
+  on(element: Element, event: string, listener: (event: Ev) => void): void;
+  once(element: Element, event: string, listener: (event: Ev) => void): void;
+  off(element: Element, event: string, listener: (event: Ev) => void): void;
   parseUnsafe(
     content: string,
   ): Iterable<Element | TextElement | FragmentElement>;
