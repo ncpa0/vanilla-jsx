@@ -2,11 +2,11 @@ import { GetElement, Reconciler, jsx } from "../reconciler/reconciler";
 import { sigProxy } from "../sig-proxy/_proxy";
 
 export type RangeProps<T> = {
-  data: JSX.Signal<T[]>;
+  data: JSX.Signal<readonly T[]>;
   /** Parent element to use, if not provided a empty div will be created and used. */
   into?: GetElement;
   /**
-   * Don't add the default class name to the parent element. 
+   * Don't add the default class name to the parent element.
    * (`vjsx-map-container`)
    */
   noclass?: boolean;
