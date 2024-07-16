@@ -37,10 +37,13 @@
     "signals.js",
     "signals.d.ts"
   ],
-  "keywords": [],
+  "keywords": [
+    "jsx",
+    "createElement"
+  ],
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/ncpa0/vanilla-jsx"
   },
   "description": "",
   "license": "MIT",
