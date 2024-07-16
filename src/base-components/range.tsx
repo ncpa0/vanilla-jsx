@@ -40,8 +40,13 @@ class RenderMemory<T> {
   }
 }
 
-const getRenderFn = <T,>(props: { children: any }): (elem: T) => JSX.Element => {
-  if (Array.isArray(props.children) && typeof props.children[0] === "function") {
+const getRenderFn = <T,>(props: {
+  children: any;
+}): ((elem: T) => JSX.Element) => {
+  if (
+    Array.isArray(props.children) &&
+    typeof props.children[0] === "function"
+  ) {
     return props.children[0];
   } else if (typeof props.children === "function") {
     return props.children;
@@ -51,11 +56,11 @@ const getRenderFn = <T,>(props: { children: any }): (elem: T) => JSX.Element => 
 };
 
 const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
-  return (container: JSX.Element, list: T[]) => {
+  return (container: JSX.Element, list: readonly T[]) => {
     for (let i = 0; i < memo.elements.length; i++) {
       const [value, element] = memo.elements[i]!;
       if (list.indexOf(value) === -1) {
-        Reconciler.interactions().remove(element)
+        Reconciler.interactions().remove(element);
         memo.elements.splice(i, 1);
         i--;
       }
@@ -75,7 +80,11 @@ const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
         const [, element] = memo.elements[prevIdx]!;
         const beforeElem = memo.elements[i];
         if (beforeElem) {
-          Reconciler.interactions().insertBefore(container, element, beforeElem[1]);
+          Reconciler.interactions().insertBefore(
+            container,
+            element,
+            beforeElem[1],
+          );
         } else {
           Reconciler.interactions().append(container, element);
         }
@@ -88,7 +97,11 @@ const mapBindingFactory = <T,>(memo: RenderMemory<T>, props: RangeProps<T>) => {
       const element = render(value);
       const beforeElem = memo.elements[i];
       if (beforeElem) {
-        Reconciler.interactions().insertBefore(container, element, beforeElem[1]);
+        Reconciler.interactions().insertBefore(
+          container,
+          element,
+          beforeElem[1],
+        );
       } else {
         Reconciler.interactions().append(container, element);
       }
