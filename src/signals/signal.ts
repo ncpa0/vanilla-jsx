@@ -324,6 +324,23 @@ class VSignal<T> implements Signal<T> {
   }
 
   /**
+   * Similar to the ternary conditional expression. Given a condition,
+   * the second or the third value will be the value of resulting signal.
+   *
+   * @example
+   * sig.when(isDarkMode, darkTheme, lightTheme);
+   * // works similar to
+   * isDarkMode ? darkTheme : lightTheme;
+   */
+  static when<T, U>(
+    condition: ReadonlySignal<any>,
+    then: ReadonlySignal<T>,
+    els: ReadonlySignal<U>,
+  ): ReadonlySignal<T | U> {
+    return VSignal.derive(condition, then, els, (c, t, e) => (c ? t : e));
+  }
+
+  /**
    * Allows to create a derived signal from more than one source signal.
    *
    * @example
@@ -912,6 +929,17 @@ interface SignalConstructor {
    * Equivalent of the "and" (`&&`) operator but for signals.
    */
   and: typeof VSignal.and;
+
+  /**
+   * Similar to the ternary conditional expression. Given a condition,
+   * the second or the third value will be the value of resulting signal.
+   *
+   * @example
+   * sig.when(isDarkMode, darkTheme, lightTheme);
+   * // works similar to
+   * isDarkMode ? darkTheme : lightTheme;
+   */
+  when: typeof VSignal.when;
 }
 
 /**
@@ -932,6 +960,7 @@ signal.literal = VSignal.literal;
 signal.or = VSignal.or;
 signal.nuc = VSignal.nuc;
 signal.and = VSignal.and;
+signal.when = VSignal.when;
 
 /**
  * Alias for `signal()`.
