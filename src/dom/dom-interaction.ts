@@ -116,12 +116,10 @@ export class DomInteraction
     styleKey: string,
     value: string | undefined,
   ): void {
-    console.log(`set style[${styleKey}] to ${value}`);
     (element as any).style[styleKey] = value ?? "";
   }
 
   clearStyle(element: Element): void {
-    console.log("clearing style");
     (element as HTMLElement).style.cssText = "";
   }
 
