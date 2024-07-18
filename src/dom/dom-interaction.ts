@@ -69,6 +69,14 @@ export class DomInteraction
   }
 
   setAttribute(element: Element, name: string, value: Primitive): void {
+    if (
+      name === "value"
+      && (element.tagName === "INPUT" || element.tagName === "TEXT_AREA")
+    ) {
+      (element as HTMLInputElement).value = this.toStr(value);
+      return;
+    }
+
     const possibleAttributeNames = ElementAttributes.get(element.tagName) ?? [];
     const isAttributeName = possibleAttributeNames.includes(name);
 
