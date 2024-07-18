@@ -334,10 +334,15 @@ class VSignal<T> implements Signal<T> {
    */
   static when<T, U>(
     condition: ReadonlySignal<any>,
-    then: ReadonlySignal<T>,
-    els: ReadonlySignal<U>,
+    then: ReadonlySignal<T> | T,
+    els: ReadonlySignal<U> | U,
   ): ReadonlySignal<T | U> {
-    return VSignal.derive(condition, then, els, (c, t, e) => (c ? t : e));
+    return VSignal.derive(
+      VSignal.as(condition),
+      VSignal.as(then),
+      VSignal.as(els),
+      (c, t, e) => (c ? t : e),
+    );
   }
 
   /**
