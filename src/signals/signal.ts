@@ -148,6 +148,9 @@ type BatchQueue = InstanceType<(typeof VSignal)["BatchQueue"]>;
 
 type BatchEntry = [signal: VSignal<any>, isObserved: boolean];
 
+type Truthy<T> = Exclude<T, null | undefined | void | false | "">;
+type DeNull<T> = Exclude<T, null | undefined | void>;
+
 /**
  * Class containing the actual implementation of the VanillaJSX Signal.
  */
@@ -196,10 +199,21 @@ class VSignal<T> implements Signal<T> {
 
   private static batchQueue?: BatchQueue;
 
+  public static startBatch() {
+    VSignal.batchQueue = new VSignal.BatchQueue();
+  }
+
+  public static commitBatch() {
+    if (VSignal.batchQueue) {
+      VSignal.batchQueue.commit();
+      VSignal.batchQueue = undefined;
+    }
+  }
+
   public static literal(
     template: ReadonlyArray<string>,
-    ...args: (string | Signal<any>)[]
-  ): Signal<string> {
+    ...args: (string | ReadonlySignal<any>)[]
+  ): ReadonlySignal<string> {
     const deriveFn = (...values: any[]) => {
       let result = "";
       for (let i = 0; i < template.length; i++) {
@@ -217,17 +231,108 @@ class VSignal<T> implements Signal<T> {
     ] as any) as any;
   }
 
-  public static startBatch() {
-    VSignal.batchQueue = new VSignal.BatchQueue();
+  /**
+   * Equivalent of the "or" (`||`) operator but for signals.
+   */
+  public static or<T1, T2>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+  ): ReadonlySignal<Truthy<T1> | T2>;
+  public static or<T1, T2, T3>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+    v3: T3 | ReadonlySignal<T3>,
+  ): ReadonlySignal<Truthy<T1> | Truthy<T2> | T3>;
+  public static or<T1, T2, T3, T4>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+    v3: T3 | ReadonlySignal<T3>,
+    v4: T4 | ReadonlySignal<T4>,
+  ): ReadonlySignal<Truthy<T1> | Truthy<T2> | Truthy<T3> | T4>;
+  public static or(...values: any[]): ReadonlySignal<any> {
+    const signals = values.map((v) => VSignal.as(v));
+    const deriveFn = (...values: any[]) => {
+      for (let i = 0; i < values.length; i++) {
+        const value = values[i];
+        if (value) return value;
+      }
+      return undefined;
+    };
+    return VSignal.derive.apply(null, [...signals, deriveFn] as any);
   }
 
-  public static commitBatch() {
-    if (VSignal.batchQueue) {
-      VSignal.batchQueue.commit();
-      VSignal.batchQueue = undefined;
-    }
+  /**
+   * Equivalent of the "nullish coalesscent" (`??`) operator but for signals.
+   */
+  public static nuc<T1, T2>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+  ): ReadonlySignal<DeNull<T1> | T2>;
+  public static nuc<T1, T2, T3>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+    v3: T3 | ReadonlySignal<T3>,
+  ): ReadonlySignal<DeNull<T1> | DeNull<T2> | T3>;
+  public static nuc<T1, T2, T3, T4>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+    v3: T3 | ReadonlySignal<T3>,
+    v4: T4 | ReadonlySignal<T4>,
+  ): ReadonlySignal<DeNull<T1> | DeNull<T2> | DeNull<T3> | T4>;
+  public static nuc(...values: any[]): ReadonlySignal<any> {
+    const signals = values.map((v) => VSignal.as(v));
+    const deriveFn = (...values: any[]) => {
+      for (let i = 0; i < values.length; i++) {
+        const value = values[i];
+        if (value != null) return value;
+      }
+      return undefined;
+    };
+    return VSignal.derive.apply(null, [...signals, deriveFn] as any);
   }
 
+  /**
+   * Equivalent of the "and" (`&&`) operator but for signals.
+   */
+  public static and<T1, T2>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+  ): ReadonlySignal<T2 | undefined>;
+  public static and<T1, T2, T3>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+    v3: T3 | ReadonlySignal<T3>,
+  ): ReadonlySignal<T3 | undefined>;
+  public static and<T1, T2, T3, T4>(
+    v1: T1 | ReadonlySignal<T1>,
+    v2: T2 | ReadonlySignal<T2>,
+    v3: T3 | ReadonlySignal<T3>,
+    v4: T4 | ReadonlySignal<T4>,
+  ): ReadonlySignal<T4 | undefined>;
+  public static and(...values: any[]): ReadonlySignal<any> {
+    const signals = values.map((v) => VSignal.as(v));
+    const deriveFn = (...values: any[]) => {
+      for (let i = 0; i < values.length; i++) {
+        const isLast = i === values.length - 1;
+        const value = values[i];
+        if (isLast) return value;
+        if (!value) break;
+      }
+      return undefined;
+    };
+    return VSignal.derive.apply(null, [...signals, deriveFn] as any);
+  }
+
+  /**
+   * Allows to create a derived signal from more than one source signal.
+   *
+   * @example
+   *
+   * const source1 = sig(1);
+   * const source2 = sig(2);
+   *
+   * const derived = sig.derive(source1, source2, (v1, v2) => v1 + v2);
+   */
   public static derive<E, U>(
     sig1: ReadonlySignal<E>,
     getDerivedValue: (v1: E) => U,
@@ -330,6 +435,12 @@ class VSignal<T> implements Signal<T> {
     registerBoundSignal(element, signal);
   }
 
+  /**
+   * Returns the given value as a Readonly Signal.
+   *
+   * If the given value is already a signal it will return it as is,
+   * otherwise it will create a new read-only signal.
+   */
   public static as<T>(v: T | ReadonlySignal<T>): ReadonlySignal<T> {
     if (v instanceof VSignal) {
       return v;
@@ -786,6 +897,21 @@ interface SignalConstructor {
   as: typeof VSignal.as;
 
   literal: typeof VSignal.literal;
+
+  /**
+   * Equivalent of the "or" (`||`) operator but for signals.
+   */
+  or: typeof VSignal.or;
+
+  /**
+   * Equivalent of the "nullish coalesscent" (`??`) operator but for signals.
+   */
+  nuc: typeof VSignal.nuc;
+
+  /**
+   * Equivalent of the "and" (`&&`) operator but for signals.
+   */
+  and: typeof VSignal.and;
 }
 
 /**
@@ -803,6 +929,9 @@ signal.bind = VSignal.bind;
 signal.bindAttribute = VSignal.bindAttribute;
 signal.as = VSignal.as;
 signal.literal = VSignal.literal;
+signal.or = VSignal.or;
+signal.nuc = VSignal.nuc;
+signal.and = VSignal.and;
 
 /**
  * Alias for `signal()`.

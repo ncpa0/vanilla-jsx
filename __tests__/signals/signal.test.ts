@@ -1720,4 +1720,78 @@ describe("VSignal()", () => {
       });
     });
   });
+
+  describe("logical helpers", () => {
+    it("sig.or()", () => {
+      const s1 = sig<string | undefined>("hello");
+      const s2 = sig<string | undefined>("world");
+      const r = sig.or(s1, s2, "abc");
+
+      expect(r.get()).toEqual("hello");
+
+      s1.dispatch(undefined);
+      expect(r.get()).toEqual("world");
+
+      s2.dispatch(undefined);
+      expect(r.get()).toEqual("abc");
+
+      s1.dispatch("foo");
+      expect(r.get()).toEqual("foo");
+
+      s1.dispatch("");
+      expect(r.get()).toEqual("abc");
+    });
+
+    it("sig.nuc()", () => {
+      const s1 = sig<string | undefined>("FOO");
+      const s2 = sig<number | null>(2);
+      const r = sig.nuc(s1, s2, "");
+
+      expect(r.get()).toEqual("FOO");
+
+      s1.dispatch("");
+      expect(r.get()).toEqual("");
+
+      s1.dispatch(undefined);
+      expect(r.get()).toEqual(2);
+
+      s2.dispatch(0);
+      expect(r.get()).toEqual(0);
+
+      s2.dispatch(null);
+      expect(r.get()).toEqual("");
+    });
+
+    it("sig.and()", () => {
+      const s1 = sig<boolean>(false);
+      const s2 = sig<string | undefined>("Hello");
+      const r = sig.and(s1, s2);
+
+      expect(r.get()).toEqual(undefined);
+
+      s1.dispatch(true);
+      expect(r.get()).toEqual("Hello");
+
+      s2.dispatch("BAR");
+      expect(r.get()).toEqual("BAR");
+
+      s1.dispatch(false);
+      expect(r.get()).toEqual(undefined);
+
+      const s3 = sig(2);
+      const r2 = sig.and(s1, s2, s3);
+
+      expect(r2.get()).toEqual(undefined);
+
+      s1.dispatch(true);
+      expect(r2.get()).toEqual(2);
+
+      s2.dispatch("");
+      expect(r2.get()).toEqual(undefined);
+
+      s3.dispatch(5);
+      s2.dispatch("1");
+      expect(r2.get()).toEqual(5);
+    });
+  });
 });
