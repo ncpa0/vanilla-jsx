@@ -170,6 +170,87 @@ describe("signal handling", () => {
     );
   });
 
+  it("correctly handles when derived array changes partially", () => {
+    const s = sig(1);
+
+    const foo = <span>foo</span>;
+    const bar = <span>bar</span>;
+    const baz = <span>baz</span>;
+
+    const elem = (
+      <div>
+        <span>Start</span>
+        {s.derive((i) => {
+          switch (i) {
+            case 1:
+              return [foo, bar, baz];
+            case 2:
+              return [foo, baz];
+            case 3:
+              return [bar, baz];
+            case 4:
+              return [bar];
+            case 5:
+              return [];
+            case 6:
+              return [foo, bar, baz];
+            case 7:
+              return foo;
+            case 8:
+              return bar;
+            case 9:
+              return [bar, baz];
+          }
+        })}
+        <span>End</span>
+      </div>
+    );
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>foo</span><span>bar</span><span>baz</span><span>End</span></div>",
+    );
+
+    s.dispatch(2);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>foo</span><span>baz</span><span>End</span></div>",
+    );
+
+    s.dispatch(3);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>bar</span><span>baz</span><span>End</span></div>",
+    );
+
+    s.dispatch(4);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>bar</span><span>End</span></div>",
+    );
+
+    s.dispatch(5);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>End</span></div>",
+    );
+
+    s.dispatch(6);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>foo</span><span>bar</span><span>baz</span><span>End</span></div>",
+    );
+
+    s.dispatch(7);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>foo</span><span>End</span></div>",
+    );
+
+    s.dispatch(8);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>bar</span><span>End</span></div>",
+    );
+
+    s.dispatch(9);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>bar</span><span>baz</span><span>End</span></div>",
+    );
+  });
+
   it("correctly handles when switching between an Element and an array", () => {
     const s = sig<Text | Element | Array<Text | Element> | undefined>(
       undefined,

@@ -119,21 +119,35 @@ export class BindingFactories<
           if (firstNode) {
             this.assertNotFragment(firstNode);
 
-            const fragment = this.dom.createFragment();
-            this.dom.append(fragment, firstNode);
-            lastNodeRef = new WeakRef(firstNode);
+            if (firstNode === lastNode) {
+              let insertAfter = firstNode;
+              for (let i = 1; i < value.length; i++) {
+                const node: TextElement | Element | undefined = value[i];
+                this.assertNotFragment(node);
 
-            for (let i = 1; i < value.length; i++) {
-              const node: TextElement | Element | undefined = value[i];
-              this.assertNotFragment(node);
-
-              if (node) {
-                this.dom.append(fragment, node);
-                rest.push(new WeakRef(node));
+                if (node) {
+                  this.dom.insertAfter(node, insertAfter);
+                  rest.push(new WeakRef(node));
+                  insertAfter = node;
+                }
               }
-            }
+            } else {
+              const fragment = this.dom.createFragment();
+              this.dom.append(fragment, firstNode);
+              lastNodeRef = new WeakRef(firstNode);
 
-            this.dom.replace(lastNode, fragment);
+              for (let i = 1; i < value.length; i++) {
+                const node: TextElement | Element | undefined = value[i];
+                this.assertNotFragment(node);
+
+                if (node) {
+                  this.dom.append(fragment, node);
+                  rest.push(new WeakRef(node));
+                }
+              }
+
+              this.dom.replace(lastNode, fragment);
+            }
           } else {
             const emptyNode = this.dom.createText("");
             this.dom.replace(lastNode, emptyNode);
@@ -141,8 +155,10 @@ export class BindingFactories<
           }
         } else {
           this.assertNotFragment(value);
-          this.dom.replace(lastNode, value);
-          lastNodeRef = new WeakRef(value);
+          if (value !== lastNode) {
+            this.dom.replace(lastNode, value);
+            lastNodeRef = new WeakRef(value);
+          }
         }
       } else {
         const emptyNode = this.dom.createText("");
