@@ -46,6 +46,13 @@ export class DomInteraction
     parent.insertBefore(child, before);
   }
 
+  insertAfter(
+    child: Element | DocumentFragment | Text,
+    after: Element | DocumentFragment | Text,
+  ): void {
+    after.parentNode?.insertBefore(child, after.nextSibling);
+  }
+
   replace(
     oldChild: Element | Text,
     newChild: Element | DocumentFragment | Text,
@@ -76,7 +83,6 @@ export class DomInteraction
       (element as HTMLInputElement).value = this.toStr(value);
       return;
     }
-
     const possibleAttributeNames = ElementAttributes.get(element.tagName) ?? [];
     const isAttributeName = possibleAttributeNames.includes(name);
 

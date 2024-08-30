@@ -26,6 +26,10 @@ export interface InteractionInterface<
     child: Element | TextElement | FragmentElement,
     before: Element | TextElement | FragmentElement,
   ): void;
+  insertAfter(
+    child: Element | TextElement | FragmentElement,
+    after: Element | TextElement | FragmentElement,
+  ): void;
   replace(
     oldChild: Element | TextElement,
     newChild: Element | TextElement | FragmentElement,
