@@ -120,15 +120,17 @@ export type MaybeSignal<T> = T | Signal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `ReadonlySignal<T>` already.
  */
-export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U>
-  ? ReadonlySignal<U>
-  : ReadonlySignal<T>;
+export type AsReadonlySignal<T> =
+  T extends ReadonlySignal<infer U> ? ReadonlySignal<U> : ReadonlySignal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `Signal<T>` already.
  */
-export type AsSignal<T> = T extends Signal<infer U> ? T
-  : T extends ReadonlySignal<infer K> ? ReadonlySignal<K>
-  : ReadonlySignal<T>;
+export type AsSignal<T> =
+  T extends Signal<infer U>
+    ? T
+    : T extends ReadonlySignal<infer K>
+      ? ReadonlySignal<K>
+      : ReadonlySignal<T>;
 
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
@@ -321,6 +323,13 @@ class VSignal<T> implements Signal<T> {
       return undefined;
     };
     return VSignal.derive.apply(null, [...signals, deriveFn] as any);
+  }
+
+  /**
+   * Equivalent of the "not" (`!`) operator but for signals.
+   */
+  public static not<T>(value: T | ReadonlySignal<T>): ReadonlySignal<boolean> {
+    return VSignal.derive(VSignal.as(value), (v) => !v);
   }
 
   /**
@@ -867,6 +876,7 @@ class VReadonlySignal<T> extends VSignal<T> {
 }
 
 interface SignalConstructor {
+  <T>(): Signal<T | undefined>;
   <T>(value: T): Signal<T>;
 
   /**
@@ -952,7 +962,7 @@ interface SignalConstructor {
  *
  * `<T>(value: T): Signal<T>;`
  */
-const signal: SignalConstructor = function signal<T>(value: T): Signal<T> {
+const signal: SignalConstructor = function signal(value?: any) {
   return new VSignal(value);
 };
 signal.derive = VSignal.derive;
