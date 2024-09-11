@@ -9,7 +9,13 @@ export interface InteractionInterface<
   create(tag: string): Element;
   createText(content: Primitive): TextElement;
   createFragment(): FragmentElement;
+  setAttributeOrProperty(
+    element: Element,
+    name: string,
+    value: Primitive,
+  ): void;
   setAttribute(element: Element, name: string, value: Primitive): void;
+  setProperty(element: Element, name: string, value: Primitive): void;
   setClass(element: Element, value: string): void;
   addClassName(element: Element, ...value: string[]): void;
   removeClassName(element: Element, ...value: string[]): void;

@@ -75,7 +75,11 @@ export class DomInteraction
     (element as HTMLElement).style.display = "none";
   }
 
-  setAttribute(element: Element, name: string, value: Primitive): void {
+  setAttributeOrProperty(
+    element: Element,
+    name: string,
+    value: Primitive,
+  ): void {
     if (
       name === "value"
       && (element.tagName === "INPUT" || element.tagName === "TEXT_AREA")
@@ -87,29 +91,35 @@ export class DomInteraction
     const isAttributeName = possibleAttributeNames.includes(name);
 
     if (isAttributeName) {
-      if (value == null) {
-        element.removeAttribute(name);
-      } else {
-        if (typeof value === "boolean") {
-          if (value) {
-            element.setAttribute(name, name);
-          } else {
-            element.removeAttribute(name);
-          }
-        } else {
-          element.setAttribute(name, this.toStr(value));
-        }
-      }
+      this.setAttribute(element, name, value);
     } else {
       if (name in element) {
         (element as any)[name] = value;
       } else {
-        if (value == null) {
-          element.removeAttribute(name);
-        } else {
-          element.setAttribute(name, this.toStr(value));
-        }
+        this.setAttribute(element, name, value);
       }
+    }
+  }
+
+  setAttribute(element: Element, name: string, value: Primitive): void {
+    if (value == null) {
+      element.removeAttribute(name);
+    } else {
+      if (typeof value === "boolean") {
+        if (value) {
+          element.setAttribute(name, name);
+        } else {
+          element.removeAttribute(name);
+        }
+      } else {
+        element.setAttribute(name, this.toStr(value));
+      }
+    }
+  }
+
+  setProperty(element: Element, name: string, value: Primitive): void {
+    if (name in element) {
+      (element as any)[name] = value;
     }
   }
 

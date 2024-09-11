@@ -34,10 +34,9 @@ class CustomElement extends CustomFragment {
   dataset: Record<string, string> = {};
   classNames = new Set<string>();
   isHidden = false;
+  style: Record<string, string> = {};
 
-  constructor(
-    public readonly tagName: string,
-  ) {
+  constructor(public readonly tagName: string) {
     super();
   }
 
@@ -54,8 +53,8 @@ class CustomElement extends CustomFragment {
   }
 
   removeEventListener(name: string, listener: (event: CustomEvent) => void) {
-    this.listeners = this.listeners.filter(([key, value]) =>
-      key !== name || value !== listener
+    this.listeners = this.listeners.filter(
+      ([key, value]) => key !== name || value !== listener,
     );
   }
 
@@ -86,20 +85,19 @@ class CustomElement extends CustomFragment {
 
 class CustomTextNode {
   parent?: CustomElement | CustomFragment;
-  constructor(
-    public content: string,
-  ) {}
+  constructor(public content: string) {}
 }
 
 class CustomEvent {}
 
-class CustomInteractions implements
-  InteractionInterface<
-    CustomElement,
-    CustomTextNode,
-    CustomFragment,
-    CustomEvent
-  >
+class CustomInteractions
+  implements
+    InteractionInterface<
+      CustomElement,
+      CustomTextNode,
+      CustomFragment,
+      CustomEvent
+    >
 {
   create(tag: string): CustomElement {
     return new CustomElement(tag);
@@ -151,6 +149,18 @@ class CustomInteractions implements
 
   removeClassName(element: CustomElement, ...value: string[]): void {
     element.removeClassNames(value);
+  }
+
+  setAttributeOrProperty(
+    element: CustomElement,
+    name: string,
+    value: Primitive,
+  ): void {
+    this.setAttribute(element, name, value);
+  }
+
+  setProperty(element: CustomElement, name: string, value: Primitive): void {
+    this.setAttribute(element, name, value);
   }
 
   setAttribute(element: CustomElement, name: string, value: Primitive): void {
@@ -239,6 +249,36 @@ class CustomInteractions implements
       child.parent = parent;
     }
   }
+
+  clearStyle(element: CustomElement): void {
+    element.style = {};
+  }
+
+  insertAfter(
+    child: CustomElement | CustomTextNode | CustomFragment,
+    after: CustomElement | CustomTextNode | CustomFragment,
+  ): void {
+    const parent = after.parent;
+    if (parent) {
+      const index = parent.children.indexOf(after);
+      if (index !== -1) {
+        parent.children.splice(index + 1, 0, child);
+        child.parent = parent;
+      }
+    }
+  }
+
+  setStyle(
+    element: CustomElement,
+    styleKey: string,
+    value: string | undefined,
+  ): void {
+    if (value == null) {
+      delete element.style[styleKey];
+      return;
+    }
+    element.style[styleKey] = value;
+  }
 }
 
 describe("correctly works with a custom InteractionInterface", () => {
@@ -263,7 +303,10 @@ describe("correctly works with a custom InteractionInterface", () => {
     );
 
     const root = new CustomElement("div");
-    root.attributes = [["id", "root"], ["draggable", "true"]];
+    root.attributes = [
+      ["id", "root"],
+      ["draggable", "true"],
+    ];
     const paragraph = new CustomElement("p");
     paragraph.classNames = new Set(["header", "text"]);
     paragraph.append(new CustomTextNode("Hello"));

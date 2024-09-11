@@ -101,7 +101,11 @@ declare global {
 
     type Children = Element | VanillaValue | Array<Element | VanillaValue>;
 
-    type HTMLProps<P> = BaseAttributes & WithSignals<P>;
+    type HTMLProps<P> =
+      & BaseAttributes
+      & WithSignals<P>
+      & PrefixAttributes
+      & PrefixProperties;
 
     interface ElementChildrenAttribute {
       children?: {}; // specify children name to use
@@ -246,6 +250,16 @@ declare global {
        */
       unsafeHTML?: boolean;
     }
+
+    type PrefixAttributes = Record<
+      `attribute:${string}`,
+      | string
+      | number
+      | boolean
+      | JSX.Signal<string | number | boolean | undefined>
+    >;
+
+    type PrefixProperties = Record<`property:${string}`, any>;
   }
 
   // Interfaces for HTML tags that do not have any additional attributes defined

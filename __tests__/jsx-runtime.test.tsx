@@ -32,6 +32,20 @@ describe("jsx-runtime", () => {
     );
   });
 
+  it("correctly handles prefixed attributes", () => {
+    const elem = <input attribute:form="abc" />;
+
+    expect(elem.outerHTML).toEqual('<input form="abc">');
+  });
+
+  it("correctly handles prefixed properties", () => {
+    const value = "abcdef";
+
+    const elem = (<input property:value={value} />) as HTMLInputElement;
+
+    expect(elem.value).toEqual(value);
+  });
+
   it("correctly handles children arrays", () => {
     const nums = Array(6)
       .fill(0)
@@ -252,9 +266,9 @@ describe("jsx-runtime", () => {
     const sig1 = sig<string | undefined>("foo");
     const sig2 = sig<number | null>(2);
 
-    // @ts-expect-error
     const div = (
       <div
+        // @ts-expect-error
         myattr1={sig1}
         myotherattr1={sig2}
         myattr2="baz"

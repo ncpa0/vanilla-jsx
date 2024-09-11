@@ -231,7 +231,7 @@ export class BindingFactories<
     value: Exclude<StyleDict, JSX.Signal<any>> | string | undefined,
   ) {
     if (typeof value !== "object") {
-      this.dom.setAttribute(elem, "style", value);
+      this.dom.setAttributeOrProperty(elem, "style", value);
       return;
     }
 
@@ -259,14 +259,28 @@ export class BindingFactories<
       return this.setStyle.bind(this);
     }
 
-    if (attributeName.includes("data-")) {
+    if (attributeName.startsWith("data-")) {
       // data attributes can be set using the `dataset` Element property
       const dataName = attributeName.substring(5);
       return this.createDataBinding(dataName);
     }
 
+    if (attributeName.startsWith("attribute:")) {
+      const actualName = attributeName.substring(10);
+      return (elem: Element, value: any) => {
+        this.dom.setAttribute(elem, actualName, value);
+      };
+    }
+
+    if (attributeName.startsWith("property:")) {
+      const actualName = attributeName.substring(9);
+      return (elem: Element, value: any) => {
+        this.dom.setProperty(elem, actualName, value);
+      };
+    }
+
     return (elem: Element, value: any) => {
-      this.dom.setAttribute(elem, attributeName, value);
+      this.dom.setAttributeOrProperty(elem, attributeName, value);
     };
   }
 }
