@@ -120,15 +120,17 @@ export type MaybeSignal<T> = T | Signal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `ReadonlySignal<T>` already.
  */
-export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U>
-  ? ReadonlySignal<U>
-  : ReadonlySignal<T>;
+export type AsReadonlySignal<T> =
+  T extends ReadonlySignal<infer U> ? ReadonlySignal<U> : ReadonlySignal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `Signal<T>` already.
  */
-export type AsSignal<T> = T extends Signal<infer U> ? T
-  : T extends ReadonlySignal<infer K> ? ReadonlySignal<K>
-  : ReadonlySignal<T>;
+export type AsSignal<T> =
+  T extends Signal<infer U>
+    ? T
+    : T extends ReadonlySignal<infer K>
+      ? ReadonlySignal<K>
+      : ReadonlySignal<T>;
 
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
@@ -328,6 +330,16 @@ class VSignal<T> implements Signal<T> {
    */
   public static not<T>(value: T | ReadonlySignal<T>): ReadonlySignal<boolean> {
     return VSignal.derive(VSignal.as(value), (v) => !v);
+  }
+
+  /**
+   * Returns a boolean signal that tells if the two given values/signals are equal.
+   */
+  public static eq<T>(
+    a: T | ReadonlySignal<T>,
+    b: T | ReadonlySignal<T>,
+  ): ReadonlySignal<boolean> {
+    return VSignal.derive(VSignal.as(a), VSignal.as(b), (a, b) => a === b);
   }
 
   /**
@@ -953,6 +965,16 @@ interface SignalConstructor {
    * isDarkMode ? darkTheme : lightTheme;
    */
   when: typeof VSignal.when;
+
+  /**
+   * Equivalent of the "not" (`!`) operator but for signals.
+   */
+  not: typeof VSignal.not;
+
+  /**
+   * Returns a boolean signal that tells if the two given values/signals are equal.
+   */
+  eq: typeof VSignal.eq;
 }
 
 /**
@@ -974,6 +996,8 @@ signal.or = VSignal.or;
 signal.nuc = VSignal.nuc;
 signal.and = VSignal.and;
 signal.when = VSignal.when;
+signal.not = VSignal.not;
+signal.eq = VSignal.eq;
 
 /**
  * Alias for `signal()`.
