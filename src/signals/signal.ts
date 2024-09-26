@@ -14,9 +14,7 @@ class PropagationAbortSignal {
 
   private _isAborted = false;
 
-  constructor(
-    protected origin: VSignal<any>,
-  ) {}
+  constructor() {}
 
   get isAborted() {
     return this._isAborted;
@@ -636,7 +634,7 @@ class VSignal<T> implements Signal<T> {
   }
 
   private lastPropagationAbortSig: PropagationAbortSignal =
-    new PropagationAbortSignal(this);
+    new PropagationAbortSignal();
 
   private propagateChange(abs?: PropagationAbortSignal) {
     if (abs?.isAborted) return;
@@ -645,7 +643,7 @@ class VSignal<T> implements Signal<T> {
 
     const abortSig = abs
       ? PropagationAbortSignal.extend(abs)
-      : new PropagationAbortSignal(this);
+      : new PropagationAbortSignal();
 
     this.lastPropagationAbortSig = abortSig;
     this.notifyListeners(abortSig);
@@ -660,7 +658,7 @@ class VSignal<T> implements Signal<T> {
 
     const abortSig = abs
       ? PropagationAbortSignal.extend(abs)
-      : new PropagationAbortSignal(this);
+      : new PropagationAbortSignal();
 
     this.lastPropagationAbortSig = abortSig;
     this.notifyListeners(abortSig);
