@@ -1,5 +1,32 @@
 import { registerBoundSignal } from "./utils";
 
+class PropagationAbortSignal {
+  static extend(abortSig: PropagationAbortSignal) {
+    const sub = Object.create(abortSig, {
+      abort: {
+        value: function() {
+          sub._isAborted = true;
+        },
+      },
+    });
+    return sub;
+  }
+
+  private _isAborted = false;
+
+  constructor(
+    protected origin: VSignal<any>,
+  ) {}
+
+  get isAborted() {
+    return this._isAborted;
+  }
+
+  abort() {
+    this._isAborted = true;
+  }
+}
+
 export type DispatchFunc<T> = (current: T) => T;
 export type SignalListener<T> = (value: T) => void;
 export type SignalListenerReference<T> = Readonly<{
@@ -120,17 +147,15 @@ export type MaybeSignal<T> = T | Signal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `ReadonlySignal<T>` already.
  */
-export type AsReadonlySignal<T> =
-  T extends ReadonlySignal<infer U> ? ReadonlySignal<U> : ReadonlySignal<T>;
+export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U>
+  ? ReadonlySignal<U>
+  : ReadonlySignal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `Signal<T>` already.
  */
-export type AsSignal<T> =
-  T extends Signal<infer U>
-    ? T
-    : T extends ReadonlySignal<infer K>
-      ? ReadonlySignal<K>
-      : ReadonlySignal<T>;
+export type AsSignal<T> = T extends Signal<infer U> ? T
+  : T extends ReadonlySignal<infer K> ? ReadonlySignal<K>
+  : ReadonlySignal<T>;
 
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
@@ -173,7 +198,7 @@ class VSignal<T> implements Signal<T> {
     public commit() {
       for (const [signal, newValue] of this.roots) {
         signal.value = newValue;
-        signal.notifyListeners();
+        signal.propagateChangeOmitSinks();
       }
       /**
        * first element in the queue is always the leaf node and each subsequent
@@ -188,7 +213,7 @@ class VSignal<T> implements Signal<T> {
         } else {
           const changed = signal.update();
           if (changed) {
-            signal.notifyListeners();
+            signal.propagateChangeOmitSinks();
           }
         }
         signal.batchEntry = undefined;
@@ -550,14 +575,14 @@ class VSignal<T> implements Signal<T> {
     return false;
   }
 
-  private updateAndPropagate() {
+  private updateAndPropagate(abortSig?: PropagationAbortSignal) {
     const changed = this.update();
     if (changed) {
-      this.propagateChange();
+      this.propagateChange(abortSig);
     }
   }
 
-  private notifyListeners() {
+  private notifyListeners(abortSig: PropagationAbortSignal) {
     for (let i = 0; i < this.listeners.length; i++) {
       const listenerRef = this.listeners[i]!;
       try {
@@ -565,35 +590,80 @@ class VSignal<T> implements Signal<T> {
       } catch (e) {
         console.error(e);
       }
+      if (abortSig.isAborted) {
+        return;
+      }
     }
   }
 
-  private forEachSink(fn: (sinkSig: VSignal<any>) => void) {
+  private forEachSink(
+    fn: (sinkSig: VSignal<any>, breakLoop: () => void) => void,
+  ) {
+    // Remove sinks that have been garbage collected
     for (let i = 0; i < this.derivedSignals.length; i++) {
       const sig = this.derivedSignals[i]!.deref();
-      if (sig) {
-        fn(sig);
-      } else {
+      if (!sig) {
         this.derivedSignals.splice(i, 1);
         i--;
       }
     }
+
+    let shouldBreak = false;
+    const breakLoop = () => {
+      shouldBreak = true;
+    };
+    for (let i = 0; i < this.derivedSignals.length; i++) {
+      const sig = this.derivedSignals[i]!.deref();
+      if (sig) {
+        fn(sig, breakLoop);
+        if (shouldBreak) break;
+      }
+    }
   }
 
-  private notifySinks() {
-    this.forEachSink((sig) => {
+  private notifySinks(abortSig: PropagationAbortSignal) {
+    this.forEachSink((sig, _break) => {
       if (sig.listeners.length === 0) {
         sig.isDirty = true;
-        sig.notifySinks();
+        sig.notifySinks(abortSig);
       } else {
-        sig.updateAndPropagate();
+        sig.updateAndPropagate(abortSig);
+      }
+      if (abortSig.isAborted) {
+        _break();
       }
     });
   }
 
-  private propagateChange() {
-    this.notifyListeners();
-    this.notifySinks();
+  private lastPropagationAbortSig: PropagationAbortSignal =
+    new PropagationAbortSignal(this);
+
+  private propagateChange(abs?: PropagationAbortSignal) {
+    if (abs?.isAborted) return;
+
+    this.lastPropagationAbortSig.abort();
+
+    const abortSig = abs
+      ? PropagationAbortSignal.extend(abs)
+      : new PropagationAbortSignal(this);
+
+    this.lastPropagationAbortSig = abortSig;
+    this.notifyListeners(abortSig);
+    if (abortSig.isAborted) return;
+    this.notifySinks(abortSig);
+  }
+
+  private propagateChangeOmitSinks(abs?: PropagationAbortSignal) {
+    if (abs?.isAborted) return;
+
+    this.lastPropagationAbortSig.abort();
+
+    const abortSig = abs
+      ? PropagationAbortSignal.extend(abs)
+      : new PropagationAbortSignal(this);
+
+    this.lastPropagationAbortSig = abortSig;
+    this.notifyListeners(abortSig);
   }
 
   public add(listener: SignalListener<T>): SignalListenerReference<T> {

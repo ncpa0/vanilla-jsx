@@ -1721,6 +1721,146 @@ describe("VSignal()", () => {
     });
   });
 
+  describe("handling of updates caused by own update", () => {
+    it("simple circular dependency", () => {
+      const s = sig({
+        foo: "bar",
+        len: 3,
+      });
+
+      s.add((v) => {
+        if (v.foo.length !== v.len) {
+          s.dispatch({
+            foo: v.foo,
+            len: v.foo.length,
+          });
+        }
+      });
+
+      s.dispatch({
+        foo: "barbaz",
+        len: 3,
+      });
+
+      expect(s.get()).toEqual({
+        foo: "barbaz",
+        len: 6,
+      });
+
+      s.dispatch({
+        foo: "barbazqux",
+        len: 6,
+      });
+      s.dispatch({
+        foo: "barbazquxcorge",
+        len: 6,
+      });
+
+      expect(s.get()).toEqual({
+        foo: "barbazquxcorge",
+        len: 14,
+      });
+
+      s.dispatch({
+        foo: "barbazqux",
+        len: 14,
+      });
+      s.dispatch({
+        foo: "barbaz",
+        len: 14,
+      });
+      s.dispatch({
+        foo: "bar",
+        len: 14,
+      });
+
+      expect(s.get()).toEqual({
+        foo: "bar",
+        len: 3,
+      });
+    });
+
+    it("circular dependency between too signals", () => {
+      const sig1 = sig({ value: "foo", sig2Reflection: 3 });
+      const sig2 = sig(3);
+
+      sig1.add((v) => {
+        if (v.value.length !== sig2.get()) {
+          sig2.dispatch(v.value.length);
+        }
+      });
+
+      sig2.add((v) => {
+        if (v !== sig1.get().sig2Reflection) {
+          sig1.dispatch({
+            value: sig1.get().value,
+            sig2Reflection: v,
+          });
+        }
+      });
+
+      sig1.dispatch({ value: "foobar", sig2Reflection: 3 });
+
+      expect(sig1.get()).toEqual({ value: "foobar", sig2Reflection: 6 });
+      expect(sig2.get()).toEqual(6);
+
+      sig1.dispatch({ value: "foobarb", sig2Reflection: 6 });
+      sig1.dispatch({ value: "foobarba", sig2Reflection: 6 });
+      sig1.dispatch({ value: "foobarbaz", sig2Reflection: 6 });
+
+      expect(sig1.get()).toEqual({ value: "foobarbaz", sig2Reflection: 9 });
+      expect(sig2.get()).toEqual(9);
+
+      sig1.dispatch({ value: "", sig2Reflection: 9 });
+      sig1.dispatch({ value: "ABC", sig2Reflection: 9 });
+      sig1.dispatch({ value: "foobarbazquxcorge", sig2Reflection: 9 });
+
+      expect(sig1.get()).toEqual({
+        value: "foobarbazquxcorge",
+        sig2Reflection: 17,
+      });
+      expect(sig2.get()).toEqual(17);
+    });
+
+    it("circular dependency between derived signals", () => {
+      const sig1 = sig({ value: "foo", sig2Reflection: 3 });
+      const sig2 = sig1.derive((v) => v.value.length);
+
+      sig2.add((v) => {
+        if (v !== sig1.get().sig2Reflection) {
+          sig1.dispatch({
+            value: sig1.get().value,
+            sig2Reflection: v,
+          });
+        }
+      });
+
+      sig1.dispatch({ value: "foobar", sig2Reflection: 3 });
+
+      expect(sig1.get()).toEqual({ value: "foobar", sig2Reflection: 6 });
+      expect(sig2.get()).toEqual(6);
+
+      sig1.dispatch({ value: "foobarb", sig2Reflection: 6 });
+      sig1.dispatch({ value: "foobarba", sig2Reflection: 6 });
+      sig1.dispatch({ value: "foobarbaz", sig2Reflection: 6 });
+
+      expect(sig1.get()).toEqual({ value: "foobarbaz", sig2Reflection: 9 });
+      expect(sig2.get()).toEqual(9);
+
+      sig1.dispatch({ value: "", sig2Reflection: 9 });
+      sig1.dispatch({ value: "ABCD", sig2Reflection: 9 });
+      sig1.dispatch({ value: "ABC", sig2Reflection: 9 });
+      sig1.dispatch({ value: "ABCEFH", sig2Reflection: 9 });
+      sig1.dispatch({ value: "foobarbazquxcorge", sig2Reflection: 9 });
+
+      expect(sig1.get()).toEqual({
+        value: "foobarbazquxcorge",
+        sig2Reflection: 17,
+      });
+      expect(sig2.get()).toEqual(17);
+    });
+  });
+
   describe("logical helpers", () => {
     it("sig.or()", () => {
       const s1 = sig<string | undefined>("hello");

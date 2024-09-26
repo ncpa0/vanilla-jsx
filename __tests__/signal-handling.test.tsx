@@ -170,6 +170,191 @@ describe("signal handling", () => {
     );
   });
 
+  it("correctly handles derived fragments", () => {
+    const s = sig(1);
+
+    const elem = (
+      <div>
+        <span>Start</span>
+        {s.derive((i) => {
+          switch (i) {
+            case 1:
+              return (
+                <>
+                  <span>FOO</span>
+                </>
+              );
+            case 2:
+              return (
+                <>
+                  <span>FOO</span>
+                  <span>BAR</span>
+                </>
+              );
+            case 3:
+              return (
+                <>
+                  <>
+                    <span>BAR</span>
+                    <span>BAZ</span>
+                  </>
+                </>
+              );
+            case 4:
+              return (
+                <>
+                  <span>BAR</span>
+                  <span>FOO</span>
+                  <span>BAZ</span>
+                </>
+              );
+            case 5:
+              return (
+                <>
+                  <>
+                    <span>FOO</span>
+                  </>
+                </>
+              );
+            case 6:
+              return <></>;
+            case 7:
+              return (
+                <>
+                  <>
+                    <span></span>
+                  </>
+                </>
+              );
+          }
+        })}
+        <span>End</span>
+      </div>
+    );
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>FOO</span><span>End</span></div>",
+    );
+
+    s.dispatch(2);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>FOO</span><span>BAR</span><span>End</span></div>",
+    );
+
+    s.dispatch(3);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>BAR</span><span>BAZ</span><span>End</span></div>",
+    );
+
+    s.dispatch(4);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>BAR</span><span>FOO</span><span>BAZ</span><span>End</span></div>",
+    );
+
+    s.dispatch(5);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>FOO</span><span>End</span></div>",
+    );
+
+    s.dispatch(6);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>End</span></div>",
+    );
+
+    s.dispatch(7);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span></span><span>End</span></div>",
+    );
+  });
+
+  it("correctly handles fragments in derived maps", () => {
+    const s = sig(1);
+
+    const elem = (
+      <div>
+        <span>Start</span>
+        {s.derive((i) => {
+          switch (i) {
+            case 1:
+              return [
+                <>
+                  <span>FOO</span>
+                </>,
+              ];
+            case 2:
+              return [
+                <div />,
+                <>
+                  <span>FOO</span>
+                </>,
+                <h1 />,
+              ];
+            case 3:
+              return [
+                <div />,
+                <>
+                  <span>FOO</span>
+                  <span>BAR</span>
+                  <span>BAZ</span>
+                </>,
+                <h1 />,
+              ];
+            case 4:
+              return [
+                <div />,
+                <>
+                  <span>FOO</span>
+                  <>
+                    <span>BAR</span>
+                    <span>BAZ</span>
+                  </>
+                  <span>QUX</span>
+                </>,
+                <h1 />,
+              ];
+            case 5:
+              return [<div />, <></>, <h1 />];
+          }
+        })}
+        <span>End</span>
+      </div>
+    );
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><span>FOO</span><span>End</span></div>",
+    );
+
+    s.dispatch(2);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><div></div><span>FOO</span><h1></h1><span>End</span></div>",
+    );
+
+    s.dispatch(3);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><div></div><span>FOO</span><span>BAR</span><span>BAZ</span><h1></h1><span>End</span></div>",
+    );
+
+    s.dispatch(4);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><div></div><span>FOO</span><span>BAR</span><span>BAZ</span><span>QUX</span><h1></h1><span>End</span></div>",
+    );
+
+    s.dispatch(5);
+
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Start</span><div></div><h1></h1><span>End</span></div>",
+    );
+  });
+
   it("correctly handles when derived array changes partially", () => {
     const s = sig(1);
 

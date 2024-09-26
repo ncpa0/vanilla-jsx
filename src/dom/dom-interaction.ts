@@ -190,6 +190,12 @@ export class DomInteraction
     return element instanceof DocumentFragment;
   }
 
+  getFragmentChildren(
+    fragment: DocumentFragment,
+  ): Array<Element | Text | DocumentFragment> {
+    return Array.from(fragment.children);
+  }
+
   isText(element: Element | Text | DocumentFragment): element is Text {
     return element instanceof Text;
   }

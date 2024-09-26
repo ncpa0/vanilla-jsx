@@ -5,7 +5,6 @@ import {
   SignalsReg,
   sigProxy,
 } from "../sig-proxy/_proxy";
-import { VanillaJSXReconcilerError } from "./reconciller-error";
 import { isArray, MaybeArray } from "./utils";
 
 export class BindingFactories<
@@ -23,12 +22,15 @@ export class BindingFactories<
     >,
   ) {}
 
-  private assertNotFragment<T>(elem: T): asserts elem is T {
-    if (this.dom.isFragment(elem as any)) {
-      throw new VanillaJSXReconcilerError(
-        "Fragment cannot be placed into an element via signals since Fragments are not replaceable.",
-      );
-    }
+  private flattenFragments(
+    arr: Array<Element | TextElement | FragmentElement | undefined>,
+  ): Array<Element | TextElement | undefined> {
+    return arr.flatMap((elem) => {
+      if (this.dom.isFragment(elem)) {
+        return this.flattenFragments(this.dom.getFragmentChildren(elem));
+      }
+      return elem;
+    });
   }
 
   private setClassName(elem: Element, value: ClassName) {
@@ -87,7 +89,7 @@ export class BindingFactories<
   ) {
     return (
       _: unknown,
-      value: MaybeArray<TextElement | Element | undefined>,
+      value: MaybeArray<TextElement | Element | FragmentElement | undefined>,
       sigRef?: SignalProxyListenerRef,
     ) => {
       const lastNode = lastNodeRef?.deref();
@@ -114,17 +116,18 @@ export class BindingFactories<
           lastNodeRef = new WeakRef(node);
         }
       } else if (value) {
-        if (Array.isArray(value)) {
-          const [firstNode] = value;
-          if (firstNode) {
-            this.assertNotFragment(firstNode);
+        if (this.dom.isFragment(value)) {
+          value = this.dom.getFragmentChildren(value);
+        }
 
+        if (Array.isArray(value)) {
+          const elements = this.flattenFragments(value);
+          const [firstNode] = elements;
+          if (firstNode) {
             if (firstNode === lastNode) {
               let insertAfter = firstNode;
-              for (let i = 1; i < value.length; i++) {
-                const node: TextElement | Element | undefined = value[i];
-                this.assertNotFragment(node);
-
+              for (let i = 1; i < elements.length; i++) {
+                const node: TextElement | Element | undefined = elements[i];
                 if (node) {
                   this.dom.insertAfter(node, insertAfter);
                   rest.push(new WeakRef(node));
@@ -136,10 +139,8 @@ export class BindingFactories<
               this.dom.append(fragment, firstNode);
               lastNodeRef = new WeakRef(firstNode);
 
-              for (let i = 1; i < value.length; i++) {
-                const node: TextElement | Element | undefined = value[i];
-                this.assertNotFragment(node);
-
+              for (let i = 1; i < elements.length; i++) {
+                const node: TextElement | Element | undefined = elements[i];
                 if (node) {
                   this.dom.append(fragment, node);
                   rest.push(new WeakRef(node));
@@ -154,7 +155,6 @@ export class BindingFactories<
             lastNodeRef = new WeakRef(emptyNode);
           }
         } else {
-          this.assertNotFragment(value);
           if (value !== lastNode) {
             this.dom.replace(lastNode, value);
             lastNodeRef = new WeakRef(value);

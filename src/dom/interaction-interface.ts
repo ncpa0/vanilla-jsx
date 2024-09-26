@@ -52,9 +52,10 @@ export interface InteractionInterface<
   parseUnsafe(
     content: string,
   ): Iterable<Element | TextElement | FragmentElement>;
-  isFragment(
-    element: Element | TextElement | FragmentElement,
-  ): element is FragmentElement;
+  isFragment(element: any): element is FragmentElement;
+  getFragmentChildren(
+    element: FragmentElement,
+  ): Array<Element | TextElement | FragmentElement>;
   isText(
     element: Element | TextElement | FragmentElement,
   ): element is TextElement;

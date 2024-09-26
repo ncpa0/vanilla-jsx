@@ -45,6 +45,7 @@
 /// <reference path="./prop-types/track-jsx-props.ts" />
 /// <reference path="./prop-types/video-jsx-props.ts" />
 
+import type { ReadonlySignal } from "../signals";
 import { PropsForElement } from "./prop-types/shared/props-for-element";
 
 export {};
@@ -75,19 +76,19 @@ export type StyleDict = {
 
 type Values<Obj> = Obj[keyof Obj];
 
+type MaybeArray<T> = T | T[];
+
 declare global {
   namespace JSX {
     type SignalValue = null | undefined | boolean | string | number;
 
-    interface VJSXSignal<V> {
-      add(listener: (value: V) => void): { detach(): void };
-    }
-
     interface SupportedSignals<V> {
-      default: VJSXSignal<V>;
+      default: ReadonlySignal<V>;
     }
 
     type Signal<V = any> = Values<SupportedSignals<V>>;
+
+    type MaybeSignal<V> = V | Signal<V>;
 
     type VanillaValue =
       | Signal<any>
@@ -99,7 +100,7 @@ declare global {
 
     type Element = globalThis.Element;
 
-    type Children = Element | VanillaValue | Array<Element | VanillaValue>;
+    type Children = MaybeArray<Element | VanillaValue>;
 
     type HTMLProps<P> =
       & BaseAttributes
