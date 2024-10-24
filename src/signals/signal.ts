@@ -4,7 +4,7 @@ class PropagationAbortSignal {
   static extend(abortSig: PropagationAbortSignal) {
     const sub = Object.create(abortSig, {
       abort: {
-        value: function () {
+        value: function() {
           sub._isAborted = true;
         },
       },
@@ -145,17 +145,15 @@ export type MaybeSignal<T> = T | Signal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `ReadonlySignal<T>` already.
  */
-export type AsReadonlySignal<T> =
-  T extends ReadonlySignal<infer U> ? ReadonlySignal<U> : ReadonlySignal<T>;
+export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U>
+  ? ReadonlySignal<U>
+  : ReadonlySignal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `Signal<T>` already.
  */
-export type AsSignal<T> =
-  T extends Signal<infer U>
-    ? T
-    : T extends ReadonlySignal<infer K>
-      ? ReadonlySignal<K>
-      : ReadonlySignal<T>;
+export type AsSignal<T> = T extends Signal<infer U> ? T
+  : T extends ReadonlySignal<infer K> ? ReadonlySignal<K>
+  : ReadonlySignal<T>;
 
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
