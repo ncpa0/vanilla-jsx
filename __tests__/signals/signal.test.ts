@@ -1251,7 +1251,7 @@ describe("VSignal()", () => {
       const obj = { prop: "foo" };
       const s = sig("bar");
 
-      sig.bind(s, obj, "prop");
+      sig.bindv(s, obj, "prop");
 
       expect(obj.prop).toBe("bar");
 
@@ -1266,7 +1266,7 @@ describe("VSignal()", () => {
       const s2 = sig(2);
       const derived = sig.derive(s1, s2, (v1, v2) => v1 * v2);
 
-      sig.bind(derived, obj, "v");
+      sig.bindv(derived, obj, "v");
 
       expect(obj.v).toBe(2);
 
@@ -1284,7 +1284,7 @@ describe("VSignal()", () => {
       const ref = new WeakRef(obj);
       const s = sig("bar");
 
-      sig.bind(s, obj, "prop");
+      sig.bindv(s, obj, "prop");
 
       expect(obj.prop).toBe("bar");
 
@@ -1304,7 +1304,7 @@ describe("VSignal()", () => {
 
       // don't keep ref to the derived signal
       const derivedRef = new WeakRef(source.derive((t) => t.toUpperCase()));
-      sig.bind(derivedRef.deref()!, obj, "prop");
+      sig.bindv(derivedRef.deref()!, obj, "prop");
 
       expect(obj.prop).toBe("FOO");
 

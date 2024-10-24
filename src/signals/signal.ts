@@ -4,7 +4,7 @@ class PropagationAbortSignal {
   static extend(abortSig: PropagationAbortSignal) {
     const sub = Object.create(abortSig, {
       abort: {
-        value: function() {
+        value: function () {
           sub._isAborted = true;
         },
       },
@@ -145,15 +145,17 @@ export type MaybeSignal<T> = T | Signal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `ReadonlySignal<T>` already.
  */
-export type AsReadonlySignal<T> = T extends ReadonlySignal<infer U>
-  ? ReadonlySignal<U>
-  : ReadonlySignal<T>;
+export type AsReadonlySignal<T> =
+  T extends ReadonlySignal<infer U> ? ReadonlySignal<U> : ReadonlySignal<T>;
 /**
  * Casts to a `ReadonlySignal<T>` if it's not a `Signal<T>` already.
  */
-export type AsSignal<T> = T extends Signal<infer U> ? T
-  : T extends ReadonlySignal<infer K> ? ReadonlySignal<K>
-  : ReadonlySignal<T>;
+export type AsSignal<T> =
+  T extends Signal<infer U>
+    ? T
+    : T extends ReadonlySignal<infer K>
+      ? ReadonlySignal<K>
+      : ReadonlySignal<T>;
 
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
@@ -458,7 +460,7 @@ class VSignal<T> implements Signal<T> {
     return derivedSignal;
   }
 
-  public static bind<const E extends object, const K extends keyof E>(
+  public static bindv<const E extends object, const K extends keyof E>(
     signal: ReadonlySignal<E[K]>,
     element: E,
     key: K,
@@ -991,7 +993,7 @@ interface SignalConstructor {
    * prevent the element from being Garbage Collected making it safe to
    * bind-and-forget, removing the need to manually detach the listener.
    */
-  bind: typeof VSignal.bind;
+  bindv: typeof VSignal.bindv;
 
   /**
    * Similar to `sig.bind()` but for HTML Element attributes.
@@ -1056,7 +1058,7 @@ const signal: SignalConstructor = function signal(value?: any) {
 signal.derive = VSignal.derive;
 signal.startBatch = VSignal.startBatch;
 signal.commitBatch = VSignal.commitBatch;
-signal.bind = VSignal.bind;
+signal.bindv = VSignal.bindv;
 signal.bindAttribute = VSignal.bindAttribute;
 signal.as = VSignal.as;
 signal.literal = VSignal.literal;
