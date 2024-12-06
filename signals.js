@@ -1,1 +1,1 @@
-module.exports = require("./dist/legacy/signals");
+module.exports = require("./dist/legacy/signals.js");
