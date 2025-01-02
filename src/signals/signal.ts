@@ -561,14 +561,20 @@ class VSignal<T> implements Signal<T> {
       if (VSignal.arrCompare(depValues, this.lastUsedDeps)) {
         return false;
       }
+      const prevDeps = this.lastUsedDeps;
       this.lastUsedDeps = depValues;
-      const v = this.deriveFn.apply(null, depValues);
-      this.isDirty = false;
-      if (Object.is(v, this.value)) {
-        return false;
+      try {
+        const v = this.deriveFn.apply(null, depValues);
+        this.isDirty = false;
+        if (Object.is(v, this.value)) {
+          return false;
+        }
+        this.value = v;
+        return true;
+      } catch (e) {
+        this.lastUsedDeps = prevDeps;
+        console.error(e);
       }
-      this.value = v;
-      return true;
     }
     return false;
   }

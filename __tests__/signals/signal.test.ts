@@ -391,7 +391,7 @@ describe("VSignal()", () => {
     it("deeply derived signals should not be GCd when they are being observed", async () => {
       const head = sig(1);
       let callCount = 0;
-      (function () {
+      (function() {
         const tail = head
           .derive((v) => v + 1)
           .derive((v) => v + 1)
@@ -483,6 +483,46 @@ describe("VSignal()", () => {
       expect(tail.get()).toBe(0);
       expect(calcTail).toHaveBeenCalledTimes(0);
       expect(onD1Change).toHaveBeenCalledTimes(0);
+    });
+
+    it("when a derive function throws it's logged and doesn't affect other signals", () => {
+      const consoleErrorSpy = vitest.spyOn(console, "error");
+
+      const head = sig(1);
+      const sink1 = head.derive((v) => v + 1);
+      const sink2 = head.derive((v) => {
+        if (v > 1) throw new Error("test error");
+        return 100;
+      });
+      const sink3 = head.derive((v) => v - 1);
+
+      const onSink1Change = vitest.fn();
+      const onSink2Change = vitest.fn();
+      const onSink3Change = vitest.fn();
+
+      sink1.add(onSink1Change);
+      sink2.add(onSink2Change);
+      sink3.add(onSink3Change);
+
+      onSink1Change.mockClear();
+      onSink2Change.mockClear();
+      onSink3Change.mockClear();
+
+      expect(sink1.get()).toBe(2);
+      expect(sink2.get()).toBe(100);
+      expect(sink3.get()).toBe(0);
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      head.dispatch(2);
+
+      expect(sink1.get()).toBe(3);
+      expect(sink2.get()).toBe(100);
+      expect(sink3.get()).toBe(1);
+
+      expect(onSink1Change).toHaveBeenCalledTimes(1);
+      expect(onSink2Change).toHaveBeenCalledTimes(0);
+      expect(onSink3Change).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
 
     describe("complex scenarios", () => {
@@ -1130,8 +1170,12 @@ describe("VSignal()", () => {
       const sig3 = sig("baz");
       const sig4 = sig(2);
 
-      const derived = sig.derive(sig1, sig2, sig3, sig4, (v1, v2, v3, v4) =>
-        `[${v1} ${v2} ${v3}]`.repeat(v4),
+      const derived = sig.derive(
+        sig1,
+        sig2,
+        sig3,
+        sig4,
+        (v1, v2, v3, v4) => `[${v1} ${v2} ${v3}]`.repeat(v4),
       );
       expect(derived.get()).toBe("[foo bar baz][foo bar baz]");
 
