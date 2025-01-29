@@ -25,6 +25,10 @@ class PropagationAbortSignal {
   }
 }
 
+export type DeriveFn<T extends any[], U> =
+  | ((...args: T) => ReadonlySignal<U>)
+  | ((...args: T) => U);
+
 export type DispatchFunc<T> = (current: T) => T;
 export type SignalListener<T> = (value: T) => void;
 export type SignalListenerReference<T> = Readonly<{
@@ -78,7 +82,10 @@ export interface ReadonlySignal<T> {
   /**
    * Create a new readonly signal that derives its value from this signal.
    */
-  derive<U>(getDerivedValue: (current: T) => U): ReadonlySignal<U>;
+  derive<U>(
+    getDerivedValue: DeriveFn<[T], U>,
+    options?: { name?: string },
+  ): ReadonlySignal<U>;
   /**
    * Detach all listeners from the signal.
    *
@@ -399,25 +406,25 @@ class VSignal<T> implements Signal<T> {
    */
   public static derive<E, U>(
     sig1: ReadonlySignal<E>,
-    getDerivedValue: (v1: E) => U,
+    getDerivedValue: DeriveFn<[E], U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, U>(
     sig1: ReadonlySignal<E>,
     sig2: ReadonlySignal<F>,
-    getDerivedValue: (v1: E, v2: F) => U,
+    getDerivedValue: DeriveFn<[E, F], U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, U>(
     sig1: ReadonlySignal<E>,
     sig2: ReadonlySignal<F>,
     sig3: ReadonlySignal<G>,
-    getDerivedValue: (v1: E, v2: F, v3: G) => U,
+    getDerivedValue: DeriveFn<[E, F, G], U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, H, U>(
     sig1: ReadonlySignal<E>,
     sig2: ReadonlySignal<F>,
     sig3: ReadonlySignal<G>,
     sig4: ReadonlySignal<H>,
-    getDerivedValue: (v1: E, v2: F, v3: G, v4: H) => U,
+    getDerivedValue: DeriveFn<[E, F, G, H], U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, H, I, U>(
     sig1: ReadonlySignal<E>,
@@ -425,7 +432,7 @@ class VSignal<T> implements Signal<T> {
     sig3: ReadonlySignal<G>,
     sig4: ReadonlySignal<H>,
     sig5: ReadonlySignal<I>,
-    getDerivedValue: (v1: E, v2: F, v3: G, v4: H, v5: I) => U,
+    getDerivedValue: DeriveFn<[E, F, G, H, I], U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, H, I, J, U>(
     sig1: ReadonlySignal<E>,
@@ -434,7 +441,7 @@ class VSignal<T> implements Signal<T> {
     sig4: ReadonlySignal<H>,
     sig5: ReadonlySignal<I>,
     sig6: ReadonlySignal<J>,
-    getDerivedValue: (v1: E, v2: F, v3: G, v4: H, v5: I, v6: J) => U,
+    getDerivedValue: DeriveFn<[E, F, G, H, I, J], U>,
   ): ReadonlySignal<U>;
   public static derive<U>(...args: any[]): ReadonlySignal<U> {
     const signals = args.slice(0, -1) as VSignal<any>[];
@@ -532,16 +539,20 @@ class VSignal<T> implements Signal<T> {
     return true;
   }
 
+  protected readonly name?: string;
+  protected isdestroyed = false;
   private listeners: SignalListenerReference<T>[] = [];
   private derivedSignals: WeakRef<VSignal<any>>[] = [];
   private value: T;
-  private deriveFn?: (...parentSigsVals: any[]) => T;
+  private deriveFn?: (...parentSigsVals: any[]) => T | ReadonlySignal<T>;
   private derivedFrom: Array<VSignal<any> | DestroyedParentSigSubstitute> = [];
+  private dynamicDerivedFrom?: VSignal<any>;
   private isDirty = false;
   private isDerived = false;
 
-  constructor(value: T) {
+  constructor(value: T, options?: { name?: string }) {
     this.value = value;
+    this.name = options?.name;
   }
 
   private beforeAccess() {
@@ -552,25 +563,57 @@ class VSignal<T> implements Signal<T> {
 
   private lastUsedDeps: any[] = [];
 
-  private update(): boolean {
+  private assignDerived(deps: any[], notifiedBy?: VSignal<any>) {
+    if (notifiedBy && notifiedBy === this.dynamicDerivedFrom) {
+      const v = notifiedBy.get();
+      const changed = !Object.is(v, this.value);
+      this.value = v;
+      this.isDirty = false;
+      return changed;
+    }
+
+    const v = this.deriveFn!.apply(null, deps);
+
+    let changed = false;
+
+    if (v instanceof VSignal) {
+      const nv = v.get();
+      changed = !Object.is(nv, this.value);
+
+      if (v === this.dynamicDerivedFrom) {
+        this.value = nv;
+      } else {
+        if (this.dynamicDerivedFrom != null) {
+          this.dynamicDerivedFrom.removeDerivedChild(this);
+        }
+        this.dynamicDerivedFrom = v;
+        this.value = nv;
+        v.derivedSignals.push(new WeakRef(this));
+      }
+    } else {
+      changed = !Object.is(v, this.value);
+      this.value = v as T;
+    }
+    this.isDirty = false;
+    return changed;
+  }
+
+  private update(notifiedBy?: VSignal<any>): boolean {
     if (this.deriveFn) {
       const depValues: any[] = [];
       for (let i = 0; i < this.derivedFrom.length; i++) {
         depValues.push(this.derivedFrom[i]!.get());
       }
-      if (VSignal.arrCompare(depValues, this.lastUsedDeps)) {
+      if (
+        this.dynamicDerivedFrom == null
+        && VSignal.arrCompare(depValues, this.lastUsedDeps)
+      ) {
         return false;
       }
       const prevDeps = this.lastUsedDeps;
       this.lastUsedDeps = depValues;
       try {
-        const v = this.deriveFn.apply(null, depValues);
-        this.isDirty = false;
-        if (Object.is(v, this.value)) {
-          return false;
-        }
-        this.value = v;
-        return true;
+        return this.assignDerived(depValues, notifiedBy);
       } catch (e) {
         this.lastUsedDeps = prevDeps;
         console.error(e);
@@ -579,8 +622,11 @@ class VSignal<T> implements Signal<T> {
     return false;
   }
 
-  private updateAndPropagate(abortSig?: PropagationAbortSignal) {
-    const changed = this.update();
+  private updateAndPropagate(
+    abortSig?: PropagationAbortSignal,
+    notifiedBy?: VSignal<any>,
+  ) {
+    const changed = this.update(notifiedBy);
     if (changed) {
       this.propagateChange(abortSig);
     }
@@ -616,8 +662,9 @@ class VSignal<T> implements Signal<T> {
     const breakLoop = () => {
       shouldBreak = true;
     };
-    for (let i = 0; i < this.derivedSignals.length; i++) {
-      const sig = this.derivedSignals[i]!.deref();
+    const derived = this.derivedSignals.slice();
+    for (let i = 0; i < derived.length; i++) {
+      const sig = derived[i]!.deref();
       if (sig) {
         fn(sig, breakLoop);
         if (shouldBreak) break;
@@ -625,13 +672,18 @@ class VSignal<T> implements Signal<T> {
     }
   }
 
-  private notifySinks(abortSig: PropagationAbortSignal) {
+  private notifySinks(
+    abortSig: PropagationAbortSignal,
+  ) {
+    const notifiedBy = this;
     this.forEachSink((sig, _break) => {
-      if (sig.listeners.length === 0) {
+      if (sig.dynamicDerivedFrom === notifiedBy) {
+        sig.updateAndPropagate(abortSig, notifiedBy);
+      } else if (sig.listeners.length === 0) {
         sig.isDirty = true;
         sig.notifySinks(abortSig);
       } else {
-        sig.updateAndPropagate(abortSig);
+        sig.updateAndPropagate(abortSig, notifiedBy);
       }
       if (abortSig.isAborted) {
         _break();
@@ -843,10 +895,13 @@ class VSignal<T> implements Signal<T> {
     return this.derivedSignals.length;
   }
 
-  public derive<U>(getDerivedValue: (current: T) => U): ReadonlySignal<U> {
+  public derive<U>(
+    getDerivedValue: DeriveFn<[T], U>,
+    options?: { name?: string },
+  ): ReadonlySignal<U> {
     this.beforeAccess();
 
-    const derivedSignal = new VReadonlySignal<U>(null as any);
+    const derivedSignal = new VReadonlySignal<U>(null as any, options);
     derivedSignal.isDirty = true;
     derivedSignal.isDerived = true;
     derivedSignal.lastUsedDeps = [];
@@ -881,11 +936,16 @@ class VSignal<T> implements Signal<T> {
       s.removeDerivedChild(this);
     });
     this.derivedFrom.splice(0, this.derivedFrom.length);
+    if (this.dynamicDerivedFrom) {
+      this.dynamicDerivedFrom.removeDerivedChild(this);
+      this.dynamicDerivedFrom = undefined;
+    }
     for (let i = 0; i < this.derivedSignals.length; i++) {
       const childSig = this.derivedSignals[i]!;
       childSig.deref()?.onParentDestroyed(this);
     }
     this.derivedSignals.splice(0, this.derivedSignals.length);
+    this.isdestroyed = true;
   }
 
   /**
@@ -910,7 +970,14 @@ class VSignal<T> implements Signal<T> {
       }
     }
 
-    if (this.derivedFrom.every((s) => "IS_SUBSTITUTE" in s)) {
+    if (this.dynamicDerivedFrom === parentSig) {
+      this.dynamicDerivedFrom = undefined;
+    }
+
+    if (
+      this.dynamicDerivedFrom == null
+      && this.derivedFrom.every((s) => "IS_SUBSTITUTE" in s)
+    ) {
       this.destroy();
     }
   }
@@ -942,6 +1009,10 @@ class VSignal<T> implements Signal<T> {
   private derive_destroyed(_: (current: any) => any): never {
     throw new Error("VSignal.derive(): cannot derive from a destroyed signal");
   }
+
+  get sinks() {
+    return this.derivedSignals.map((ref) => ref.deref()).filter(Boolean);
+  }
 }
 
 /**
@@ -961,7 +1032,7 @@ class VReadonlySignal<T> extends VSignal<T> {
 
 interface SignalConstructor {
   <T>(): Signal<T | undefined>;
-  <T>(value: T): Signal<T>;
+  <T>(value: T, options?: { name?: string }): Signal<T>;
 
   /**
    * A batch allows to group signal dispatches together.
@@ -1056,8 +1127,11 @@ interface SignalConstructor {
  *
  * `<T>(value: T): Signal<T>;`
  */
-const signal: SignalConstructor = function signal(value?: any) {
-  return new VSignal(value);
+const signal: SignalConstructor = function signal(
+  value?: any,
+  options?: { name?: string },
+) {
+  return new VSignal(value, options);
 };
 signal.derive = VSignal.derive;
 signal.startBatch = VSignal.startBatch;

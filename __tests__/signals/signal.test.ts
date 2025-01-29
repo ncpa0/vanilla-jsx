@@ -1978,4 +1978,178 @@ describe("VSignal()", () => {
       expect(r2.get()).toEqual(5);
     });
   });
+
+  describe("deriving another signal", () => {
+    it("updates correctly", () => {
+      const elem1 = sig(1);
+      const elem2 = sig(2);
+      const elem3 = sig(3);
+      const head = sig([elem1, elem2, elem3]);
+      const d = head.derive((list) => list[1]!);
+
+      expect(d.get()).toBe(2);
+
+      elem2.dispatch(20);
+      expect(d.get()).toBe(20);
+
+      head.dispatch([elem2, elem1, elem3]);
+      expect(d.get()).toBe(1);
+
+      elem1.dispatch(10);
+      expect(d.get()).toBe(10);
+    });
+
+    it("notifies the listeners", () => {
+      const elem1 = sig(1);
+      const elem2 = sig(2);
+      const elem3 = sig(3);
+      const head = sig([elem1, elem2, elem3]);
+      const d = head.derive((list) => list[1]!);
+
+      const listener = vitest.fn();
+      d.add(listener);
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      elem2.dispatch(20);
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(listener).toHaveBeenLastCalledWith(20);
+
+      head.dispatch([elem2, elem1, elem3]);
+      expect(listener).toHaveBeenCalledTimes(3);
+      expect(listener).toHaveBeenLastCalledWith(1);
+
+      elem1.dispatch(10);
+      expect(listener).toHaveBeenCalledTimes(4);
+      expect(listener).toHaveBeenLastCalledWith(10);
+    });
+
+    it("updates sinks", () => {
+      const elem1 = sig(1);
+      const elem2 = sig(2);
+      const elem3 = sig(3);
+      const head = sig([elem1, elem2, elem3]);
+      const d = head.derive((list) => list[1]!);
+
+      const sink = d.derive((num) => `Number: ${num}`);
+
+      expect(sink.get()).toBe("Number: 2");
+
+      elem2.dispatch(1234);
+      expect(sink.get()).toBe("Number: 1234");
+
+      head.dispatch([elem2, elem3, elem1]);
+      expect(sink.get()).toBe("Number: 3");
+
+      elem3.dispatch(333);
+      expect(sink.get()).toBe("Number: 333");
+    });
+
+    it("should not get destroyed until the dynamically derived is also destroyed", () => {
+      const elem1 = sig(1);
+      const elem2 = sig(2);
+      const elem3 = sig(3);
+      const head = sig([elem1, elem2, elem3]);
+      const d = head.derive((list) => list[1]!) as VSignal<number>;
+
+      expect(d.get()).toBe(2);
+
+      head.destroy();
+      expect(d["isdestroyed"]).toBe(false);
+
+      elem2.destroy();
+      expect(d["isdestroyed"]).toBe(true);
+    });
+
+    it("should not get destroyed until the direct parent is also destroyed", () => {
+      const elem1 = sig(1);
+      const elem2 = sig(2);
+      const elem3 = sig(3);
+      const head = sig([elem1, elem2, elem3]);
+      const d = head.derive((list) => list[1]!) as VSignal<number>;
+
+      expect(d.get()).toBe(2);
+
+      elem2.destroy();
+      expect(d["isdestroyed"]).toBe(false);
+
+      head.destroy();
+      expect(d["isdestroyed"]).toBe(true);
+    });
+
+    it("can still be accessed after the dynamic derived is destroyed", () => {
+      const elem1 = sig(1);
+      const elem2 = sig(2);
+      const elem3 = sig(3);
+      const head = sig([elem1, elem2, elem3]);
+      const d = head.derive((list) => list[1]!) as VSignal<number>;
+
+      expect(d.get()).toBe(2);
+
+      elem2.destroy();
+      expect(d.get()).toBe(2);
+
+      head.dispatch([elem1, elem2, elem3]);
+      expect(d.get()).toBe(2);
+    });
+
+    it("deriving into destroyed signal should work correctly", () => {
+      const elem1 = sig(1);
+      const elem2 = sig(2);
+      const elem3 = sig(3);
+      const head = sig([elem1, elem2, elem3]);
+      const d = head.derive((list) => list[1]!) as VSignal<number>;
+
+      const listener = vitest.fn();
+      d.add(listener);
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(d.get()).toBe(2);
+
+      elem1.destroy();
+      elem2.destroy();
+      elem3.destroy();
+      expect(d.get()).toBe(2);
+
+      head.dispatch([elem1, elem3, elem2]);
+      expect(d.get()).toBe(3);
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      head.dispatch([elem3, elem1, elem2]);
+      expect(d.get()).toBe(1);
+      expect(listener).toHaveBeenCalledTimes(3);
+    });
+
+    it("multi-layer", () => {
+      const s1 = sig(1, { name: "head" });
+      const layer1 = sig({ s1: s1 }, { name: "layer 1" });
+      const layer2 = sig({ layer1: layer1 }, { name: "layer 2" });
+
+      const d = layer2.derive(
+        (l2) =>
+          l2.layer1.derive(
+            (l1) =>
+              l1.s1.derive((num) => `Num(${num})`, {
+                name: "derived from head",
+              }),
+            {
+              name: "derived from layer 1",
+            },
+          ),
+        { name: "derived from layer 2" },
+      );
+
+      expect(d.get()).toBe("Num(1)");
+
+      s1.dispatch(2);
+      expect(d.get()).toBe("Num(2)");
+
+      const listener = vitest.fn();
+      d.add(listener);
+
+      s1.dispatch(3);
+      expect(d.get()).toBe("Num(3)");
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(listener).toHaveBeenLastCalledWith("Num(3)");
+    });
+  });
 });
