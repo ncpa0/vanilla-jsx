@@ -17,8 +17,8 @@ export interface InteractionInterface<
   setAttribute(element: Element, name: string, value: Primitive): void;
   setProperty(element: Element, name: string, value: Primitive): void;
   setClass(element: Element, value: string): void;
-  addClassName(element: Element, ...value: string[]): void;
-  removeClassName(element: Element, ...value: string[]): void;
+  addClassName(element: Element, value: string): void;
+  removeClassName(element: Element, value: string): void;
   setData(element: Element, name: string, value: Primitive): void;
   setStyle(element: Element, styleKey: string, value: string | undefined): void;
   clearStyle(element: Element): void;

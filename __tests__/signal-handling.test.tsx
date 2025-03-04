@@ -15,16 +15,12 @@ describe("signal handling", () => {
       </div>
     );
 
-    expect(d.outerHTML).toEqual(
-      '<div class="foo bar"><span>Lorem Ipsum dolor sit amet</span></div>',
-    );
+    expect(d.outerHTML).toEqual('<div class="foo bar"><span>Lorem Ipsum dolor sit amet</span></div>');
 
     sigText.dispatch("Hello World!");
     sigClass.dispatch("baz qux");
 
-    expect(d.outerHTML).toEqual(
-      '<div class="baz qux"><span>Hello World!</span></div>',
-    );
+    expect(d.outerHTML).toEqual('<div class="baz qux"><span>Hello World!</span></div>');
   });
 
   it("correctly binds to multiple consecutive children", () => {
@@ -44,15 +40,11 @@ describe("signal handling", () => {
 
     text1.dispatch("Hello");
 
-    expect(d.outerHTML).toEqual(
-      "<span>Hello consectetur adipiscing elit. Praesent at molestie erat.</span>",
-    );
+    expect(d.outerHTML).toEqual("<span>Hello consectetur adipiscing elit. Praesent at molestie erat.</span>");
 
     text2.dispatch("World!");
 
-    expect(d.outerHTML).toEqual(
-      "<span>Hello World! Praesent at molestie erat.</span>",
-    );
+    expect(d.outerHTML).toEqual("<span>Hello World! Praesent at molestie erat.</span>");
   });
 
   it("should detach the listener after the element was garbage collected", async () => {
@@ -232,21 +224,15 @@ describe("signal handling", () => {
       </div>
     );
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>FOO</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>FOO</span><span>End</span></div>");
 
     s.dispatch(2);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>FOO</span><span>BAR</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>FOO</span><span>BAR</span><span>End</span></div>");
 
     s.dispatch(3);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>BAR</span><span>BAZ</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>BAR</span><span>BAZ</span><span>End</span></div>");
 
     s.dispatch(4);
 
@@ -256,21 +242,15 @@ describe("signal handling", () => {
 
     s.dispatch(5);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>FOO</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>FOO</span><span>End</span></div>");
 
     s.dispatch(6);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>End</span></div>");
 
     s.dispatch(7);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span></span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span></span><span>End</span></div>");
   });
 
   it("correctly handles fragments in derived maps", () => {
@@ -326,15 +306,11 @@ describe("signal handling", () => {
       </div>
     );
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>FOO</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>FOO</span><span>End</span></div>");
 
     s.dispatch(2);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><div></div><span>FOO</span><h1></h1><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><div></div><span>FOO</span><h1></h1><span>End</span></div>");
 
     s.dispatch(3);
 
@@ -350,9 +326,7 @@ describe("signal handling", () => {
 
     s.dispatch(5);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><div></div><h1></h1><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><div></div><h1></h1><span>End</span></div>");
   });
 
   it("correctly handles when derived array changes partially", () => {
@@ -396,24 +370,16 @@ describe("signal handling", () => {
     );
 
     s.dispatch(2);
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>foo</span><span>baz</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>foo</span><span>baz</span><span>End</span></div>");
 
     s.dispatch(3);
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>bar</span><span>baz</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>bar</span><span>baz</span><span>End</span></div>");
 
     s.dispatch(4);
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>bar</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>bar</span><span>End</span></div>");
 
     s.dispatch(5);
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>End</span></div>");
 
     s.dispatch(6);
     expect(elem.outerHTML).toEqual(
@@ -421,25 +387,17 @@ describe("signal handling", () => {
     );
 
     s.dispatch(7);
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>foo</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>foo</span><span>End</span></div>");
 
     s.dispatch(8);
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>bar</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>bar</span><span>End</span></div>");
 
     s.dispatch(9);
-    expect(elem.outerHTML).toEqual(
-      "<div><span>Start</span><span>bar</span><span>baz</span><span>End</span></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><span>Start</span><span>bar</span><span>baz</span><span>End</span></div>");
   });
 
   it("correctly handles when switching between an Element and an array", () => {
-    const s = sig<Text | Element | Array<Text | Element> | undefined>(
-      undefined,
-    );
+    const s = sig<Text | Element | Array<Text | Element> | undefined>(undefined);
 
     const elem = (
       <div>
@@ -453,21 +411,15 @@ describe("signal handling", () => {
 
     s.dispatch(document.createTextNode("Hello World"));
 
-    expect(elem.outerHTML).toEqual(
-      "<div><p>Before</p>Hello World<p>After</p></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><p>Before</p>Hello World<p>After</p></div>");
 
     s.dispatch([document.createTextNode("Bye"), <span>I am free now</span>]);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><p>Before</p>Bye<span>I am free now</span><p>After</p></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><p>Before</p>Bye<span>I am free now</span><p>After</p></div>");
 
     s.dispatch(document.createTextNode("Hello again"));
 
-    expect(elem.outerHTML).toEqual(
-      "<div><p>Before</p>Hello again<p>After</p></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><p>Before</p>Hello again<p>After</p></div>");
 
     s.dispatch([document.createTextNode("1"), document.createTextNode("2")]);
 
@@ -477,23 +429,13 @@ describe("signal handling", () => {
 
     expect(elem.outerHTML).toEqual("<div><p>Before</p><p>After</p></div>");
 
-    s.dispatch([
-      <div />,
-      <h1 />,
-      document.createTextNode("1"),
-      document.createTextNode("2"),
-      <br />,
-    ]);
+    s.dispatch([<div />, <h1 />, document.createTextNode("1"), document.createTextNode("2"), <br />]);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><p>Before</p><div></div><h1></h1>12<br><p>After</p></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><p>Before</p><div></div><h1></h1>12<br><p>After</p></div>");
 
     s.dispatch(<span>Foo bar baz</span>);
 
-    expect(elem.outerHTML).toEqual(
-      "<div><p>Before</p><span>Foo bar baz</span><p>After</p></div>",
-    );
+    expect(elem.outerHTML).toEqual("<div><p>Before</p><span>Foo bar baz</span><p>After</p></div>");
 
     s.dispatch(undefined);
 
@@ -503,11 +445,7 @@ describe("signal handling", () => {
   it("should keep a reference to the bound signal", async () => {
     const source = sig(0) as VSignal<number>;
 
-    let elem: Element | null = (
-      <div data-test={source.derive((n) => n + 5)}>
-        {source.derive((n) => String(n * 2))}
-      </div>
-    );
+    let elem: Element | null = <div data-test={source.derive((n) => n + 5)}>{source.derive((n) => String(n * 2))}</div>;
 
     expect(elem!.outerHTML).toEqual('<div data-test="5">0</div>');
     expect(source["derivedSignals"].length).toEqual(2);
@@ -542,25 +480,50 @@ describe("signal handling", () => {
   });
 
   describe("for class name", () => {
+    it("object as class name", () => {
+      const obj = {
+        [Symbol.toPrimitive]() {
+          return "foobarcn";
+        },
+      };
+
+      const elem = <div class={obj} />;
+
+      expect(elem.outerHTML).toEqual('<div class="foobarcn"></div>');
+    });
+
+    it("signal object as class name", () => {
+      const obj1 = {
+        [Symbol.toPrimitive]() {
+          return "initial";
+        },
+      };
+
+      const obj2 = {
+        [Symbol.toPrimitive]() {
+          return "abcdefgg";
+        },
+      };
+
+      const s = sig(obj1);
+
+      const elem = <div class={s} />;
+
+      expect(elem.outerHTML).toEqual('<div class="initial"></div>');
+
+      s.dispatch(obj2);
+
+      expect(elem.outerHTML).toEqual('<div class="abcdefgg"></div>');
+    });
+
     describe("arrays", () => {
       it("correctly handles string arrays", () => {
-        const elem = (
-          <div class={["foo", null, "bar", false, "baz", undefined, 0]} />
-        );
+        const elem = <div class={["foo", null, "bar", false, "baz", undefined, 0]} />;
         expect(elem.outerHTML).toEqual('<div class="foo bar baz 0"></div>');
       });
 
       it("correctly handles signal of array", () => {
-        const cnameSig = sig([
-          "foo",
-          null,
-          "bar",
-          false,
-          "baz",
-          undefined,
-          0,
-          true,
-        ]);
+        const cnameSig = sig(["foo", null, "bar", false, "baz", undefined, 0, true]);
         const elem = <div class={cnameSig} />;
         expect(elem.outerHTML).toEqual('<div class="foo bar baz 0"></div>');
 
@@ -587,22 +550,16 @@ describe("signal handling", () => {
       it("correctly handles array elements containing multiple class names in one string", () => {
         const s = sig("foo bar baz");
         const elem = <div class={[s, "qux coorge"]} />;
-        expect(elem.outerHTML).toEqual(
-          '<div class="foo bar baz qux coorge"></div>',
-        );
+        expect(elem.outerHTML).toEqual('<div class="foo bar baz qux coorge"></div>');
 
         s.dispatch("bar baz");
-        expect(elem.outerHTML).toEqual(
-          '<div class="qux coorge bar baz"></div>',
-        );
+        expect(elem.outerHTML).toEqual('<div class="qux coorge bar baz"></div>');
 
         s.dispatch("bar");
         expect(elem.outerHTML).toEqual('<div class="qux coorge bar"></div>');
 
         s.dispatch("foo baz");
-        expect(elem.outerHTML).toEqual(
-          '<div class="qux coorge foo baz"></div>',
-        );
+        expect(elem.outerHTML).toEqual('<div class="qux coorge foo baz"></div>');
 
         const s2 = sig(["foo bar baz"]);
         const elem2 = <div class={s2} />;
@@ -616,6 +573,82 @@ describe("signal handling", () => {
 
         s2.dispatch(["foo baz"]);
         expect(elem2.outerHTML).toEqual('<div class="foo baz"></div>');
+      });
+
+      it("correctly handles arrays with objects", () => {
+        const obj1 = {
+          [Symbol.toPrimitive]() {
+            return "oof";
+          },
+        };
+
+        const obj2 = {
+          [Symbol.toPrimitive]() {
+            return "rab";
+          },
+        };
+
+        const elem = <div class={["foo", obj1, "bar", obj2]} />;
+        expect(elem.outerHTML).toEqual('<div class="foo oof bar rab"></div>');
+      });
+
+      it("correctly handles arrays with signals of objects", () => {
+        const obj1 = {
+          [Symbol.toPrimitive]() {
+            return "c1";
+          },
+        };
+
+        const obj2 = {
+          [Symbol.toPrimitive]() {
+            return "c2";
+          },
+        };
+
+        const cname1 = sig<ClassName>(obj1);
+
+        const elem = <div class={["foo", cname1]} />;
+        expect(elem.outerHTML).toEqual('<div class="foo c1"></div>');
+
+        cname1.dispatch("notaobject");
+        expect(elem.outerHTML).toEqual('<div class="foo notaobject"></div>');
+
+        cname1.dispatch(obj2);
+        expect(elem.outerHTML).toEqual('<div class="foo c2"></div>');
+      });
+
+      it("corretly handle a signal with an array with objects", () => {
+        const obj1 = {
+          [Symbol.toPrimitive]() {
+            return "cn1";
+          },
+        };
+
+        const obj2 = {
+          [Symbol.toPrimitive]() {
+            return "cn2";
+          },
+        };
+
+        const cname1 = sig<ClassName>([obj1]);
+
+        const elem = <div class={cname1} />;
+        expect(elem.outerHTML).toEqual('<div class="cn1"></div>');
+
+        cname1.dispatch(["notaobject", obj1]);
+        expect(elem.outerHTML).toEqual('<div class="notaobject cn1"></div>');
+
+        cname1.dispatch(["notaobject", obj2]);
+        expect(elem.outerHTML).toEqual('<div class="notaobject cn2"></div>');
+
+        cname1.dispatch(["notaobject", obj2, obj1]);
+        expect(elem.outerHTML).toEqual('<div class="notaobject cn2 cn1"></div>');
+
+        cname1.dispatch(["notaobject", obj1]);
+        expect(elem.outerHTML).toEqual('<div class="notaobject cn1"></div>');
+
+        cname1.dispatch(["notaobject", "obj1"]);
+        expect(elem.outerHTML).toEqual('<div class="notaobject obj1"></div>');
       });
     });
 
@@ -723,18 +756,14 @@ describe("signal handling", () => {
         fontSize: "12px",
       });
       const elem = <div style={s} />;
-      expect(elem.outerHTML).toEqual(
-        '<div style="color: red; background-color: blue; font-size: 12px;"></div>',
-      );
+      expect(elem.outerHTML).toEqual('<div style="color: red; background-color: blue; font-size: 12px;"></div>');
 
       s.dispatch({
         color: "red",
         backgroundColor: "yellow",
         fontSize: "12px",
       });
-      expect(elem.outerHTML).toEqual(
-        '<div style="color: red; background-color: yellow; font-size: 12px;"></div>',
-      );
+      expect(elem.outerHTML).toEqual('<div style="color: red; background-color: yellow; font-size: 12px;"></div>');
 
       s.dispatch({
         padding: "1px 2px",
@@ -787,9 +816,7 @@ describe("signal handling", () => {
       );
 
       bgSig.dispatch(undefined);
-      expect(elem.outerHTML).toEqual(
-        '<div style="z-index: 5; color: green; margin: 1em; font-size: 12px;"></div>',
-      );
+      expect(elem.outerHTML).toEqual('<div style="z-index: 5; color: green; margin: 1em; font-size: 12px;"></div>');
 
       marginSig.dispatch(undefined);
       bgSig.dispatch("purple");

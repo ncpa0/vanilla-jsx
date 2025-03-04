@@ -48,18 +48,30 @@ export class BindingFactories<
             const cname = value[i];
             switch (typeof cname) {
               case "string":
-                const names = cname.split(" ").filter(Boolean);
-                this.dom.addClassName(elem, ...names);
+                this.dom.addClassName(elem, cname);
                 break;
               case "number":
                 this.dom.addClassName(elem, String(cname));
                 break;
               case "object":
-                if (cname != null) {
-                  const signal = sigProxy(cname);
-                  signal.bindTo(elem, this.createSimpleClassNameBinding());
+                if (SignalsReg.isSignal(cname)) {
+                  if (cname != null) {
+                    const signal = sigProxy(cname);
+                    signal.bindTo(elem, this.createSimpleClassNameBinding());
+                  }
+                } else if (cname != null) {
+                  if (Symbol.toPrimitive in cname) {
+                    this.dom.addClassName(elem, String(cname));
+                  } else {
+                    console.warn(
+                      "unsupported object used as class name",
+                      cname,
+                    );
+                  }
                 }
                 break;
+              default:
+                console.warn("unsupported value used as class name", cname);
             }
           }
           return;
@@ -67,6 +79,10 @@ export class BindingFactories<
         if (SignalsReg.isSignal(value)) {
           const signal = sigProxy(value);
           signal.bindTo(elem, this.setClassName.bind(this));
+          return;
+        }
+        if (Symbol.toPrimitive in value) {
+          this.dom.setClass(elem, String(value));
           return;
         }
         const entries = Object.entries(value);
@@ -183,33 +199,41 @@ export class BindingFactories<
   }
 
   public createSimpleClassNameBinding() {
-    let lastNames: string[] = [];
-    return (elem: Element, cname: string | number | boolean) => {
-      this.dom.removeClassName(elem, ...lastNames);
+    let lastNames: string = "";
+    return (
+      elem: Element,
+      cname: string | number | boolean | { [Symbol.toPrimitive](): any },
+    ) => {
+      this.dom.removeClassName(elem, lastNames);
       switch (typeof cname) {
         case "string":
-          const names = cname.split(" ").filter(Boolean);
-          this.dom.addClassName(elem, ...names);
-          lastNames = names;
+          this.dom.addClassName(elem, cname);
+          lastNames = cname;
           break;
         case "number":
           const name = String(cname);
           this.dom.addClassName(elem, name);
-          lastNames = [name];
+          lastNames = name;
           break;
+        case "object":
+          if (Symbol.toPrimitive in cname) {
+            const name = String(cname);
+            this.dom.addClassName(elem, name);
+            lastNames = name;
+            break;
+          }
         default:
-          lastNames.splice(0, lastNames.length);
+          lastNames = "";
       }
     };
   }
 
   public createConditionalClassNameBinding(cname: string) {
-    const names = cname.split(" ").filter(Boolean);
     return (elem: Element, condition: any) => {
       if (!!condition) {
-        this.dom.addClassName(elem, ...names);
+        this.dom.addClassName(elem, cname);
       } else {
-        this.dom.removeClassName(elem, ...names);
+        this.dom.removeClassName(elem, cname);
       }
     };
   }

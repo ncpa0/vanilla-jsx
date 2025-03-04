@@ -1,13 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import {
-  InteractionInterface,
-  Primitive,
-} from "../src/dom/interaction-interface";
+import { InteractionInterface, Primitive } from "../src/dom/interaction-interface";
 import { Fragment, jsx } from "../src/index";
 import { setInteractionInterface } from "../src/reconciler/reconciler";
 
 class CustomFragment {
-  parent?: CustomElement | CustomFragment;
+  parent?: CustomElement | CustomFragment = undefined;
   children: Array<CustomElement | CustomTextNode | CustomFragment> = [];
 
   append(child: CustomElement | CustomTextNode | CustomFragment) {
@@ -53,9 +50,7 @@ class CustomElement extends CustomFragment {
   }
 
   removeEventListener(name: string, listener: (event: CustomEvent) => void) {
-    this.listeners = this.listeners.filter(
-      ([key, value]) => key !== name || value !== listener,
-    );
+    this.listeners = this.listeners.filter(([key, value]) => key !== name || value !== listener);
   }
 
   setData(key: string, value: string) {
@@ -90,15 +85,7 @@ class CustomTextNode {
 
 class CustomEvent {}
 
-class CustomInteractions
-  implements
-    InteractionInterface<
-      CustomElement,
-      CustomTextNode,
-      CustomFragment,
-      CustomEvent
-    >
-{
+class CustomInteractions implements InteractionInterface<CustomElement, CustomTextNode, CustomFragment, CustomEvent> {
   create(tag: string): CustomElement {
     return new CustomElement(tag);
   }
@@ -111,10 +98,7 @@ class CustomInteractions
     return new CustomFragment();
   }
 
-  append(
-    parent: CustomFragment | CustomElement,
-    child: CustomFragment | CustomElement | CustomTextNode,
-  ): void {
+  append(parent: CustomFragment | CustomElement, child: CustomFragment | CustomElement | CustomTextNode): void {
     parent.append(child);
   }
 
@@ -125,10 +109,7 @@ class CustomInteractions
     }
   }
 
-  replace(
-    oldChild: CustomElement | CustomTextNode,
-    newChild: CustomElement | CustomFragment | CustomTextNode,
-  ): void {
+  replace(oldChild: CustomElement | CustomTextNode, newChild: CustomElement | CustomFragment | CustomTextNode): void {
     const parent = oldChild.parent;
     if (parent) {
       parent.replaceChild(newChild, oldChild);
@@ -151,11 +132,7 @@ class CustomInteractions
     element.removeClassNames(value);
   }
 
-  setAttributeOrProperty(
-    element: CustomElement,
-    name: string,
-    value: Primitive,
-  ): void {
+  setAttributeOrProperty(element: CustomElement, name: string, value: Primitive): void {
     this.setAttribute(element, name, value);
   }
 
@@ -179,45 +156,27 @@ class CustomInteractions
     element.setData(name, String(value));
   }
 
-  on(
-    element: CustomElement,
-    event: string,
-    listener: (event: CustomEvent) => void,
-  ): void {
+  on(element: CustomElement, event: string, listener: (event: CustomEvent) => void): void {
     element.addEventListener(event, listener);
   }
 
-  once(
-    element: CustomElement,
-    event: string,
-    listener: (event: CustomEvent) => void,
-  ): void {
+  once(element: CustomElement, event: string, listener: (event: CustomEvent) => void): void {
     element.addEventListener(event, listener);
   }
 
-  off(
-    element: CustomElement,
-    event: string,
-    listener: (event: CustomEvent) => void,
-  ): void {
+  off(element: CustomElement, event: string, listener: (event: CustomEvent) => void): void {
     element.removeEventListener(event, listener);
   }
 
-  parseUnsafe(
-    content: string,
-  ): Iterable<CustomElement | CustomTextNode | CustomFragment> {
+  parseUnsafe(content: string): Iterable<CustomElement | CustomTextNode | CustomFragment> {
     return [];
   }
 
-  isText(
-    element: CustomTextNode | CustomElement | CustomFragment,
-  ): element is CustomTextNode {
+  isText(element: CustomTextNode | CustomElement | CustomFragment): element is CustomTextNode {
     return element instanceof CustomTextNode;
   }
 
-  isFragment(
-    element: CustomElement | CustomFragment | CustomTextNode,
-  ): element is CustomFragment {
+  isFragment(element: CustomElement | CustomFragment | CustomTextNode): element is CustomFragment {
     return element instanceof CustomFragment;
   }
 
@@ -268,16 +227,16 @@ class CustomInteractions
     }
   }
 
-  setStyle(
-    element: CustomElement,
-    styleKey: string,
-    value: string | undefined,
-  ): void {
+  setStyle(element: CustomElement, styleKey: string, value: string | undefined): void {
     if (value == null) {
       delete element.style[styleKey];
       return;
     }
     element.style[styleKey] = value;
+  }
+
+  getFragmentChildren(element: CustomFragment): Array<CustomElement | CustomTextNode | CustomFragment> {
+    return element.children;
   }
 }
 

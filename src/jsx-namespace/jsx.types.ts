@@ -58,9 +58,20 @@ export type ClassName =
   | string
   | number
   | boolean
-  | Array<string | JSX.Signal<string> | number | null | undefined | boolean>
+  | { [Symbol.toPrimitive](): any }
+  | Array<
+    string | JSX.Signal<string> | number | null | undefined | boolean | {
+      [Symbol.toPrimitive](): any;
+    }
+  >
   | Record<string, any>
-  | JSX.Signal<Array<string | number | null | undefined | boolean>>
+  | JSX.Signal<
+    Array<
+      string | number | null | undefined | boolean | {
+        [Symbol.toPrimitive](): any;
+      }
+    >
+  >
   | JSX.Signal<Record<string, any>>;
 
 export type CssPropertyKey = keyof CSSStyleDeclaration;

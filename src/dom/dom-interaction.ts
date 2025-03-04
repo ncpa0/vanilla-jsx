@@ -127,12 +127,12 @@ export class DomInteraction
     element.className = value;
   }
 
-  addClassName(element: Element, ...value: string[]): void {
-    element.classList.add(...value);
+  addClassName(element: Element, value: string): void {
+    element.classList.add(...value.split(" ").filter(Boolean));
   }
 
-  removeClassName(element: Element, ...value: string[]): void {
-    element.classList.remove(...value);
+  removeClassName(element: Element, value: string): void {
+    element.classList.remove(...value.split(" ").filter(Boolean));
   }
 
   setStyle(
