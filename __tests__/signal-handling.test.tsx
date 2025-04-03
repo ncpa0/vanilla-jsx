@@ -162,6 +162,139 @@ describe("signal handling", () => {
     );
   });
 
+  it("correctly binds an array of Elements and Fragments", () => {
+    const s = sig(0);
+
+    const elem = (
+      <div>
+        {s.derive((v) => {
+          switch (v) {
+            case 0:
+              return [<span>Hello</span>];
+            case 1:
+              return [<span>Hello</span>, <></>];
+            case 2:
+              return [
+                <span>Hello</span>,
+                <>
+                  <span>World</span>
+                </>,
+              ];
+            case 3:
+              return [<span>Hello</span>, <></>];
+            case 4:
+              return [
+                <span>Hello</span>,
+                <>
+                  <span>World</span>
+                </>,
+              ];
+            case 5:
+              return [<span>Hello</span>, <></>];
+          }
+        })}
+      </div>
+    );
+
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span></div>");
+
+    s.dispatch(1);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span></div>");
+
+    s.dispatch(2);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span><span>World</span></div>");
+
+    s.dispatch(3);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span></div>");
+
+    s.dispatch(4);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span><span>World</span></div>");
+
+    s.dispatch(5);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span></div>");
+  });
+
+  it("correctly binds an array of arrays of Elements and Fragments", () => {
+    const s = sig(0);
+
+    const elem = (
+      <div>
+        {s.derive((v) => {
+          switch (v) {
+            case 0:
+              return [[<span>Hello</span>], [<span>Hello</span>]];
+            case 1:
+              return [
+                [<span>Hello</span>, <></>],
+                [<span>Hello</span>, <></>],
+              ];
+            case 2:
+              return [
+                [
+                  <span>Hello</span>,
+                  <>
+                    <span>World</span>
+                  </>,
+                ],
+                [
+                  <span>Hello</span>,
+                  <>
+                    <span>World</span>
+                  </>,
+                ],
+              ];
+            case 3:
+              return [
+                [<span>Hello</span>, <></>],
+                [<span>Hello</span>, <></>],
+              ];
+            case 4:
+              return [
+                [
+                  <span>Hello</span>,
+                  <>
+                    <span>World</span>
+                  </>,
+                ],
+                [
+                  <span>Hello</span>,
+                  <>
+                    <span>World</span>
+                  </>,
+                ],
+              ];
+            case 5:
+              return [
+                [<span>Hello</span>, <></>],
+                [<span>Hello</span>, <></>],
+              ];
+          }
+        })}
+      </div>
+    );
+
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span><span>Hello</span></div>");
+
+    s.dispatch(1);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span><span>Hello</span></div>");
+
+    s.dispatch(2);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Hello</span><span>World</span><span>Hello</span><span>World</span></div>",
+    );
+
+    s.dispatch(3);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span><span>Hello</span></div>");
+
+    s.dispatch(4);
+    expect(elem.outerHTML).toEqual(
+      "<div><span>Hello</span><span>World</span><span>Hello</span><span>World</span></div>",
+    );
+
+    s.dispatch(5);
+    expect(elem.outerHTML).toEqual("<div><span>Hello</span><span>Hello</span></div>");
+  });
+
   it("correctly handles derived fragments", () => {
     const s = sig(1);
 

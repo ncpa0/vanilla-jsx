@@ -23,9 +23,18 @@ export class BindingFactories<
   ) {}
 
   private flattenFragments(
-    arr: Array<Element | TextElement | FragmentElement | undefined>,
+    arr: Array<
+      | Element
+      | TextElement
+      | FragmentElement
+      | undefined
+      | Array<Element | TextElement | FragmentElement | undefined>
+    >,
   ): Array<Element | TextElement | undefined> {
     return arr.flatMap((elem) => {
+      if (Array.isArray(elem)) {
+        return this.flattenFragments(elem);
+      }
       if (this.dom.isFragment(elem)) {
         return this.flattenFragments(this.dom.getFragmentChildren(elem));
       }
