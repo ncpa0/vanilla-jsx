@@ -114,6 +114,25 @@ export interface ReadonlySignal<T> {
    * Return itself.
    */
   readonly(): ReadonlySignal<T>;
+  /**
+   * Derive Map
+   *
+   * Similar to `Array.map()`, equivalent to `signal.derive(list => list.map(mapFn))`
+   *
+   * Can only be used if the signal value is an Array.
+   */
+  dmap<R>(
+    mapFn: T extends any[] ? (elem: T[number], index: number) => R : never,
+  ): ReadonlySignal<R[]>;
+  /**
+   * Derive Property
+   *
+   * Create a new readonly signal from the current signal object by extracting it's given property.
+   * Equvalent to `signal.derive(obj => obj[key])`
+   *
+   * Can only be used if the signal value is an Object.
+   */
+  dprop<K extends keyof T>(key: K): ReadonlySignal<T[K]>;
 }
 
 export interface Signal<T> extends ReadonlySignal<T> {
@@ -672,9 +691,7 @@ class VSignal<T> implements Signal<T> {
     }
   }
 
-  private notifySinks(
-    abortSig: PropagationAbortSignal,
-  ) {
+  private notifySinks(abortSig: PropagationAbortSignal) {
     const notifiedBy = this;
     this.forEachSink((sig, _break) => {
       if (sig.dynamicDerivedFrom === notifiedBy) {
@@ -910,6 +927,24 @@ class VSignal<T> implements Signal<T> {
 
     this.derivedSignals.push(new WeakRef(derivedSignal));
     return derivedSignal;
+  }
+
+  public dmap<R>(mapFn: (elem: any, index: number) => R): ReadonlySignal<R[]> {
+    return this.derive((value) => {
+      if (!Array.isArray(value)) {
+        throw new Error("value is not an array");
+      }
+      return value.map(mapFn);
+    });
+  }
+
+  public dprop<K extends keyof T>(key: K): ReadonlySignal<T[K]> {
+    return this.derive((value) => {
+      if (typeof value !== "object" || value == null) {
+        throw new Error("value is not an object");
+      }
+      return value[key];
+    });
   }
 
   private _readonlySelf?: WeakRef<ReadonlySignal<T>>;
