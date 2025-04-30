@@ -1,6 +1,10 @@
 import { InteractionInterface } from "../dom/interaction-interface";
 import { ClassName, StyleDict } from "../jsx-namespace/jsx.types";
-import { SignalProxyListenerRef, SignalsReg, sigProxy } from "../sig-proxy/_proxy";
+import {
+  SignalProxyListenerRef,
+  SignalsReg,
+  sigProxy,
+} from "../sig-proxy/_proxy";
 import { isArray, MaybeArray } from "./utils";
 
 export class BindingFactories<
@@ -9,11 +13,22 @@ export class BindingFactories<
   FragmentElement extends object,
   Ev extends object,
 > {
-  constructor(private dom: InteractionInterface<Element, TextElement, FragmentElement, Ev>) {}
+  constructor(
+    private dom: InteractionInterface<
+      Element,
+      TextElement,
+      FragmentElement,
+      Ev
+    >,
+  ) {}
 
   private flattenFragments(
     arr: Array<
-      Element | TextElement | FragmentElement | undefined | Array<Element | TextElement | FragmentElement | undefined>
+      | Element
+      | TextElement
+      | FragmentElement
+      | undefined
+      | Array<Element | TextElement | FragmentElement | undefined>
     >,
   ): Array<Element | TextElement | undefined> {
     return arr.flatMap((elem) => {
@@ -57,7 +72,10 @@ export class BindingFactories<
                   if (Symbol.toPrimitive in cname) {
                     this.dom.addClassName(elem, String(cname));
                   } else {
-                    console.warn("unsupported object used as class name", cname);
+                    console.warn(
+                      "unsupported object used as class name",
+                      cname,
+                    );
                   }
                 }
                 break;
@@ -90,7 +108,10 @@ export class BindingFactories<
     }
   }
 
-  public createChildBinding(lastNodeRef: WeakRef<TextElement | Element>, rest: WeakRef<TextElement | Element>[] = []) {
+  public createChildBinding(
+    lastNodeRef: WeakRef<TextElement | Element>,
+    rest: WeakRef<TextElement | Element>[] = [],
+  ) {
     return (
       _: unknown,
       value: MaybeArray<TextElement | Element | FragmentElement | undefined>,
@@ -188,7 +209,10 @@ export class BindingFactories<
 
   public createSimpleClassNameBinding() {
     let lastNames: string = "";
-    return (elem: Element, cname: string | number | boolean | { [Symbol.toPrimitive](): any }) => {
+    return (
+      elem: Element,
+      cname: string | number | boolean | { [Symbol.toPrimitive](): any },
+    ) => {
       this.dom.removeClassName(elem, lastNames);
       switch (typeof cname) {
         case "string":
@@ -235,7 +259,10 @@ export class BindingFactories<
     };
   }
 
-  public setStyle(elem: Element, value: Exclude<StyleDict, JSX.Signal<any>> | string | undefined) {
+  public setStyle(
+    elem: Element,
+    value: Exclude<StyleDict, JSX.Signal<any>> | string | undefined,
+  ) {
     if (typeof value !== "object") {
       this.dom.setAttributeOrProperty(elem, "style", value);
       return;
@@ -259,11 +286,17 @@ export class BindingFactories<
       this.dom.setProperty(elem, "checked", value);
     }
     if (typeof value === "string") {
-      this.dom.setProperty(elem, "checked", value === "true" || value === "checked");
+      this.dom.setProperty(
+        elem,
+        "checked",
+        value === "true" || value === "checked",
+      );
     }
   }
 
-  public createAttributeBinding(attributeName: string): (elem: Element, v: any) => void {
+  public createAttributeBinding(
+    attributeName: string,
+  ): (elem: Element, v: any) => void {
     if (attributeName === "class") {
       return this.setClassName.bind(this);
     }
