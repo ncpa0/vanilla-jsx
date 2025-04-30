@@ -2,7 +2,8 @@
   "packageManager": "yarn",
   "parallel": true,
   "hooks": {
-    "pre-push": [
+    "pre-push": [],
+    "pre-commit": [
       {
         "name": "TypeScript",
         "script": "test:tsc"
@@ -16,7 +17,6 @@
         "script": "test:unit"
       }
     ],
-    "pre-commit": [],
     "post-commit": []
   }
 }
