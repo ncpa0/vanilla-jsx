@@ -1,7 +1,7 @@
 import { DomInteraction } from "../dom/dom-interaction";
 import { InteractionInterface } from "../dom/interaction-interface";
 import { SignalProxy, SignalsReg, sigProxy } from "../sig-proxy/_proxy";
-import { VSignal } from "../signals";
+import { VSignal } from "../signals/signal";
 import { BindingFactories } from "./factories";
 import { asArray } from "./utils";
 

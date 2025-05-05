@@ -1,6 +1,6 @@
 {
   "name": "@ncpa0cpl/vanilla-jsx",
-  "version": "0.0.1-alpha.40",
+  "version": "0.0.1-alpha.41",
   "main": "./dist/legacy/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
@@ -56,7 +56,7 @@
     "test:format": "dprint check ./src/**/*.ts",
     "test:tsc": "tsc --noEmit",
     "test:unit": "vitest run",
-    "build": "node ./scripts/build.mjs",
+    "build": "rm -rf ./dist && node ./scripts/build.mjs",
     "prepack": "yarn build",
     "prepare": "husky install"
   },
