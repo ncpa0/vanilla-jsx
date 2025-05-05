@@ -5,7 +5,7 @@ import {
   SignalsReg,
   sigProxy,
 } from "../sig-proxy/_proxy";
-import { VSignal } from "../signals";
+import { VSignal } from "../signals/signal";
 import { isArray, MaybeArray } from "./utils";
 
 export class BindingFactories<
