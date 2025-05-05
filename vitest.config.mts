@@ -5,6 +5,7 @@ export default defineConfig({
     clearMocks: true,
     dir: "__tests__",
     environment: "happy-dom",
+    setupFiles: "__tests__/setup.ts",
   },
   esbuild: {
     jsxInject: "",

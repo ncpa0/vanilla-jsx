@@ -5,13 +5,14 @@ import {
   SignalsReg,
   sigProxy,
 } from "../sig-proxy/_proxy";
+import { VSignal } from "../signals";
 import { isArray, MaybeArray } from "./utils";
 
 export class BindingFactories<
   Element extends object,
   TextElement extends object,
   FragmentElement extends object,
-  Ev extends object,
+  Ev extends Event,
 > {
   constructor(
     private dom: InteractionInterface<
@@ -332,5 +333,39 @@ export class BindingFactories<
     return (elem: Element, value: any) => {
       this.dom.setAttributeOrProperty(elem, attributeName, value);
     };
+  }
+
+  public createInputBound(
+    element: Element,
+    boundSignal: VSignal<string | boolean>,
+    isCheckbox: boolean,
+  ) {
+    if (isCheckbox) {
+      this.createEventBinding("change")(
+        element,
+        (event) => {
+          const target = event.target as HTMLInputElement;
+          boundSignal.dispatch(target.checked);
+        },
+      );
+
+      sigProxy(boundSignal).bindTo(
+        element,
+        this.createAttributeBinding("checked"),
+      );
+    } else {
+      this.createEventBinding("input")(
+        element,
+        (event) => {
+          const target = event.target as HTMLInputElement;
+          boundSignal.dispatch(target.value);
+        },
+      );
+
+      sigProxy(boundSignal).bindTo(
+        element,
+        this.createAttributeBinding("value"),
+      );
+    }
   }
 }

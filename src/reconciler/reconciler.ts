@@ -1,6 +1,7 @@
 import { DomInteraction } from "../dom/dom-interaction";
 import { InteractionInterface } from "../dom/interaction-interface";
 import { SignalProxy, SignalsReg, sigProxy } from "../sig-proxy/_proxy";
+import { VSignal } from "../signals";
 import { BindingFactories } from "./factories";
 import { asArray } from "./utils";
 
@@ -163,6 +164,23 @@ export class Reconciler {
     if (props) {
       for (const [propName, propValue] of Object.entries(props)) {
         if (propName === "children" || propName === "unsafeHTML") {
+          continue;
+        }
+
+        if (propName === "boundSignal") {
+          if (!(propValue instanceof VSignal)) {
+            console.error("incorrect value provided to the 'boundSignal'");
+            continue;
+          }
+
+          if (tag === "input" || tag === "textarea") {
+            this.factories.createInputBound(
+              element,
+              propValue,
+              props.type === "checkbox",
+            );
+          }
+
           continue;
         }
 

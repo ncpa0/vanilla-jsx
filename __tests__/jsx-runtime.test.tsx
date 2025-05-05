@@ -28,20 +28,20 @@ describe("jsx-runtime", () => {
     );
 
     expect(d.outerHTML).toEqual(
-      '<div id="root" class="foo bar"><span class="text">Hello World!</span></div>',
+      "<div id=\"root\" class=\"foo bar\"><span class=\"text\">Hello World!</span></div>",
     );
   });
 
   it("correctly handles prefixed attributes", () => {
     const elem = <input attribute:form="abc" />;
 
-    expect(elem.outerHTML).toEqual('<input form="abc">');
+    expect(elem.outerHTML).toEqual("<input form=\"abc\">");
   });
 
   it("correctly handles prefixed properties", () => {
     const value = "abcdef";
 
-    const elem = (<input property:value={value} />) as HTMLInputElement;
+    const elem = <input property:value={value} /> as HTMLInputElement;
 
     expect(elem.value).toEqual(value);
   });
@@ -54,9 +54,7 @@ describe("jsx-runtime", () => {
       <div>
         <span>Hello</span>
         <span>World</span>
-        {nums.map((n) => (
-          <span>{n}</span>
-        ))}
+        {nums.map((n) => <span>{n}</span>)}
       </div>
     );
 
@@ -104,23 +102,23 @@ describe("jsx-runtime", () => {
     );
 
     expect(d.outerHTML).toEqual(
-      '<div class="foo bar" id="root"><p>Hi</p></div>',
+      "<div class=\"foo bar\" id=\"root\"><p>Hi</p></div>",
     );
 
     classNames.dispatch("bar baz");
 
     expect(d.outerHTML).toEqual(
-      '<div id="root" class="bar baz"><p>Hi</p></div>',
+      "<div class=\"bar baz\" id=\"root\"><p>Hi</p></div>",
     );
 
     id.dispatch(undefined);
 
-    expect(d.outerHTML).toEqual('<div class="bar baz"><p>Hi</p></div>');
+    expect(d.outerHTML).toEqual("<div class=\"bar baz\"><p>Hi</p></div>");
 
     id.dispatch("main");
 
     expect(d.outerHTML).toEqual(
-      '<div class="bar baz" id="main"><p>Hi</p></div>',
+      "<div class=\"bar baz\" id=\"main\"><p>Hi</p></div>",
     );
   });
 
@@ -149,7 +147,7 @@ describe("jsx-runtime", () => {
     );
 
     expect(d.outerHTML).toEqual(
-      '<html><head><title>Test</title></head><body><div id="root"><h1 class="header">Hello World!</h1></div></body></html>',
+      "<html><head><title>Test</title></head><body><div id=\"root\"><h1 class=\"header\">Hello World!</h1></div></body></html>",
     );
   });
 
@@ -184,7 +182,7 @@ describe("jsx-runtime", () => {
     ) as HTMLDivElement;
 
     expect(div.outerHTML).toEqual(
-      '<div data-foo="foo" data-bar="2" data-baz="baz" data-qux="3"></div>',
+      "<div data-foo=\"foo\" data-bar=\"2\" data-baz=\"baz\" data-qux=\"3\"></div>",
     );
     expect(div.dataset).toMatchObject({
       foo: "foo",
@@ -210,7 +208,9 @@ describe("jsx-runtime", () => {
       baz: "baz",
       qux: "3",
     });
-    expect(div.outerHTML).toEqual('<div data-baz="baz" data-qux="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div data-baz=\"baz\" data-qux=\"3\"></div>",
+    );
 
     sig2.dispatch(0);
 
@@ -220,7 +220,7 @@ describe("jsx-runtime", () => {
       qux: "3",
     });
     expect(div.outerHTML).toEqual(
-      '<div data-baz="baz" data-qux="3" data-bar="0"></div>',
+      "<div data-baz=\"baz\" data-qux=\"3\" data-bar=\"0\"></div>",
     );
   });
 
@@ -234,31 +234,32 @@ describe("jsx-runtime", () => {
         my-other-attr1={sig2}
         my-attr2="baz"
         my-other-attr2={3}
-      ></div>
+      >
+      </div>
     ) as HTMLDivElement;
 
     expect(div.outerHTML).toEqual(
-      '<div my-attr1="foo" my-other-attr1="2" my-attr2="baz" my-other-attr2="3"></div>',
+      "<div my-attr1=\"foo\" my-other-attr1=\"2\" my-attr2=\"baz\" my-other-attr2=\"3\"></div>",
     );
 
     sig1.dispatch("oof");
     sig2.dispatch(123);
 
     expect(div.outerHTML).toEqual(
-      '<div my-attr2="baz" my-other-attr2="3" my-attr1="oof" my-other-attr1="123"></div>',
+      "<div my-attr1=\"oof\" my-other-attr1=\"123\" my-attr2=\"baz\" my-other-attr2=\"3\"></div>",
     );
 
     sig1.dispatch(undefined);
     sig2.dispatch(null);
 
     expect(div.outerHTML).toEqual(
-      '<div my-attr2="baz" my-other-attr2="3"></div>',
+      "<div my-attr2=\"baz\" my-other-attr2=\"3\"></div>",
     );
 
     sig2.dispatch(0);
 
     expect(div.outerHTML).toEqual(
-      '<div my-attr2="baz" my-other-attr2="3" my-other-attr1="0"></div>',
+      "<div my-attr2=\"baz\" my-other-attr2=\"3\" my-other-attr1=\"0\"></div>",
     );
   });
 
@@ -273,35 +274,39 @@ describe("jsx-runtime", () => {
         myotherattr1={sig2}
         myattr2="baz"
         myotherattr2={3}
-      ></div>
+      >
+      </div>
     ) as HTMLDivElement;
 
     expect(div.outerHTML).toEqual(
-      '<div myattr1="foo" myotherattr1="2" myattr2="baz" myotherattr2="3"></div>',
+      "<div myattr1=\"foo\" myotherattr1=\"2\" myattr2=\"baz\" myotherattr2=\"3\"></div>",
     );
 
     sig1.dispatch("oof");
     sig2.dispatch(123);
 
     expect(div.outerHTML).toEqual(
-      '<div myattr2="baz" myotherattr2="3" myattr1="oof" myotherattr1="123"></div>',
+      "<div myattr1=\"oof\" myotherattr1=\"123\" myattr2=\"baz\" myotherattr2=\"3\"></div>",
     );
 
     sig1.dispatch(undefined);
     sig2.dispatch(null);
 
-    expect(div.outerHTML).toEqual('<div myattr2="baz" myotherattr2="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div myattr2=\"baz\" myotherattr2=\"3\"></div>",
+    );
 
     sig2.dispatch(0);
 
     expect(div.outerHTML).toEqual(
-      '<div myattr2="baz" myotherattr2="3" myotherattr1="0"></div>',
+      "<div myattr2=\"baz\" myotherattr2=\"3\" myotherattr1=\"0\"></div>",
     );
   });
 
   it("correctly sets string styles", () => {
     const elem = (
-      <div style="color: red; background-color: blue;"></div>
+      <div style="color: red; background-color: blue;">
+      </div>
     ) as HTMLDivElement;
 
     expect(elem.style.color).toEqual("red");
@@ -310,10 +315,86 @@ describe("jsx-runtime", () => {
 
   it("correctly sets object styles", () => {
     const elem = (
-      <div style={{ color: "red", backgroundColor: "blue" }}></div>
+      <div style={{ color: "red", backgroundColor: "blue" }}>
+      </div>
     ) as HTMLDivElement;
 
     expect(elem.style.color).toEqual("red");
     expect(elem.style.backgroundColor).toEqual("blue");
+  });
+
+  it("input signal bounding", () => {
+    const inputValue = sig("HELLO");
+
+    const input = <input boundSignal={inputValue} /> as HTMLInputElement;
+    expect(input.value).toEqual("HELLO");
+    expect(inputValue.get()).toEqual("HELLO");
+
+    inputValue.dispatch("WORLD");
+    expect(input.value).toEqual("WORLD");
+
+    input.value = "";
+    input.dispatchEvent(new Event("input"));
+    expect(inputValue.get()).toEqual("");
+
+    input.value = "a";
+    input.dispatchEvent(new Event("input"));
+    expect(inputValue.get()).toEqual("a");
+
+    input.value = "abcde";
+    input.dispatchEvent(new Event("input"));
+    expect(inputValue.get()).toEqual("abcde");
+  });
+
+  it("checkbox input signal bounding", () => {
+    const inputChecked = sig(true);
+
+    const input = (
+      <input
+        type="checkbox"
+        boundSignal={inputChecked}
+      />
+    ) as HTMLInputElement;
+    expect(input.checked).toEqual(true);
+    expect(inputChecked.get()).toEqual(true);
+
+    inputChecked.dispatch(false);
+    expect(input.checked).toEqual(false);
+
+    input.dispatchEvent(new MouseEvent("click"));
+    expect(input.checked).toEqual(true);
+    input.dispatchEvent(new Event("change"));
+    expect(inputChecked.get()).toEqual(true);
+
+    input.dispatchEvent(new MouseEvent("click"));
+    expect(input.checked).toEqual(false);
+    input.dispatchEvent(new Event("change"));
+    expect(inputChecked.get()).toEqual(false);
+
+    inputChecked.dispatch(true);
+    expect(input.checked).toEqual(true);
+  });
+
+  it("textarea signal bounding", () => {
+    const inputValue = sig("HELLO");
+
+    const txtarea = <textarea boundSignal={inputValue} /> as HTMLInputElement;
+    expect(txtarea.value).toEqual("HELLO");
+    expect(inputValue.get()).toEqual("HELLO");
+
+    inputValue.dispatch("WORLD");
+    expect(txtarea.value).toEqual("WORLD");
+
+    txtarea.value = "";
+    txtarea.dispatchEvent(new Event("input"));
+    expect(inputValue.get()).toEqual("");
+
+    txtarea.value = "a";
+    txtarea.dispatchEvent(new Event("input"));
+    expect(inputValue.get()).toEqual("a");
+
+    txtarea.value = "abcde";
+    txtarea.dispatchEvent(new Event("input"));
+    expect(inputValue.get()).toEqual("abcde");
   });
 });
