@@ -1,4 +1,4 @@
-import { registerBoundSignal } from "./utils";
+import { registerBoundSignal, Widen } from "./utils";
 
 class PropagationAbortSignal {
   static extend(abortSig: PropagationAbortSignal) {
@@ -121,9 +121,17 @@ export interface ReadonlySignal<T> {
    *
    * Can only be used if the signal value is an Array.
    */
-  dmap<R>(
+  $map<R>(
     mapFn: T extends any[] ? (elem: T[number], index: number) => R : never,
   ): ReadonlySignal<R[]>;
+  /**
+   * Similar to `Array.includes()`, equivalent to `signal.derive(list => list.includes(value))`
+   *
+   * Can only be used if the signal value is an Array.
+   */
+  $includes(
+    value: T extends any[] ? Widen<T[number]> : never,
+  ): ReadonlySignal<boolean>;
   /**
    * Derive Property
    *
@@ -132,7 +140,17 @@ export interface ReadonlySignal<T> {
    *
    * Can only be used if the signal value is an Object.
    */
-  dprop<K extends keyof T>(key: K): ReadonlySignal<T[K]>;
+  $prop<K extends keyof T>(key: K): ReadonlySignal<T[K]>;
+  /**
+   * Creates a derived signal containing the length of the value in the parent signal, equivalent
+   * to `signal.derive(value => value.length)`.
+   */
+  $len(): T extends string | { length: number } ? ReadonlySignal<number>
+    : never;
+  /**
+   * Creates a derived signal with the given value if the parent signal is null or undefined, equivalent to `signal.derive(value => value ?? defaultValue)`.
+   */
+  $or(defaultValue: NonNullable<T>): ReadonlySignal<NonNullable<T>>;
 }
 
 export interface Signal<T> extends ReadonlySignal<T> {
@@ -191,6 +209,11 @@ function isDispatchFunc<T>(
   value: T | DispatchFunc<T>,
 ): value is DispatchFunc<T> {
   return typeof value === "function";
+}
+
+function isObjWithLen(value: unknown): value is { length: number } {
+  return typeof value === "object" && value !== null
+    && typeof (value as Record<string, unknown>).length === "number";
 }
 
 function noop() {}
@@ -391,6 +414,15 @@ class VSignal<T> implements Signal<T> {
     return VSignal.derive(VSignal.as(a), VSignal.as(b), (a, b) => a === b);
   }
 
+  public static includes<T>(
+    arrSig: ReadonlySignal<T[]>,
+    value: Widen<T> | ReadonlySignal<Widen<T>>,
+  ): ReadonlySignal<boolean> {
+    return VSignal.derive(arrSig, VSignal.as(value), (arr, value) => {
+      return arr.includes(value as T);
+    });
+  }
+
   /**
    * Similar to the ternary conditional expression. Given a condition,
    * the second or the third value will be the value of resulting signal.
@@ -533,7 +565,7 @@ class VSignal<T> implements Signal<T> {
    */
   public static as<T>(v: T | ReadonlySignal<T>): ReadonlySignal<T> {
     if (v instanceof VSignal) {
-      return v;
+      return v as ReadonlySignal<T>;
     }
 
     const s = new VReadonlySignal(v as T);
@@ -929,7 +961,7 @@ class VSignal<T> implements Signal<T> {
     return derivedSignal;
   }
 
-  public dmap<R>(mapFn: (elem: any, index: number) => R): ReadonlySignal<R[]> {
+  public $map<R>(mapFn: (elem: any, index: number) => R): ReadonlySignal<R[]> {
     return this.derive((value) => {
       if (!Array.isArray(value)) {
         throw new Error("value is not an array");
@@ -938,13 +970,39 @@ class VSignal<T> implements Signal<T> {
     });
   }
 
-  public dprop<K extends keyof T>(key: K): ReadonlySignal<T[K]> {
+  public $includes(elem: any): ReadonlySignal<boolean> {
+    return this.derive((value) => {
+      if (!Array.isArray(value)) {
+        throw new Error("value is not an array");
+      }
+      return value.includes(elem);
+    });
+  }
+
+  public $prop<K extends keyof T>(key: K): ReadonlySignal<T[K]> {
     return this.derive((value) => {
       if (typeof value !== "object" || value == null) {
         throw new Error("value is not an object");
       }
       return value[key];
     });
+  }
+
+  public $len(): T extends string | { length: number } ? ReadonlySignal<number>
+    : never
+  {
+    return this.derive((value) => {
+      if (typeof value === "string") {
+        return value.length;
+      } else if (isObjWithLen(value)) {
+        return value.length;
+      }
+      throw new Error("value has no length");
+    }) as any;
+  }
+
+  $or(defaultValue: NonNullable<T>): ReadonlySignal<NonNullable<T>> {
+    return this.derive((value) => value ?? defaultValue);
   }
 
   private _readonlySelf?: WeakRef<ReadonlySignal<T>>;
@@ -1155,6 +1213,12 @@ interface SignalConstructor {
    * Returns a boolean signal that tells if the two given values/signals are equal.
    */
   eq: typeof VSignal.eq;
+
+  /**
+   * Returns a boolean signal that tells if the given signal array includes a given value, where value can
+   * be wrapped in a signal.
+   */
+  includes: typeof VSignal.includes;
 }
 
 /**
@@ -1181,6 +1245,7 @@ signal.and = VSignal.and;
 signal.when = VSignal.when;
 signal.not = VSignal.not;
 signal.eq = VSignal.eq;
+signal.includes = VSignal.includes;
 
 /**
  * Alias for `signal()`.

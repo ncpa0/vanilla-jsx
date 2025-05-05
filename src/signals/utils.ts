@@ -13,3 +13,9 @@ export function registerBoundSignal(element: object, signal: JSX.Signal<any>) {
 }
 
 export const ElemMap = new WeakMap<object, JSX.Signal<any>[]>();
+
+export type Widen<T> = T extends string ? string
+  : T extends number ? number
+  : T extends boolean ? boolean
+  : T extends symbol ? symbol
+  : T;
