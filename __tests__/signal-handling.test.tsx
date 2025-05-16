@@ -59,7 +59,7 @@ describe("signal handling", () => {
     const text = sig("Lorem Ipsum dolor sit amet");
     const id = sig("foo");
     let d: JSX.Element | null = <div id={id}>{text}</div>;
-
+    d;
     expect(text.listenerCount()).toEqual(1);
     expect(id.listenerCount()).toEqual(1);
 
@@ -1058,5 +1058,33 @@ describe("signal handling", () => {
         "<div style=\"z-index: 5; color: green; font-size: 12px; background-color: purple;\"></div>",
       );
     });
+  });
+
+  it("split + join should not trigger additional re-calculations when unnecessary", () => {
+    const source1 = sig({ foo: 1, bar: "2" });
+    const source2 = sig({ q: "foo,bar,baz", q2: "a", q3: "b" });
+
+    const sink1 = source2.$prop("q").derive(v => v.split(","));
+    const sink2 = source2.derive(({ q2, q3 }) => ({ q2, q3 }), {
+      compare: (a, b) => a.q2 === b.q2 && b.q3 === b.q3,
+    });
+
+    let finalSinkRecalculateCount = 0;
+
+    const finalSink = sig.derive(source1, sink1, sink2, (a, b, c) => {
+      finalSinkRecalculateCount++;
+      return b.map(key => ({
+        name: key,
+        value: null,
+        params: c,
+      }));
+    });
+    finalSink.add(() => {});
+
+    expect(finalSinkRecalculateCount).toEqual(1);
+
+    // this dispatch should only trigger one re-calc of the finalSink
+    source2.dispatch({ q: "bar,baz,qux", q2: "a", q3: "b" });
+    expect(finalSinkRecalculateCount).toEqual(2);
   });
 });

@@ -46,6 +46,9 @@ export type SignalListenerReference<T> = Readonly<{
   signal: ReadonlySignal<T>;
 }>;
 
+export type CompareFn<T> = (a: T, b: T) => boolean;
+type Deps = [value: any, compareFn: CompareFn<any>][];
+
 export interface ReadonlySignal<T> {
   /**
    * Add a listener to the signal. The listener will be called immediately with
@@ -202,6 +205,7 @@ export type AsSignal<T> = T extends Signal<infer U> ? T
 type DestroyedParentSigSubstitute = {
   IS_SUBSTITUTE: true;
   get(): any;
+  iseq: CompareFn<any>;
   removeDerivedChild(s: VSignal<any>): void;
 };
 
@@ -604,12 +608,15 @@ class VSignal<T> implements Signal<T> {
     return s;
   }
 
-  private static arrCompare(a: any[], b: any[]) {
+  private static depsCompare(a: Deps, b: Deps) {
     if (a.length !== b.length) {
       return false;
     }
     for (let i = 0; i < a.length; i++) {
-      if (!Object.is(a[i], b[i])) {
+      const [aVal, aCmp] = a[i]!;
+      const [bVal, bCmp] = b[i]!;
+      const cmp = aCmp === bCmp ? aCmp : Object.is;
+      if (!cmp(aVal, bVal)) {
         return false;
       }
     }
@@ -626,7 +633,7 @@ class VSignal<T> implements Signal<T> {
   private dynamicDerivedFrom?: VSignal<any>;
   private isDirty = false;
   private isDerived = false;
-  private iseq: (a: T, b: T) => boolean = Object.is;
+  private iseq: CompareFn<T> = Object.is;
 
   constructor(value: T, options?: SignalOptions<T>) {
     this.value = value;
@@ -642,7 +649,7 @@ class VSignal<T> implements Signal<T> {
     }
   }
 
-  private lastUsedDeps: any[] = [];
+  private lastUsedDeps: Deps = [];
   private derivedAtLeastOnce = false;
 
   private assignDerived(deps: any[], notifiedBy?: VSignal<any>) {
@@ -684,18 +691,22 @@ class VSignal<T> implements Signal<T> {
 
   private update(notifiedBy?: VSignal<any>): boolean {
     if (this.deriveFn) {
-      const depValues: any[] = [];
+      const dependencies: Deps = new Array(this.derivedFrom.length);
+      const depValues: any[] = new Array(this.derivedFrom.length);
+
       for (let i = 0; i < this.derivedFrom.length; i++) {
-        depValues.push(this.derivedFrom[i]!.get());
+        const value = this.derivedFrom[i]!.get();
+        dependencies[i] = [value, (this.derivedFrom[i]! as VSignal<any>).iseq];
+        depValues[i] = value;
       }
       if (
         this.dynamicDerivedFrom == null
-        && VSignal.arrCompare(depValues, this.lastUsedDeps)
+        && VSignal.depsCompare(dependencies, this.lastUsedDeps)
       ) {
         return false;
       }
       const prevDeps = this.lastUsedDeps;
-      this.lastUsedDeps = depValues;
+      this.lastUsedDeps = dependencies;
       try {
         return this.assignDerived(depValues, notifiedBy);
       } catch (e) {
@@ -1088,6 +1099,7 @@ class VSignal<T> implements Signal<T> {
         const stableValue = parentSig.get();
         const substitute: DestroyedParentSigSubstitute = {
           get: () => stableValue,
+          iseq: parentSig.iseq,
           removeDerivedChild: noop,
           IS_SUBSTITUTE: true,
         };
