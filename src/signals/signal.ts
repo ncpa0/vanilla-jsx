@@ -84,7 +84,7 @@ export interface ReadonlySignal<T> {
    */
   derive<U>(
     getDerivedValue: DeriveFn<[T], U>,
-    options?: { name?: string },
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U>;
   /**
    * Detach all listeners from the signal.
@@ -224,6 +224,16 @@ type BatchEntry = [signal: VSignal<any>, isObserved: boolean];
 
 type Truthy<T> = Exclude<T, null | undefined | void | false | "">;
 type DeNull<T> = Exclude<T, null | undefined | void>;
+
+export type SignalOptions<T> = {
+  name?: string;
+  /**
+   * Signals do not run listeners when the dispatched value is the same as the
+   * current value, to check if the values are the same `Object.is()` is used, you
+   * can specify your own comparison function here instead.
+   */
+  compare?: (a: T, b: T) => boolean;
+};
 
 /**
  * Class containing the actual implementation of the VanillaJSX Signal.
@@ -458,17 +468,20 @@ class VSignal<T> implements Signal<T> {
   public static derive<E, U>(
     sig1: ReadonlySignal<E>,
     getDerivedValue: DeriveFn<[E], U>,
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, U>(
     sig1: ReadonlySignal<E>,
     sig2: ReadonlySignal<F>,
     getDerivedValue: DeriveFn<[E, F], U>,
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, U>(
     sig1: ReadonlySignal<E>,
     sig2: ReadonlySignal<F>,
     sig3: ReadonlySignal<G>,
     getDerivedValue: DeriveFn<[E, F, G], U>,
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, H, U>(
     sig1: ReadonlySignal<E>,
@@ -476,6 +489,7 @@ class VSignal<T> implements Signal<T> {
     sig3: ReadonlySignal<G>,
     sig4: ReadonlySignal<H>,
     getDerivedValue: DeriveFn<[E, F, G, H], U>,
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, H, I, U>(
     sig1: ReadonlySignal<E>,
@@ -484,6 +498,7 @@ class VSignal<T> implements Signal<T> {
     sig4: ReadonlySignal<H>,
     sig5: ReadonlySignal<I>,
     getDerivedValue: DeriveFn<[E, F, G, H, I], U>,
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U>;
   public static derive<E, F, G, H, I, J, U>(
     sig1: ReadonlySignal<E>,
@@ -493,16 +508,27 @@ class VSignal<T> implements Signal<T> {
     sig5: ReadonlySignal<I>,
     sig6: ReadonlySignal<J>,
     getDerivedValue: DeriveFn<[E, F, G, H, I, J], U>,
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U>;
   public static derive<U>(...args: any[]): ReadonlySignal<U> {
-    const signals = args.slice(0, -1) as VSignal<any>[];
-    const getDerivedValue = args[args.length - 1] as (...args: any[]) => U;
+    let options: SignalOptions<any> | undefined;
+    if (typeof args.at(-1) === "object") {
+      options = args.pop();
+    }
+    const getDerivedValue = args.pop() as (...args: any[]) => U;
+    const signals = args as VSignal<any>[];
+
+    if (typeof getDerivedValue !== "function") {
+      throw new TypeError(
+        "VSignal.derive: derive function argument given is not a function",
+      );
+    }
 
     const depValues: any[] = [];
     for (let i = 0; i < signals.length; i++) {
       depValues.push(signals[i]!.get());
     }
-    const derivedSignal = new VReadonlySignal<U>(null as any);
+    const derivedSignal = new VReadonlySignal<U>(null as any, options);
     derivedSignal.isDirty = true;
     derivedSignal.isDerived = true;
     derivedSignal.lastUsedDeps = [];
@@ -600,10 +626,14 @@ class VSignal<T> implements Signal<T> {
   private dynamicDerivedFrom?: VSignal<any>;
   private isDirty = false;
   private isDerived = false;
+  private iseq: (a: T, b: T) => boolean = Object.is;
 
-  constructor(value: T, options?: { name?: string }) {
+  constructor(value: T, options?: SignalOptions<T>) {
     this.value = value;
     this.name = options?.name;
+    if (options?.compare) {
+      this.iseq = options.compare;
+    }
   }
 
   private beforeAccess() {
@@ -613,6 +643,7 @@ class VSignal<T> implements Signal<T> {
   }
 
   private lastUsedDeps: any[] = [];
+  private derivedAtLeastOnce = false;
 
   private assignDerived(deps: any[], notifiedBy?: VSignal<any>) {
     if (notifiedBy && notifiedBy === this.dynamicDerivedFrom) {
@@ -629,7 +660,8 @@ class VSignal<T> implements Signal<T> {
 
     if (v instanceof VSignal) {
       const nv = v.get();
-      changed = !Object.is(nv, this.value);
+      changed = !this.derivedAtLeastOnce || !this.iseq(nv, this.value);
+      this.derivedAtLeastOnce = true;
 
       if (v === this.dynamicDerivedFrom) {
         this.value = nv;
@@ -642,7 +674,8 @@ class VSignal<T> implements Signal<T> {
         v.derivedSignals.push(new WeakRef(this));
       }
     } else {
-      changed = !Object.is(v, this.value);
+      changed = !this.derivedAtLeastOnce || !this.iseq(v as T, this.value);
+      this.derivedAtLeastOnce = true;
       this.value = v as T;
     }
     this.isDirty = false;
@@ -874,7 +907,7 @@ class VSignal<T> implements Signal<T> {
       newValue = value;
     }
 
-    if (Object.is(prevValue, newValue)) {
+    if (this.iseq(prevValue, newValue)) {
       return;
     }
 
@@ -890,7 +923,7 @@ class VSignal<T> implements Signal<T> {
       this.value = value;
     }
 
-    if (!Object.is(prevValue, this.value)) {
+    if (!this.iseq(prevValue, this.value)) {
       this.propagateChange();
     }
   }
@@ -946,7 +979,7 @@ class VSignal<T> implements Signal<T> {
 
   public derive<U>(
     getDerivedValue: DeriveFn<[T], U>,
-    options?: { name?: string },
+    options?: SignalOptions<U>,
   ): ReadonlySignal<U> {
     this.beforeAccess();
 
@@ -1125,7 +1158,7 @@ class VReadonlySignal<T> extends VSignal<T> {
 
 interface SignalConstructor {
   <T>(): Signal<T | undefined>;
-  <T>(value: T, options?: { name?: string }): Signal<T>;
+  <T>(value: T, options?: SignalOptions<T>): Signal<T>;
 
   /**
    * A batch allows to group signal dispatches together.
@@ -1228,7 +1261,7 @@ interface SignalConstructor {
  */
 const signal: SignalConstructor = function signal(
   value?: any,
-  options?: { name?: string },
+  options?: SignalOptions<any>,
 ) {
   return new VSignal(value, options);
 };

@@ -153,6 +153,74 @@ describe("VSignal()", () => {
       expect(listener).toHaveBeenCalledTimes(3);
       expect(listener).toHaveBeenCalledWith("00123");
     });
+
+    describe("with custom compare fn", () => {
+      it("propagets change events only when the compare function returns true", () => {
+        const s = sig({ foo: 1, bar: "2" }, {
+          compare: (a, b) => a.foo === b.foo && a.bar === b.bar,
+        });
+
+        expect(s.get()).toEqual({ foo: 1, bar: "2" });
+
+        const onChange = vitest.fn();
+        s.add(onChange);
+        onChange.mockClear();
+
+        s.dispatch({ foo: 2, bar: "2" });
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenLastCalledWith({ foo: 2, bar: "2" });
+        expect(s.get()).toEqual({ foo: 2, bar: "2" });
+
+        onChange.mockClear();
+
+        s.dispatch({ foo: 2, bar: "2" });
+        expect(onChange).not.toHaveBeenCalled();
+
+        onChange.mockClear();
+
+        s.dispatch({ foo: 2, bar: "a" });
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenLastCalledWith({ foo: 2, bar: "a" });
+        expect(s.get()).toEqual({ foo: 2, bar: "a" });
+
+        onChange.mockClear();
+
+        s.dispatch({ foo: 2, bar: "a" });
+        expect(onChange).not.toHaveBeenCalled();
+
+        onChange.mockClear();
+
+        // @ts-expect-error
+        s.dispatch({ foo: 2, bar: "a", baz: 3 });
+        expect(onChange).not.toHaveBeenCalled();
+      });
+
+      it("updates sinks only when the compare function returns true", () => {
+        const s = sig({ foo: 1, bar: "2" }, {
+          compare: (a, b) => a.foo === b.foo && a.bar === b.bar,
+        });
+
+        let i = 0;
+        const sink = s.derive(() => i++);
+        expect(sink.get()).toEqual(0);
+
+        s.dispatch({ foo: 2, bar: "2" });
+        expect(sink.get()).toEqual(1);
+
+        s.dispatch({ foo: 2, bar: "2" });
+        expect(sink.get()).toEqual(1);
+
+        s.dispatch({ foo: 2, bar: "a" });
+        expect(sink.get()).toEqual(2);
+
+        s.dispatch({ foo: 2, bar: "a" });
+        expect(sink.get()).toEqual(2);
+
+        // @ts-expect-error
+        s.dispatch({ foo: 2, bar: "a", baz: 3 });
+        expect(sink.get()).toEqual(2);
+      });
+    });
   });
 
   describe("listenerCount()", () => {
@@ -1082,6 +1150,40 @@ describe("VSignal()", () => {
         });
       });
     });
+
+    describe("with custom compare fn", () => {
+      it("propagets change events only when the compare function returns true", () => {
+        const source = sig({ v: "foo,bar,baz,qux" });
+        const sink = source.derive(({ v }) => v.split(",").filter(Boolean), {
+          compare: (a, b) => {
+            return a.length === b.length
+              && a.every((elem, idx) => elem === b[idx]);
+          },
+        });
+
+        expect(sink.get()).toEqual(["foo", "bar", "baz", "qux"]);
+
+        const onChange = vitest.fn();
+        sink.add(onChange);
+        onChange.mockClear();
+
+        source.dispatch({ v: "qux,foo,bar" });
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenLastCalledWith(["qux", "foo", "bar"]);
+
+        onChange.mockClear();
+
+        source.dispatch({ v: "qux,foo,bar" });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(sink.get()).toEqual(["qux", "foo", "bar"]);
+
+        onChange.mockClear();
+
+        source.dispatch({ v: "qux,,,foo,,bar," });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(sink.get()).toEqual(["qux", "foo", "bar"]);
+      });
+    });
   });
 
   describe("$map()", () => {
@@ -1483,6 +1585,63 @@ describe("VSignal()", () => {
       expect(derivedRefs1).toHaveLength(0);
       expect(derivedRefs2).toHaveLength(0);
       expect(derivedRefs3).toHaveLength(0);
+    });
+
+    describe("with custom compare fn", () => {
+      it("propagets change events only when the compare function returns true", () => {
+        const source1 = sig({ v: 1 });
+        const source2 = sig({ v: 2 });
+        const sink = sig.derive(
+          source1,
+          source2,
+          (s1, s2) => ({ v: s1.v + s2.v }),
+          { compare: (a, b) => a.v === b.v },
+        );
+
+        expect(sink.get()).toEqual({ v: 3 });
+
+        const onChange = vitest.fn();
+        sink.add(onChange);
+        onChange.mockClear();
+
+        source1.dispatch({ v: 5 });
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenLastCalledWith({ v: 7 });
+        expect(sink.get()).toEqual({ v: 7 });
+
+        onChange.mockClear();
+
+        source2.dispatch({ v: 10 });
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenLastCalledWith({ v: 15 });
+        expect(sink.get()).toEqual({ v: 15 });
+
+        onChange.mockClear();
+
+        source1.dispatch({ v: 5 });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(sink.get()).toEqual({ v: 15 });
+
+        onChange.mockClear();
+
+        sig.startBatch();
+        source1.dispatch({ v: 10 });
+        source2.dispatch({ v: 10 });
+        sig.commitBatch();
+
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenLastCalledWith({ v: 20 });
+
+        onChange.mockClear();
+
+        sig.startBatch();
+        source1.dispatch({ v: 2 });
+        source2.dispatch({ v: 18 });
+        sig.commitBatch();
+
+        expect(onChange).not.toHaveBeenCalled();
+        expect(sink.get()).toEqual({ v: 20 });
+      });
     });
   });
 
