@@ -11,6 +11,7 @@ export {
   type SignalListener,
   type SignalListenerReference,
   type SignalOf,
+  type SignalOptions,
   VReadonlySignal,
   VSignal,
 } from "./signals/signal";
