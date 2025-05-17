@@ -1247,7 +1247,7 @@ describe("VSignal()", () => {
   });
 
   describe("$prop()", () => {
-    it("correcrtly maps signal array", () => {
+    it("correcrtly selects the property", () => {
       const s = sig({
         foo: 1,
         bar: "2",
@@ -1363,6 +1363,163 @@ describe("VSignal()", () => {
       expect(mapped.get()).toEqual(["|2|"]);
       expect(len.get()).toEqual(1);
       expect(has2.get()).toEqual(true);
+    });
+  });
+
+  describe("$pick", () => {
+    it("correctly created a derived signal", () => {
+      const source = sig({
+        foo: 1,
+        bar: 2,
+        baz: 3,
+        qux: 4,
+        coorge: 5,
+      });
+
+      const sink1 = source.$pick("foo");
+      expect(sink1.get()).toEqual({ foo: 1 });
+
+      const sink2 = source.$pick("foo", "baz", "coorge");
+      expect(sink2.get()).toEqual({ foo: 1, baz: 3, coorge: 5 });
+
+      source.dispatch({
+        foo: 9,
+        bar: 8,
+        baz: 7,
+        qux: 6,
+        coorge: 0,
+      });
+
+      expect(sink1.get()).toEqual({ foo: 9 });
+      expect(sink2.get()).toEqual({ foo: 9, baz: 7, coorge: 0 });
+    });
+
+    it("derived signal does not update if an inrelated prop changes", () => {
+      const source = sig({
+        foo: 1,
+        bar: 2,
+        baz: 3,
+        qux: 4,
+        coorge: 5,
+      });
+
+      const sink = source.$pick("foo", "qux");
+      expect(sink.get()).toEqual({ foo: 1, qux: 4 });
+
+      const onChange = vitest.fn();
+      sink.add(onChange);
+      onChange.mockClear();
+
+      expect(onChange).toHaveBeenCalledTimes(0);
+      source.dispatch(c => ({ ...c, coorge: 10 }));
+      expect(onChange).toHaveBeenCalledTimes(0);
+      source.dispatch(c => ({ ...c, bar: 0, baz: 0 }));
+      expect(onChange).toHaveBeenCalledTimes(0);
+      source.dispatch(c => ({ ...c, foo: 2 }));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith({
+        foo: 2,
+        qux: 4,
+      });
+    });
+
+    it("bahaves correctly when used on a derived and having sinks", () => {
+      const source = sig("a=1,b=2,c=3");
+      const sink1 = source.derive(s =>
+        Object.fromEntries(
+          s.split(",").map(e => e.split("=")),
+        ) as { a: string; b: string; c: string; d?: string }
+      );
+      const sink2 = sink1.$pick("a", "c");
+      const sink3 = sink2.derive(o => `A: ${o.a}; C: ${o.c}`);
+
+      expect(sink3.get()).toEqual("A: 1; C: 3");
+
+      source.dispatch("a=5,b=10,c=15");
+      expect(sink3.get()).toEqual("A: 5; C: 15");
+
+      source.dispatch("a=5,b=0,c=15");
+      expect(sink3.get()).toEqual("A: 5; C: 15");
+
+      const onSink3Change = vitest.fn();
+      sink3.add(onSink3Change);
+      expect(onSink3Change).toHaveBeenCalledTimes(1);
+      expect(onSink3Change).toHaveBeenCalledWith("A: 5; C: 15");
+      onSink3Change.mockClear();
+
+      expect(onSink3Change).toHaveBeenCalledTimes(0);
+      source.dispatch("a=5,b=999,c=15,d=1");
+      expect(onSink3Change).toHaveBeenCalledTimes(0);
+
+      source.dispatch("a=55,b=999,c=15,d=1");
+      expect(onSink3Change).toHaveBeenCalledTimes(1);
+      expect(onSink3Change).toHaveBeenCalledWith("A: 55; C: 15");
+
+      source.dispatch("a=55,b=999,c=105,d=1");
+      expect(onSink3Change).toHaveBeenCalledTimes(2);
+      expect(onSink3Change).toHaveBeenCalledWith("A: 55; C: 105");
+
+      source.dispatch("z=z,a=55,b=0,c=105,d=9");
+      expect(onSink3Change).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("$omit", () => {
+    it("correctly created a derived signal", () => {
+      const source = sig({
+        foo: 1,
+        bar: 2,
+        baz: 3,
+        qux: 4,
+        coorge: 5,
+      });
+
+      const sink1 = source.$omit("foo");
+      expect(sink1.get()).toEqual({ bar: 2, baz: 3, qux: 4, coorge: 5 });
+
+      const sink2 = source.$omit("foo", "baz", "coorge");
+      expect(sink2.get()).toEqual({ bar: 2, qux: 4 });
+
+      source.dispatch({
+        foo: 9,
+        bar: 8,
+        baz: 7,
+        qux: 6,
+        coorge: 0,
+      });
+
+      expect(sink1.get()).toEqual({ bar: 8, baz: 7, qux: 6, coorge: 0 });
+      expect(sink2.get()).toEqual({ bar: 8, qux: 6 });
+    });
+
+    it("derived signal does not update if an inrelated prop changes", () => {
+      const source = sig({
+        foo: 1,
+        bar: 2,
+        baz: 3,
+        qux: 4,
+        coorge: 5,
+      });
+
+      const sink = source.$omit("foo", "qux");
+      expect(sink.get()).toEqual({ bar: 2, baz: 3, coorge: 5 });
+
+      const onChange = vitest.fn();
+      sink.add(onChange);
+      onChange.mockClear();
+
+      expect(onChange).toHaveBeenCalledTimes(0);
+      source.dispatch(c => ({ ...c, foo: 10 }));
+      expect(onChange).toHaveBeenCalledTimes(0);
+      source.dispatch(c => ({ ...c, foo: 0, qux: 0 }));
+      expect(onChange).toHaveBeenCalledTimes(0);
+      source.dispatch(c => ({ ...c, bar: 123 }));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith({
+        bar: 123,
+        baz: 3,
+        coorge: 5,
+      });
     });
   });
 

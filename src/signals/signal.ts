@@ -154,6 +154,26 @@ export interface ReadonlySignal<T> {
    * Creates a derived signal with the given value if the parent signal is null or undefined, equivalent to `signal.derive(value => value ?? defaultValue)`.
    */
   $or(defaultValue: NonNullable<T>): ReadonlySignal<NonNullable<T>>;
+  /**
+   * Derive a object with a subset of properties.
+   *
+   * Create a new readonly signal from the current signal obbject by copying over the selected
+   * object properties. This derived signal will evaluate each of those props when determining
+   * if the value has changed and needs to be updated.
+   *
+   * Can only be used if the signal value is an Object.
+   */
+  $pick<F extends keyof T>(...properties: F[]): ReadonlySignal<Pick<T, F>>;
+  /**
+   * Derive a object with a subset of properties.
+   *
+   * Create a new readonly signal from the current signal object by copying over all the properties
+   * except the ones specified. This derived signal will evaluate each of those props when determining
+   * if the value has changed and needs to be updated.
+   *
+   * Can only be used if the signal value is an Object.
+   */
+  $omit<F extends keyof T>(...properties: F[]): ReadonlySignal<Omit<T, F>>;
 }
 
 export interface Signal<T> extends ReadonlySignal<T> {
@@ -991,7 +1011,7 @@ class VSignal<T> implements Signal<T> {
   public derive<U>(
     getDerivedValue: DeriveFn<[T], U>,
     options?: SignalOptions<U>,
-  ): ReadonlySignal<U> {
+  ): VReadonlySignal<U> {
     this.beforeAccess();
 
     const derivedSignal = new VReadonlySignal<U>(null as any, options);
@@ -1045,8 +1065,62 @@ class VSignal<T> implements Signal<T> {
     }) as any;
   }
 
-  $or(defaultValue: NonNullable<T>): ReadonlySignal<NonNullable<T>> {
+  public $or(defaultValue: NonNullable<T>): ReadonlySignal<NonNullable<T>> {
     return this.derive((value) => value ?? defaultValue);
+  }
+
+  public $pick<K extends keyof T>(...keys: K[]): ReadonlySignal<Pick<T, K>> {
+    const s = this.derive((value): Record<K, any> => {
+      if (typeof value !== "object" || value == null) {
+        throw new TypeError("value is not an object");
+      }
+      const currentValue = s.value ?? {};
+
+      let hasChanges = false;
+      const newValue: Record<K, any> = {} as any;
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!;
+        if (!Object.is(value[key], currentValue[key])) {
+          hasChanges = true;
+        }
+        newValue[key] = value[key];
+      }
+
+      if (hasChanges) return newValue;
+      return currentValue;
+    });
+
+    return s;
+  }
+
+  public $omit<K extends keyof T>(
+    ...excludeKeys: K[]
+  ): ReadonlySignal<Omit<T, K>> {
+    const s = this.derive((value): Record<Exclude<keyof T, K>, any> => {
+      if (typeof value !== "object" || value == null) {
+        throw new TypeError("value is not an object");
+      }
+      const currentValue = (s.value ?? {}) as Record<any, any>;
+
+      let hasChanges = false;
+      const newValue: Record<any, any> = {} as any;
+      const okeys = Object.keys(value) as (keyof T)[];
+      for (let i = 0; i < okeys.length; i++) {
+        const key = okeys[i]!;
+
+        if (excludeKeys.includes(key as any)) continue;
+
+        if (!Object.is(value[key], currentValue[key])) {
+          hasChanges = true;
+        }
+        newValue[key] = value[key];
+      }
+
+      if (hasChanges) return newValue;
+      return currentValue;
+    });
+
+    return s;
   }
 
   private _readonlySelf?: WeakRef<ReadonlySignal<T>>;
