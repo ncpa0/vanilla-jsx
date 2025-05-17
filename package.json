@@ -73,7 +73,8 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "html-element-attributes": "^3.4.0"
+    "html-element-attributes": "^3.4.0",
+    "immer": "^10.1.1"
   },
   "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
 }

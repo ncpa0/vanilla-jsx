@@ -1,3 +1,10 @@
+import {
+  createDraft,
+  finishDraft,
+  isDraft,
+  Objectish,
+  type WritableDraft,
+} from "immer";
 import { registerBoundSignal, Widen } from "./utils";
 
 class PropagationAbortSignal {
@@ -30,6 +37,9 @@ export type DeriveFn<T extends any[], U> =
   | ((...args: T) => U);
 
 export type DispatchFunc<T> = (current: T) => T;
+export type ImmerDispatchFunc<T> = (
+  current: T extends Objectish ? WritableDraft<T> : T,
+) => T | WritableDraft<T> | void;
 export type SignalListener<T> = (value: T) => void;
 export type SignalListenerReference<T> = Readonly<{
   /**
@@ -182,6 +192,15 @@ export interface Signal<T> extends ReadonlySignal<T> {
    * all listeners and derived signals.
    */
   dispatch(value: T | DispatchFunc<T>): void;
+  /**
+   * Similar to `dispatch((v: T) => T)` but uses immer to provide the current value as a WriteableDraft.
+   * If the returned value is that draft or `undefined` it will finish that draft and use it as the final value.
+   * If the returned value is neither `undefined` or a draft, that returned value will be used as the new signal state
+   * as is.
+   *
+   * See https://immerjs.github.io/immer/ to learn more about immer.
+   */
+  immer(update: ImmerDispatchFunc<T>): void;
   /**
    * Return itself as a readonly signal.
    */
@@ -964,6 +983,30 @@ class VSignal<T> implements Signal<T> {
       this.dispatchBatched(value, VSignal.batchQueue);
     } else {
       this.dispatchEager(value);
+    }
+  }
+
+  public immer(update: ImmerDispatchFunc<T>): void {
+    const dispatchFn = (currentValue: T) => {
+      if (typeof currentValue === "object" && currentValue !== null) {
+        const draft = createDraft(currentValue as object);
+        const newVal = update(draft as any);
+        if (isDraft(newVal)) {
+          return finishDraft(newVal) as T;
+        }
+        if (newVal === undefined) {
+          return finishDraft(draft) as T;
+        }
+        return newVal as T;
+      } else {
+        return (update(currentValue as any) ?? currentValue) as T;
+      }
+    };
+
+    if (VSignal.batchQueue) {
+      this.dispatchBatched(dispatchFn, VSignal.batchQueue);
+    } else {
+      this.dispatchEager(dispatchFn);
     }
   }
 

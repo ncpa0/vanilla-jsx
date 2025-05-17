@@ -223,6 +223,134 @@ describe("VSignal()", () => {
     });
   });
 
+  describe("immer()", () => {
+    it("correctly partially updates objects", () => {
+      const source = sig({
+        foo: { a: 1, b: 2 },
+        bar: [1, 2, 3],
+        baz: "abc",
+      });
+
+      let prevValue = source.get();
+      expect(prevValue).toEqual({
+        foo: { a: 1, b: 2 },
+        bar: [1, 2, 3],
+        baz: "abc",
+      });
+
+      source.immer(draft => {
+        draft.foo.a = 999;
+      });
+
+      // only foo should change
+      let currentValue = source.get();
+      expect(currentValue).toEqual({
+        foo: { a: 999, b: 2 },
+        bar: [1, 2, 3],
+        baz: "abc",
+      });
+      expect(prevValue.bar === currentValue.bar).toBe(true);
+
+      prevValue = currentValue;
+      source.immer(draft => {
+        draft.baz = "lorem ipsum";
+        return draft;
+      });
+
+      // only baz should change
+      currentValue = source.get();
+      expect(currentValue).toEqual({
+        foo: { a: 999, b: 2 },
+        bar: [1, 2, 3],
+        baz: "lorem ipsum",
+      });
+      expect(prevValue.foo === currentValue.foo).toBe(true);
+      expect(prevValue.bar === currentValue.bar).toBe(true);
+    });
+
+    it("correctly partially updates arrays", () => {
+      const source = sig([
+        { v: 1 },
+        { v: 2 },
+      ]);
+
+      expect(source.get()).toEqual([
+        { v: 1 },
+        { v: 2 },
+      ]);
+
+      let prevValue = source.get();
+      source.immer(draft => {
+        draft.push({ v: 4 });
+      });
+
+      expect(source.get()).toEqual([
+        { v: 1 },
+        { v: 2 },
+        { v: 4 },
+      ]);
+      expect(prevValue[0] === source.get()[0]).toBe(true);
+      expect(prevValue[1] === source.get()[1]).toBe(true);
+
+      prevValue = source.get();
+      source.immer(draft => {
+        draft[1]!.v = 95;
+      });
+
+      expect(source.get()).toEqual([
+        { v: 1 },
+        { v: 95 },
+        { v: 4 },
+      ]);
+      expect(prevValue[0] === source.get()[0]).toBe(true);
+      expect(prevValue[2] === source.get()[2]).toBe(true);
+    });
+
+    it("correctly handles values that may be undefined", () => {
+      const source = sig<{ foo: number; bar: number }>();
+
+      expect(source.get()).toEqual(undefined);
+
+      source.immer(draft => {
+        expect(draft).toBeUndefined();
+        return {
+          foo: 5,
+          bar: 10,
+        };
+      });
+
+      expect(source.get()).toEqual({
+        foo: 5,
+        bar: 10,
+      });
+    });
+
+    it("correctly handles values that may be null", () => {
+      const source = sig<{ foo: number; bar: number } | null>(null);
+
+      expect(source.get()).toEqual(null);
+
+      source.immer(draft => {
+        expect(draft).toBeNull();
+        return {
+          foo: 5,
+          bar: 10,
+        };
+      });
+
+      expect(source.get()).toEqual({
+        foo: 5,
+        bar: 10,
+      });
+
+      source.immer(draft => {
+        return null;
+      });
+
+      expect(source.get()).toEqual(null);
+    });
+  });
+
   describe("listenerCount()", () => {
     it("should return the number of listeners", () => {
       const signal = sig("001");
