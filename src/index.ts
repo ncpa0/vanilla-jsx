@@ -8,7 +8,14 @@ export {
 } from "./base-components/switch";
 export { $component, type ComponentApi } from "./component";
 export { type ClassName } from "./jsx-namespace/jsx.types";
-export { createElement, Fragment, jsx, jsxs } from "./reconciler/reconciler";
+export {
+  bindChildren,
+  bindProps,
+  createElement,
+  Fragment,
+  jsx,
+  jsxs,
+} from "./reconciler/reconciler";
 export { bindSignal } from "./sig-proxy/_proxy";
 export { SignalsReg } from "./sig-proxy/_proxy";
 export { JsSignalInterop } from "./sig-proxy/js-signals-interop";

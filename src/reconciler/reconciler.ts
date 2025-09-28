@@ -1,6 +1,7 @@
 import { DomInteraction } from "../dom/dom-interaction";
 import { InteractionInterface } from "../dom/interaction-interface";
-import { SignalProxy, SignalsReg, sigProxy } from "../sig-proxy/_proxy";
+import { PropsForElement } from "../jsx-namespace/prop-types/shared/props-for-element";
+import { SignalsReg, sigProxy } from "../sig-proxy/_proxy";
 import { VSignal } from "../signals/signal";
 import { BindingFactories } from "./factories";
 import { asArray } from "./utils";
@@ -26,7 +27,7 @@ export type GetEvent = VanillaJSX.Types extends { Ev: infer T extends object }
 
 type FunctionComponent = (props: object) => JSX.Element;
 
-type CreateElementProps = {
+type ElementProps = {
   [k: string]: any;
   children?: JSX.Children;
   unsafeHTML?: boolean;
@@ -36,7 +37,7 @@ type ChildElement =
   | GetElement
   | GetTextElement
   | GetFragmentElement
-  | JSX.Signal;
+  | JSX.Signal<GetElement | GetTextElement | undefined>;
 
 export class Reconciler {
   private static instance?: Reconciler;
@@ -86,11 +87,11 @@ export class Reconciler {
     return new WeakRef(initialChild);
   }
 
-  private mapChildren = (
+  private mapChildren(
     children: Exclude<JSX.Children, JSX.Element | JSX.VanillaValue>,
     accumulator: Array<ChildElement>,
     unsafe?: boolean,
-  ) => {
+  ) {
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
 
@@ -123,11 +124,76 @@ export class Reconciler {
           break;
       }
     }
-  };
+  }
+
+  public bindProps<O extends Record<string, any>>(
+    element: Element,
+    props: JSX.HTMLProps<PropsForElement<Element> & O>,
+  ) {
+    for (const [propName, propValue] of Object.entries(props)) {
+      if (propName === "children" || propName === "unsafeHTML") {
+        continue;
+      }
+
+      if (propName === "boundSignal") {
+        if (!(propValue instanceof VSignal)) {
+          console.error("incorrect value provided to the 'boundSignal'");
+          continue;
+        }
+
+        if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+          this.factories.createInputBound(
+            element,
+            propValue,
+            props.type === "checkbox",
+          );
+        }
+
+        continue;
+      }
+
+      if (
+        typeof propValue === "object"
+        && propValue !== null
+        && SignalsReg.isSignal(propValue)
+      ) {
+        const sig = sigProxy(propValue);
+
+        if (propName.startsWith("on")) {
+          const eventName = propName.substring(2).toLowerCase();
+          sig.bindTo(element, this.factories.createEventBinding(eventName));
+        } else {
+          sig.bindTo(
+            element,
+            this.factories.createAttributeBinding(propName),
+          );
+        }
+      } else {
+        if (propName.startsWith("on")) {
+          const eventName = propName.substring(2).toLowerCase();
+          this.factories.createEventBinding(eventName)(element, propValue);
+        } else {
+          this.factories.createAttributeBinding(propName)(element, propValue);
+        }
+      }
+    }
+  }
+
+  public bindChildren(element: Element, children: ChildElement[]) {
+    for (const child of children) {
+      if (SignalsReg.isSignal(child)) {
+        const sig = sigProxy(child);
+        let initialNodeRef = this.appendEmptyTextRef(element);
+        sig.bindTo(element, this.factories.createChildBinding(initialNodeRef));
+      } else {
+        this.dom.append(element, child);
+      }
+    }
+  }
 
   public createElement(
     tag: string | FunctionComponent,
-    props: CreateElementProps | undefined,
+    props: ElementProps | undefined,
     ...children: Exclude<JSX.Children, JSX.Element | JSX.VanillaValue>
   ) {
     if (typeof tag === "function") {
@@ -162,68 +228,44 @@ export class Reconciler {
     const element = this.dom.create(tag);
 
     if (props) {
-      for (const [propName, propValue] of Object.entries(props)) {
-        if (propName === "children" || propName === "unsafeHTML") {
-          continue;
-        }
-
-        if (propName === "boundSignal") {
-          if (!(propValue instanceof VSignal)) {
-            console.error("incorrect value provided to the 'boundSignal'");
-            continue;
-          }
-
-          if (tag === "input" || tag === "textarea") {
-            this.factories.createInputBound(
-              element,
-              propValue,
-              props.type === "checkbox",
-            );
-          }
-
-          continue;
-        }
-
-        if (
-          typeof propValue === "object"
-          && propValue !== null
-          && SignalsReg.isSignal(propValue)
-        ) {
-          const sig = sigProxy(propValue);
-
-          if (propName.startsWith("on")) {
-            const eventName = propName.substring(2).toLowerCase();
-            sig.bindTo(element, this.factories.createEventBinding(eventName));
-          } else {
-            sig.bindTo(
-              element,
-              this.factories.createAttributeBinding(propName),
-            );
-          }
-        } else {
-          if (propName.startsWith("on")) {
-            const eventName = propName.substring(2).toLowerCase();
-            this.factories.createEventBinding(eventName)(element, propValue);
-          } else {
-            this.factories.createAttributeBinding(propName)(element, propValue);
-          }
-        }
-      }
+      this.bindProps(element, props);
     }
 
-    for (const child of childNodes) {
-      if (SignalsReg.isSignal(child)) {
-        const sig = sigProxy(child) as SignalProxy<Element | Text | undefined>;
-        let initialNodeRef = this.appendEmptyTextRef(element);
-        sig.bindTo(element, this.factories.createChildBinding(initialNodeRef));
-      } else {
-        this.dom.append(element, child);
-      }
-    }
+    this.bindChildren(element, childNodes);
 
     return element;
   }
 }
+
+/**
+ * Bind the given props to an HTML Element similarly to how props are
+ * bound when creating an element using the JSX syntax.
+ *
+ * @example
+ * const div = document.createElement("div");
+ * bindProps(div, {
+ *   class: ["foo", "bar", sig("baz")],
+ *   styles: { backgroundColor: "red" },
+ *   title: sig("Lorem ipsum"),
+ * });
+ */
+export const bindProps: Reconciler["bindProps"] = (...args) =>
+  Reconciler.getInstance().bindProps(...args);
+
+/**
+ * Bind the given children to an HTML Element similarly to how they are
+ * bound when creating an element using the JSX syntax.
+ *
+ * @example
+ * const div = document.createElement("div");
+ * bindChildren(div, [
+ *   "Hello",
+ *   document.createElement("span"),
+ *   sig(["foo", "bar"]),
+ * ]);
+ */
+export const bindChildren: Reconciler["bindChildren"] = (...args) =>
+  Reconciler.getInstance().bindChildren(...args);
 
 export const createElement: Reconciler["createElement"] = (...args) =>
   Reconciler.getInstance().createElement(...args);
