@@ -138,9 +138,21 @@ export class DomInteraction
   setStyle(
     element: Element,
     styleKey: string,
-    value: string | undefined,
+    value: string | number | undefined,
   ): void {
-    (element as any).style[styleKey] = value ?? "";
+    if (typeof value === "number") {
+      value = `${value}px`;
+    }
+
+    if (styleKey.startsWith("--")) {
+      if (value) {
+        (element as HTMLElement).style.setProperty(styleKey, value);
+      } else {
+        (element as HTMLElement).style.removeProperty(styleKey);
+      }
+    } else {
+      (element as any).style[styleKey] = value ?? "";
+    }
   }
 
   clearStyle(element: Element): void {

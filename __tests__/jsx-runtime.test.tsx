@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+// @ts-ignore
 import { Fragment, jsx } from "../src/jsx-runtime";
 import { sig } from "../src/signals";
 import { gc } from "./gc-util";
@@ -321,6 +322,23 @@ describe("jsx-runtime", () => {
 
     expect(elem.style.color).toEqual("red");
     expect(elem.style.backgroundColor).toEqual("blue");
+  });
+
+  it("correctly sets css variables through style prop", () => {
+    const elem = (
+      <div
+        style={{
+          color: "blue",
+          "--myvar": "1px",
+          "--var2": 50,
+        }}
+      >
+      </div>
+    ) as HTMLDivElement;
+
+    expect(elem.getAttribute("style")).toEqual(
+      "color: blue; --myvar: 1px; --var2: 50px;",
+    );
   });
 
   it("input signal bounding", () => {

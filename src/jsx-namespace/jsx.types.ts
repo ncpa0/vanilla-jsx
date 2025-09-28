@@ -47,6 +47,7 @@
 
 import type { ReadonlySignal } from "../signals";
 import { PropsForElement } from "./prop-types/shared/props-for-element";
+import { CSSDict } from "./styles-dict";
 
 export {};
 
@@ -74,16 +75,11 @@ export type ClassName =
   >
   | JSX.Signal<Record<string, any>>;
 
-export type CssPropertyKey = keyof CSSStyleDeclaration;
-
-export type StyleDict = {
-  [K in CssPropertyKey]?:
-    | string
-    | undefined
-    | JSX.Signal<string | undefined>
-    | JSX.Signal<undefined>
-    | JSX.Signal<string>;
-};
+export type StyleDict =
+  & Partial<CSSDict>
+  & {
+    [K: `--${string}`]: string | number;
+  };
 
 type Values<Obj> = Obj[keyof Obj];
 
@@ -112,6 +108,11 @@ declare global {
     type Element = globalThis.Element;
 
     type Children = MaybeArray<Element | VanillaValue>;
+
+    export type VjsxStyles =
+      | string
+      | WithSignals<StyleDict>
+      | Signal<StyleDict>;
 
     type HTMLProps<P> =
       & BaseAttributes
@@ -254,7 +255,14 @@ declare global {
     interface BaseAttributes {
       id?: string | JSX.Signal<string | undefined>;
       class?: ClassName;
-      style?: string | StyleDict | JSX.Signal<Partial<CSSStyleDeclaration>>;
+      /**
+       * Styles can be provided as either a string, a dictionary of css
+       * properties and values, a signal of a string, a signal of a
+       * dictionary or a dictionary with signal values.
+       *
+       * If a css value is a number it will be assigned a pixel unit (`1` -> `"1px"`)
+       */
+      style?: VjsxStyles;
       children?: Children | Children[];
       /**
        * When true, all strings directly within this element will be

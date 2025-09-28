@@ -20,7 +20,11 @@ export interface InteractionInterface<
   addClassName(element: Element, value: string): void;
   removeClassName(element: Element, value: string): void;
   setData(element: Element, name: string, value: Primitive): void;
-  setStyle(element: Element, styleKey: string, value: string | undefined): void;
+  setStyle(
+    element: Element,
+    styleKey: string,
+    value: string | number | undefined,
+  ): void;
   clearStyle(element: Element): void;
   setText(element: TextElement, value: Primitive): void;
   append(
