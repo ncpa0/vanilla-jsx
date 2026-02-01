@@ -2,71 +2,47 @@
   "languages": {
     "JavaScript": {
       "language_servers": ["typescript-language-server", "!vtsls"],
-      "format_on_save": {
-        "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      },
       "formatter": {
         "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      }
+          "command": "dprint",
+          "arguments": ["fmt", "--stdin", "{buffer_path}"],
+        },
+      },
     },
     "TypeScript": {
       "language_servers": ["typescript-language-server"],
-      "format_on_save": {
-        "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      },
       "formatter": {
         "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      }
+          "command": "dprint",
+          "arguments": ["fmt", "--stdin", "{buffer_path}"],
+        },
+      },
     },
     "TSX": {
       "language_servers": ["typescript-language-server"],
-      "format_on_save": {
-        "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      },
       "formatter": {
         "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      }
+          "command": "dprint",
+          "arguments": ["fmt", "--stdin", "{buffer_path}"],
+        },
+      },
     },
     "CSS": {
-      "format_on_save": {
-        "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      },
       "formatter": {
         "external": {
-          "command": "yarn",
-          "arguments": ["--silent", "dprint", "fmt", "--stdin", "{buffer_path}"]
-        }
-      }
-    }
+          "command": "dprint",
+          "arguments": ["fmt", "--stdin", "{buffer_path}"],
+        },
+      },
+    },
   },
   "lsp": {
     "typescript-language-server": {
       "initialization_options": {
         "preferences": {
-          "renameMatchingJsxTags": true
-        }
-      }
-    }
-  }
+          "renameMatchingJsxTags": true,
+        },
+      },
+    },
+  },
 }

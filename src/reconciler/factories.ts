@@ -1,4 +1,4 @@
-import { InteractionInterface } from "../dom/interaction-interface";
+import { InteractionInterface, Primitive } from "../dom/interaction-interface";
 import { ClassName, StyleDict } from "../jsx-namespace/jsx.types";
 import {
   SignalProxyListenerRef,
@@ -8,9 +8,17 @@ import {
 import { VSignal } from "../signals/signal";
 import { isArray, MaybeArray } from "./utils";
 
+function isPrimitvie(v: any): v is Primitive {
+  const typ = typeof v;
+  return (
+    typ === "string" || typ === "number" || typ === "bigint"
+    || typ === "boolean" || typ === "undefined" || v === null
+  );
+}
+
 export class BindingFactories<
   Element extends object,
-  TextElement extends object,
+  TextElement extends { textContent: string | null },
   FragmentElement extends object,
   Ev extends Event,
 > {
@@ -23,13 +31,18 @@ export class BindingFactories<
     >,
   ) {}
 
+  private primitiveToTextNode(p: Primitive): TextElement {
+    if (typeof p === "boolean") {
+      return this.dom.createText("");
+    }
+    return this.dom.createText(String(p));
+  }
+
   private flattenFragments(
     arr: Array<
-      | Element
-      | TextElement
-      | FragmentElement
-      | undefined
-      | Array<Element | TextElement | FragmentElement | undefined>
+      MaybeArray<
+        Element | TextElement | FragmentElement | Primitive | undefined
+      >
     >,
   ): Array<Element | TextElement | undefined> {
     return arr.flatMap((elem) => {
@@ -38,6 +51,9 @@ export class BindingFactories<
       }
       if (this.dom.isFragment(elem)) {
         return this.flattenFragments(this.dom.getFragmentChildren(elem));
+      }
+      if (isPrimitvie(elem)) {
+        return this.primitiveToTextNode(elem);
       }
       return elem;
     });
@@ -115,7 +131,9 @@ export class BindingFactories<
   ) {
     return (
       _: unknown,
-      value: MaybeArray<TextElement | Element | FragmentElement | undefined>,
+      value: MaybeArray<
+        TextElement | Element | FragmentElement | Primitive | undefined
+      >,
       sigRef?: SignalProxyListenerRef,
     ) => {
       const lastNode = lastNodeRef?.deref();
@@ -133,13 +151,13 @@ export class BindingFactories<
         rest.splice(0, rest.length);
       }
 
-      if (typeof value === "string") {
+      if (isPrimitvie(value) && value != null && value !== false) {
+        const tnode = this.primitiveToTextNode(value);
         if (this.dom.isText(lastNode)) {
-          this.dom.setText(lastNode, value);
+          this.dom.setText(lastNode, tnode.textContent);
         } else {
-          const node = this.dom.createText(value);
-          this.dom.replace(lastNode, node);
-          lastNodeRef = new WeakRef(node);
+          this.dom.replace(lastNode, tnode);
+          lastNodeRef = new WeakRef(tnode);
         }
       } else if (value) {
         if (this.dom.isFragment(value)) {
@@ -341,26 +359,20 @@ export class BindingFactories<
     isCheckbox: boolean,
   ) {
     if (isCheckbox) {
-      this.createEventBinding("change")(
-        element,
-        (event) => {
-          const target = event.target as HTMLInputElement;
-          boundSignal.dispatch(target.checked);
-        },
-      );
+      this.createEventBinding("change")(element, (event) => {
+        const target = event.target as HTMLInputElement;
+        boundSignal.dispatch(target.checked);
+      });
 
       sigProxy(boundSignal).bindTo(
         element,
         this.createAttributeBinding("checked"),
       );
     } else {
-      this.createEventBinding("input")(
-        element,
-        (event) => {
-          const target = event.target as HTMLInputElement;
-          boundSignal.dispatch(target.value);
-        },
-      );
+      this.createEventBinding("input")(element, (event) => {
+        const target = event.target as HTMLInputElement;
+        boundSignal.dispatch(target.value);
+      });
 
       sigProxy(boundSignal).bindTo(
         element,

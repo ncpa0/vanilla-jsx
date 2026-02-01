@@ -80,6 +80,10 @@ export class DomInteraction
     name: string,
     value: Primitive,
   ): void {
+    if (name.startsWith("aria-") && typeof value === "boolean") {
+      value = value ? "true" : "false";
+    }
+
     if (
       name === "value"
       && (element.tagName === "INPUT" || element.tagName === "TEXT_AREA")

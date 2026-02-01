@@ -2,7 +2,7 @@ export type Primitive = string | number | bigint | boolean | null | undefined;
 
 export interface InteractionInterface<
   Element extends object,
-  TextElement extends object,
+  TextElement extends { textContent: string | null },
   FragmentElement extends object,
   Ev extends object,
 > {
