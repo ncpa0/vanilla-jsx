@@ -97,7 +97,7 @@ export class BindingFactories<
                 }
                 break;
               default:
-                console.warn("unsupported value used as class name", cname);
+                console.warn("unsupported value used as class name:", cname);
             }
           }
           return;

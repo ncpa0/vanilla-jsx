@@ -7,7 +7,11 @@ export {
   type SwitchProps,
 } from "./base-components/switch";
 export { $component, type ComponentApi } from "./component";
-export { type ClassName } from "./jsx-namespace/jsx.types";
+export {
+  type ClassName,
+  type StyleDict,
+  type WithSignals,
+} from "./jsx-namespace/jsx.types";
 export {
   bindChildren,
   bindProps,

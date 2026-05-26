@@ -268,6 +268,7 @@ export const bindChildren: Reconciler["bindChildren"] = (...args) =>
   Reconciler.getInstance().bindChildren(...args);
 
 export const createElement: Reconciler["createElement"] = (...args) =>
+  // @ts-ignore
   Reconciler.getInstance().createElement(...args);
 
 export const setInteractionInterface:
