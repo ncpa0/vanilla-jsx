@@ -130,7 +130,7 @@ export class BindingFactories<
     rest: WeakRef<TextElement | Element>[] = [],
   ) {
     return (
-      _: unknown,
+      _: Element,
       value: MaybeArray<
         TextElement | Element | FragmentElement | Primitive | undefined
       >,

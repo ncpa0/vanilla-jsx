@@ -6,6 +6,11 @@ export {
   Switch,
   type SwitchProps,
 } from "./base-components/switch";
+export {
+  VirtualList,
+  type VirtualListProps,
+} from "./base-components/virtual-list";
+export { ClassComponent } from "./class-component";
 export { $component, type ComponentApi } from "./component";
 export {
   type ClassName,
