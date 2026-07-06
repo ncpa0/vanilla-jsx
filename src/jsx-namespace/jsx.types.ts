@@ -51,7 +51,7 @@ import { CSSDict } from "./styles-dict";
 
 export {};
 
-type WithSignals<T> = {
+export type WithSignals<T> = {
   [K in keyof T]: T[K] | JSX.Signal<T[K]>;
 };
 
@@ -107,12 +107,12 @@ declare global {
 
     type Element = globalThis.Element;
 
-    type Children = MaybeArray<Element | VanillaValue>;
+    type Children = MaybeArray<Element | VanillaValue> | Array<Children>;
 
     export type VjsxStyles =
       | string
       | WithSignals<StyleDict>
-      | Signal<StyleDict>;
+      | Signal<StyleDict | string>;
 
     type HTMLProps<P> =
       & BaseAttributes

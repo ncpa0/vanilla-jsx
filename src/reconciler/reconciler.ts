@@ -25,7 +25,15 @@ export type GetEvent = VanillaJSX.Types extends { Ev: infer T extends object }
   ? T
   : Event;
 
-type FunctionComponent = (props: object) => JSX.Element;
+export type FunctionComponent = (props: object) => JSX.Element;
+
+export type ClassComponentInit = {
+  reconciler: Reconciler;
+};
+
+export type ClassComponent = new(props: object, init: ClassComponentInit) => {
+  render(): JSX.Element;
+};
 
 type ElementProps = {
   [k: string]: any;
@@ -38,6 +46,12 @@ type ChildElement =
   | GetTextElement
   | GetFragmentElement
   | JSX.Signal<GetElement | GetTextElement | undefined>;
+
+function isClassComponent(
+  component: FunctionComponent | ClassComponent,
+): component is ClassComponent {
+  return component.prototype && component.prototype.__isClassComponent === true;
+}
 
 export class Reconciler {
   private static instance?: Reconciler;
@@ -191,8 +205,22 @@ export class Reconciler {
     }
   }
 
+  private createElementFromComponent(
+    component: FunctionComponent | ClassComponent,
+    props: ElementProps,
+  ) {
+    if (
+      isClassComponent(component)
+    ) {
+      const instance = new component(props, { reconciler: this });
+      return instance.render();
+    }
+
+    return component(props);
+  }
+
   public createElement(
-    tag: string | FunctionComponent,
+    tag: string | FunctionComponent | ClassComponent,
     props: ElementProps | undefined,
     ...children: Exclude<JSX.Children, JSX.Element | JSX.VanillaValue>
   ) {
@@ -201,7 +229,7 @@ export class Reconciler {
       if (children.length > 0) {
         forwardedProps.children = children;
       }
-      return tag(forwardedProps);
+      return this.createElementFromComponent(tag, forwardedProps);
     }
 
     children = children.length > 0
@@ -268,6 +296,7 @@ export const bindChildren: Reconciler["bindChildren"] = (...args) =>
   Reconciler.getInstance().bindChildren(...args);
 
 export const createElement: Reconciler["createElement"] = (...args) =>
+  // @ts-ignore
   Reconciler.getInstance().createElement(...args);
 
 export const setInteractionInterface:

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 // @ts-ignore
+import { ClassComponent } from "../src/class-component";
 import { Fragment, jsx } from "../src/jsx-runtime";
 import { sig } from "../src/signals";
 import { gc } from "./gc-util";
@@ -28,19 +29,21 @@ describe("jsx-runtime", () => {
       </div>
     );
 
-    expect(d.outerHTML).toEqual('<div id="root" class="foo bar"><span class="text">Hello World!</span></div>');
+    expect(d.outerHTML).toEqual(
+      "<div id=\"root\" class=\"foo bar\"><span class=\"text\">Hello World!</span></div>",
+    );
   });
 
   it("correctly handles prefixed attributes", () => {
     const elem = <input attribute:form="abc" />;
 
-    expect(elem.outerHTML).toEqual('<input form="abc">');
+    expect(elem.outerHTML).toEqual("<input form=\"abc\">");
   });
 
   it("correctly handles prefixed properties", () => {
     const value = "abcdef";
 
-    const elem = (<input property:value={value} />) as HTMLInputElement;
+    const elem = <input property:value={value} /> as HTMLInputElement;
 
     expect(elem.value).toEqual(value);
   });
@@ -53,9 +56,7 @@ describe("jsx-runtime", () => {
       <div>
         <span>Hello</span>
         <span>World</span>
-        {nums.map((n) => (
-          <span>{n}</span>
-        ))}
+        {nums.map((n) => <span>{n}</span>)}
       </div>
     );
 
@@ -75,15 +76,21 @@ describe("jsx-runtime", () => {
       </div>
     );
 
-    expect(d.outerHTML).toEqual("<div><span>Hello World!</span><span>foo bar baz qux</span></div>");
+    expect(d.outerHTML).toEqual(
+      "<div><span>Hello World!</span><span>foo bar baz qux</span></div>",
+    );
 
     sig1.dispatch("Goodbye World!");
 
-    expect(d.outerHTML).toEqual("<div><span>Goodbye World!</span><span>foo bar baz qux</span></div>");
+    expect(d.outerHTML).toEqual(
+      "<div><span>Goodbye World!</span><span>foo bar baz qux</span></div>",
+    );
 
     sig2.dispatch("...");
 
-    expect(d.outerHTML).toEqual("<div><span>Goodbye World!</span><span>foo ... qux</span></div>");
+    expect(d.outerHTML).toEqual(
+      "<div><span>Goodbye World!</span><span>foo ... qux</span></div>",
+    );
   });
 
   it("signals correctly update the element attributes", () => {
@@ -96,19 +103,25 @@ describe("jsx-runtime", () => {
       </div>
     );
 
-    expect(d.outerHTML).toEqual('<div class="foo bar" id="root"><p>Hi</p></div>');
+    expect(d.outerHTML).toEqual(
+      "<div class=\"foo bar\" id=\"root\"><p>Hi</p></div>",
+    );
 
     classNames.dispatch("bar baz");
 
-    expect(d.outerHTML).toEqual('<div class="bar baz" id="root"><p>Hi</p></div>');
+    expect(d.outerHTML).toEqual(
+      "<div class=\"bar baz\" id=\"root\"><p>Hi</p></div>",
+    );
 
     id.dispatch(undefined);
 
-    expect(d.outerHTML).toEqual('<div class="bar baz"><p>Hi</p></div>');
+    expect(d.outerHTML).toEqual("<div class=\"bar baz\"><p>Hi</p></div>");
 
     id.dispatch("main");
 
-    expect(d.outerHTML).toEqual('<div class="bar baz" id="main"><p>Hi</p></div>');
+    expect(d.outerHTML).toEqual(
+      "<div class=\"bar baz\" id=\"main\"><p>Hi</p></div>",
+    );
   });
 
   it("correctly handles functional components", () => {
@@ -136,7 +149,7 @@ describe("jsx-runtime", () => {
     );
 
     expect(d.outerHTML).toEqual(
-      '<html><head><title>Test</title></head><body><div id="root"><h1 class="header">Hello World!</h1></div></body></html>',
+      "<html><head><title>Test</title></head><body><div id=\"root\"><h1 class=\"header\">Hello World!</h1></div></body></html>",
     );
   });
 
@@ -166,9 +179,13 @@ describe("jsx-runtime", () => {
     const sig1 = sig<string | undefined>("foo");
     const sig2 = sig<number | null>(2);
 
-    const div = (<div data-foo={sig1} data-bar={sig2} data-baz="baz" data-qux={3}></div>) as HTMLDivElement;
+    const div = (
+      <div data-foo={sig1} data-bar={sig2} data-baz="baz" data-qux={3}></div>
+    ) as HTMLDivElement;
 
-    expect(div.outerHTML).toEqual('<div data-foo="foo" data-bar="2" data-baz="baz" data-qux="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div data-foo=\"foo\" data-bar=\"2\" data-baz=\"baz\" data-qux=\"3\"></div>",
+    );
     expect(div.dataset).toMatchObject({
       foo: "foo",
       bar: "2",
@@ -193,7 +210,9 @@ describe("jsx-runtime", () => {
       baz: "baz",
       qux: "3",
     });
-    expect(div.outerHTML).toEqual('<div data-baz="baz" data-qux="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div data-baz=\"baz\" data-qux=\"3\"></div>",
+    );
 
     sig2.dispatch(0);
 
@@ -202,30 +221,48 @@ describe("jsx-runtime", () => {
       baz: "baz",
       qux: "3",
     });
-    expect(div.outerHTML).toEqual('<div data-baz="baz" data-qux="3" data-bar="0"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div data-baz=\"baz\" data-qux=\"3\" data-bar=\"0\"></div>",
+    );
   });
 
   it("correctly sets custom attributes", () => {
     const sig1 = sig<string | undefined>("foo");
     const sig2 = sig<number | null>(2);
 
-    const div = (<div my-attr1={sig1} my-other-attr1={sig2} my-attr2="baz" my-other-attr2={3}></div>) as HTMLDivElement;
+    const div = (
+      <div
+        my-attr1={sig1}
+        my-other-attr1={sig2}
+        my-attr2="baz"
+        my-other-attr2={3}
+      >
+      </div>
+    ) as HTMLDivElement;
 
-    expect(div.outerHTML).toEqual('<div my-attr1="foo" my-other-attr1="2" my-attr2="baz" my-other-attr2="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div my-attr1=\"foo\" my-other-attr1=\"2\" my-attr2=\"baz\" my-other-attr2=\"3\"></div>",
+    );
 
     sig1.dispatch("oof");
     sig2.dispatch(123);
 
-    expect(div.outerHTML).toEqual('<div my-attr1="oof" my-other-attr1="123" my-attr2="baz" my-other-attr2="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div my-attr1=\"oof\" my-other-attr1=\"123\" my-attr2=\"baz\" my-other-attr2=\"3\"></div>",
+    );
 
     sig1.dispatch(undefined);
     sig2.dispatch(null);
 
-    expect(div.outerHTML).toEqual('<div my-attr2="baz" my-other-attr2="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div my-attr2=\"baz\" my-other-attr2=\"3\"></div>",
+    );
 
     sig2.dispatch(0);
 
-    expect(div.outerHTML).toEqual('<div my-attr2="baz" my-other-attr2="3" my-other-attr1="0"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div my-attr2=\"baz\" my-other-attr2=\"3\" my-other-attr1=\"0\"></div>",
+    );
   });
 
   it("correctly sets custom attributes without dash character", () => {
@@ -239,35 +276,50 @@ describe("jsx-runtime", () => {
         myotherattr1={sig2}
         myattr2="baz"
         myotherattr2={3}
-      ></div>
+      >
+      </div>
     ) as HTMLDivElement;
 
-    expect(div.outerHTML).toEqual('<div myattr1="foo" myotherattr1="2" myattr2="baz" myotherattr2="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div myattr1=\"foo\" myotherattr1=\"2\" myattr2=\"baz\" myotherattr2=\"3\"></div>",
+    );
 
     sig1.dispatch("oof");
     sig2.dispatch(123);
 
-    expect(div.outerHTML).toEqual('<div myattr1="oof" myotherattr1="123" myattr2="baz" myotherattr2="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div myattr1=\"oof\" myotherattr1=\"123\" myattr2=\"baz\" myotherattr2=\"3\"></div>",
+    );
 
     sig1.dispatch(undefined);
     sig2.dispatch(null);
 
-    expect(div.outerHTML).toEqual('<div myattr2="baz" myotherattr2="3"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div myattr2=\"baz\" myotherattr2=\"3\"></div>",
+    );
 
     sig2.dispatch(0);
 
-    expect(div.outerHTML).toEqual('<div myattr2="baz" myotherattr2="3" myotherattr1="0"></div>');
+    expect(div.outerHTML).toEqual(
+      "<div myattr2=\"baz\" myotherattr2=\"3\" myotherattr1=\"0\"></div>",
+    );
   });
 
   it("correctly sets string styles", () => {
-    const elem = (<div style="color: red; background-color: blue;"></div>) as HTMLDivElement;
+    const elem = (
+      <div style="color: red; background-color: blue;">
+      </div>
+    ) as HTMLDivElement;
 
     expect(elem.style.color).toEqual("red");
     expect(elem.style.backgroundColor).toEqual("blue");
   });
 
   it("correctly sets object styles", () => {
-    const elem = (<div style={{ color: "red", backgroundColor: "blue" }}></div>) as HTMLDivElement;
+    const elem = (
+      <div style={{ color: "red", backgroundColor: "blue" }}>
+      </div>
+    ) as HTMLDivElement;
 
     expect(elem.style.color).toEqual("red");
     expect(elem.style.backgroundColor).toEqual("blue");
@@ -281,16 +333,19 @@ describe("jsx-runtime", () => {
           "--myvar": "1px",
           "--var2": 50,
         }}
-      ></div>
+      >
+      </div>
     ) as HTMLDivElement;
 
-    expect(elem.getAttribute("style")).toEqual("color: blue; --myvar: 1px; --var2: 50px;");
+    expect(elem.getAttribute("style")).toEqual(
+      "color: blue; --myvar: 1px; --var2: 50px;",
+    );
   });
 
   it("input signal bounding", () => {
     const inputValue = sig("HELLO");
 
-    const input = (<input boundSignal={inputValue} />) as HTMLInputElement;
+    const input = <input boundSignal={inputValue} /> as HTMLInputElement;
     expect(input.value).toEqual("HELLO");
     expect(inputValue.get()).toEqual("HELLO");
 
@@ -313,7 +368,12 @@ describe("jsx-runtime", () => {
   it("checkbox input signal bounding", () => {
     const inputChecked = sig(true);
 
-    const input = (<input type="checkbox" boundSignal={inputChecked} />) as HTMLInputElement;
+    const input = (
+      <input
+        type="checkbox"
+        boundSignal={inputChecked}
+      />
+    ) as HTMLInputElement;
     expect(input.checked).toEqual(true);
     expect(inputChecked.get()).toEqual(true);
 
@@ -337,7 +397,7 @@ describe("jsx-runtime", () => {
   it("textarea signal bounding", () => {
     const inputValue = sig("HELLO");
 
-    const txtarea = (<textarea boundSignal={inputValue} />) as HTMLInputElement;
+    const txtarea = <textarea boundSignal={inputValue} /> as HTMLInputElement;
     expect(txtarea.value).toEqual("HELLO");
     expect(inputValue.get()).toEqual("HELLO");
 
@@ -367,7 +427,58 @@ describe("jsx-runtime", () => {
     );
 
     expect(d.outerHTML).toEqual(
-      '<div><input type="radio" aria-selected="false"><input type="radio" aria-selected="true"><input type="radio" aria-selected="false"></div>',
+      "<div><input type=\"radio\" aria-selected=\"false\"><input type=\"radio\" aria-selected=\"true\"><input type=\"radio\" aria-selected=\"false\"></div>",
     );
+  });
+
+  describe("functional components", () => {
+    it("correctly renders dom elements", () => {
+      const FC1 = (props: { value: string }) => {
+        return (
+          <>
+            <div>Value: {props.value}</div>
+            <br />
+          </>
+        );
+      };
+
+      const FC2 = (props: { values: string[] }) => {
+        return (
+          <div>
+            {props.values.map(v => {
+              return <FC1 value={v} />;
+            })}
+          </div>
+        );
+      };
+
+      const out = (
+        <div id="root">
+          <FC2
+            values={["a", "b", "c"]}
+          />
+        </div>
+      );
+
+      expect(out.outerHTML).toEqual(
+        "<div id=\"root\"><div><div>Value: a</div><br><div>Value: b</div><br><div>Value: c</div><br></div></div>",
+      );
+    });
+  });
+
+  describe("class components", () => {
+    it("correctly renders", () => {
+      class Cmp extends ClassComponent<{ value: string }> {
+        render() {
+          return <div>Hello from class component: {this.props.value}</div>;
+        }
+      }
+
+      const out = <Cmp value="prop" />;
+
+      expect(out.outerHTML).toEqual(
+        "<div>Hello from class component: prop</div>",
+      );
+    });
   });
 });

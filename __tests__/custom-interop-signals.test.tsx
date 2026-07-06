@@ -6,6 +6,7 @@ import {
 } from "@preact/signals-core";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ClassName } from "../src";
+// @ts-ignore
 import { Fragment, jsx } from "../src/jsx-runtime";
 import { SignalInteropInterface } from "../src/sig-proxy/_interface";
 import { SignalsReg } from "../src/sig-proxy/_proxy";
@@ -104,6 +105,7 @@ describe("Custom interop signals", () => {
   it("should detach the listener after the element was garbage collected", async () => {
     const text = signal("Lorem Ipsum dolor sit amet");
     const id = signal("foo");
+    // @ts-ignore
     let d: JSX.Element | null = <div id={id}>{text}</div>;
 
     expect(subsCount).toEqual(2);

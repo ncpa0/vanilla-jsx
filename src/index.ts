@@ -6,8 +6,17 @@ export {
   Switch,
   type SwitchProps,
 } from "./base-components/switch";
+export {
+  VirtualList,
+  type VirtualListProps,
+} from "./base-components/virtual-list";
+export { ClassComponent } from "./class-component";
 export { $component, type ComponentApi } from "./component";
-export { type ClassName } from "./jsx-namespace/jsx.types";
+export {
+  type ClassName,
+  type StyleDict,
+  type WithSignals,
+} from "./jsx-namespace/jsx.types";
 export {
   bindChildren,
   bindProps,

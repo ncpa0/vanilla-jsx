@@ -97,7 +97,7 @@ export class BindingFactories<
                 }
                 break;
               default:
-                console.warn("unsupported value used as class name", cname);
+                console.warn("unsupported value used as class name:", cname);
             }
           }
           return;
@@ -130,7 +130,7 @@ export class BindingFactories<
     rest: WeakRef<TextElement | Element>[] = [],
   ) {
     return (
-      _: unknown,
+      _: Element,
       value: MaybeArray<
         TextElement | Element | FragmentElement | Primitive | undefined
       >,

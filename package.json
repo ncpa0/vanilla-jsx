@@ -56,7 +56,7 @@
     "test:format": "dprint check ./src/**/*.ts",
     "test:tsc": "tsc --noEmit",
     "test:unit": "vitest run",
-    "build": "rm -rf ./dist && node ./scripts/build.mjs",
+    "build": "node ./scripts/build.mjs",
     "prepack": "yarn build",
     "prepare": "husky install"
   },
