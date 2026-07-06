@@ -1,8 +1,8 @@
 import { ClassComponent } from "../class-component";
 import { StyleDict, WithSignals } from "../jsx-namespace/jsx.types";
 import { ClassComponentInit, GetElement, jsx } from "../reconciler/reconciler";
-import { bindSignal } from "../sig-proxy/_proxy";
 import { ReadonlySignal, sig } from "../signals/signal";
+import throttle from "../utils";
 
 export type VirtualListProps<T> = {
   data: JSX.Signal<readonly T[]>;
@@ -12,9 +12,17 @@ export type VirtualListProps<T> = {
    */
   noclass?: boolean;
   /**
-   *  A function that will return the HTML element for each value in the data list provided.
+   * A function that will return the HTML element for each value in the data
+   * list provided.
+   *
+   * The element is created exactly once per visible slot. When the slot is
+   * recycled to display a different item, only the `value` and `index` signals
+   * are dispatched - the element itself is never recreated.
    */
-  render: (value: T, index: ReadonlySignal<number>) => GetElement;
+  render: (
+    value: ReadonlySignal<T>,
+    index: ReadonlySignal<number>,
+  ) => GetElement;
   renderEmpty?: () => GetElement;
   getKey: (value: T) => string;
   containerProps?: Omit<JSX.IntrinsicElements["div"], "style" | "children"> & {
@@ -22,109 +30,84 @@ export type VirtualListProps<T> = {
   };
   /** Number of items to render initially. */
   initialRender?: number;
-  /** Number of items per page. Whenever a treshold is reached this number of elements will be added to the list. */
+  /** Number of items per page. Range boundaries are aligned to this value. */
   pageSize?: number;
-  /** (in pixels) Determines when to add the next page. */
+  /** (in pixels) Determines when to add the next page. Default: 1000px */
   threshold?: number;
   /** Initial height estimate for dynamic-height items. Ignored when itemHeight is set. */
   estimateItemHeight?: number;
-  /** Overscan before the viewport in pixels. Defaults to threshold. */
-  overscanBefore?: number;
-  /** Overscan after the viewport in pixels. Defaults to threshold. */
-  overscanAfter?: number;
+  /** Overscan for items before the viewport in the scroll direction (behind). Defaults to threshold. */
+  overscanTrailing?: number;
+  /** Overscan for items after the viewport in the scroll direction (ahead). Defaults to threshold. */
+  overscanLeading?: number;
+  /** Default: 32 (ms) */
+  scrollThrottle?: number;
   /**
    * Height of a single item. Used to determine the the amount of margin needed to be added to keep the scroll view
    * height the same regardless which items are rendered or not before the actual height is known.
-   *
-   * `auto-first` will take the height of the first element and use that.
    */
-  itemHeight?: number; // | "auto-first";
-  /**
-   * Number of children to keep in memory before and after the rendered window.
-   *
-   * Set to -1 to always keep all elements memoized.
-   *
-   * Example:
-   * - 500 items
-   * - list is scrolled into the middle so that
-   * - first rendered element is #200
-   * - last rendered element is #300
-   * - memoRange is set to 32:
-   *
-   * => items 0-167 are not rendered nor kept in memory
-   *
-   * => items 168-199 are not rendered but kept in memory for future reuse
-   *
-   * => items 301-333 are not rendered but kept in memory for future reuse
-   *
-   * => items 334-500 are not rendered nor kept in memory
-   *
-   * @default 32
-   */
-  memoRange?: number;
+  itemHeight?: number;
   onscroll?: (ev: Event, topPos: number) => void;
   initialScroll?: number;
 };
 
-type VisibleRow<T> = {
-  item: T;
-  key: string;
-  index: number;
-};
-
-function rangeEq(rangeA: [number, number], rangeB: [number, number]) {
-  return rangeA[0] === rangeB[0] && rangeA[1] === rangeB[1];
-}
-
 export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
-  private visibleRange;
   private list!: HTMLDivElement & { VirtualList: VirtualList<T> };
-  private entries = new VirtualListEntryMap<T>();
-  private mountedKeys = new Set<string>();
   /**
    * Strategy object for all height math. Fixed-height lists use direct O(1)
    * arithmetic, dynamic lists use an estimate plus measured deltas.
    */
   private heightModel: ItemHeightModel;
   /**
-   * Lightweight measurement cache that survives entry deletion. This lets a row
-   * regain its known height when it is recreated after scrolling back to it.
+   * Lightweight measurement cache that survives slot recycling. This lets a
+   * row regain its known height when it is recycled back into an item that was
+   * measured before.
    */
   private heightByKey = new Map<string, number>();
-  /** Buckets entries by index so memo cleanup can skip whole regions quickly. */
-  private entryBuckets = new Map<number, Set<string>>();
   private resizeObserver?: ResizeObserver;
   /** Latest ResizeObserver heights waiting for the next animation-frame commit. */
   private pendingResizeHeights = new Map<Element, number>();
   private resizeCommitScheduled = false;
-  /** Maps row wrappers back to data keys for ResizeObserver callbacks. */
-  private wrapperKeys = new WeakMap<Element, string>();
+  /** Maps row wrappers back to their owning slot for ResizeObserver callbacks. */
+  private slotByElement = new WeakMap<Element, Slot<T>>();
   private recalcScheduled = false;
-  private cleanupTimer?: ReturnType<typeof setTimeout>;
-  private scrollCounter = 0;
   private lastBounds?: [number, number];
+
+  /**
+   * The active pool of recycled slots. Slots are never destroyed while
+   * scrolling - they are reassigned to new indices and have their `value` and
+   * `index` signals dispatched instead. The pool only shrinks when the visible
+   * window shrinks (e.g. data length decreased or viewport grew smaller).
+   */
+  private slots: Slot<T>[] = [];
+  private isEmpty = false;
 
   private topSpacer = document.createElement("div");
   private bottomSpacer = document.createElement("div");
+
+  /** Current render window [start, end] inclusive, page-aligned. */
+  private range: [number, number] = [0, -1];
+  /**
+   * Last observed scroll direction: `1` for downward, `-1` for upward, `0`
+   * until the first scroll. Used to swap which overscan prop applies to the
+   * leading vs. trailing edge of the viewport.
+   */
+  private scrollDirection = 0;
+  /** Last observed `scrollTop`, used to derive scroll direction. */
+  private lastScrollTop = 0;
 
   constructor(props: VirtualListProps<T>, init: ClassComponentInit) {
     super(props, init);
 
     this.heightModel = this.createHeightModel(props.data.get());
 
-    this.visibleRange = sig<[number, number]>([
-      0,
-      (props.initialRender ?? this.pageSize) - 1,
-    ], {
-      compare: rangeEq,
-    });
+    this.range = [0, (props.initialRender ?? this.pageSize) - 1];
 
     props.data.add(data => {
       this.rebuildHeightModel(data);
       if (this.list) {
         this.lastBounds = undefined;
         this.recalculateRange(true);
-        this.scheduleEntryCleanup();
         if (this.props.initialScroll != null) {
           this.list.scrollTop = this.props.initialScroll;
         }
@@ -149,20 +132,16 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
     );
   }
 
-  private get overscanBefore() {
-    return this.props.overscanBefore ?? this.props.threshold ?? 1000;
+  private get overscanTrailing() {
+    return this.props.overscanTrailing ?? this.props.threshold ?? 1000;
   }
 
-  private get overscanAfter() {
-    return this.props.overscanAfter ?? this.props.threshold ?? 1000;
-  }
-
-  private get entryBucketSize() {
-    return Math.max(16, this.pageSize);
+  private get overscanLeading() {
+    return this.props.overscanLeading ?? this.props.threshold ?? 1000;
   }
 
   private keyFor(item: T) {
-    return String(this.props.getKey(item));
+    return this.props.getKey(item);
   }
 
   private createHeightModel(data = this.props.data.get()): ItemHeightModel {
@@ -201,59 +180,14 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
     return measured;
   }
 
-  /** Gets or creates the state object for a row and keeps its index signal fresh. */
-  private getEntry(row: VisibleRow<T>) {
-    const existing = this.entries.get(row.key);
-    if (existing) {
-      existing.update(row.item, row.index);
-      this.trackEntryIndex(row.key, existing);
-      return existing;
-    }
-
-    const entry = new VirtualListEntry(
-      this.props.render,
-      row.key,
-      row.item,
-      row.index,
-    );
-    this.entries.set(row.key, entry);
-    this.trackEntryIndex(row.key, entry);
-    return entry;
-  }
-
   /** Applies current virtual padding and flex ordering to the spacer elements. */
   private syncSpacers() {
-    const [start, end] = this.visibleRange.get();
+    const [start, end] = this.range;
     this.topSpacer.style.height = this.heightModel.offsetOf(start) + "px";
     this.bottomSpacer.style.height = this.heightModel.tailHeightAfter(end)
       + "px";
     this.topSpacer.style.order = "0";
     this.bottomSpacer.style.order = String(this.heightModel.count + 1);
-  }
-
-  /** Moves an entry between index buckets used by non-visible cache cleanup. */
-  private trackEntryIndex(key: string, entry: VirtualListEntry<T>) {
-    const prevBucket = entry.bucketIndex;
-    const nextBucket = Math.floor(entry.index / this.entryBucketSize);
-    if (prevBucket === nextBucket) {
-      return;
-    }
-
-    if (prevBucket != null) {
-      const bucket = this.entryBuckets.get(prevBucket);
-      bucket?.delete(key);
-      if (bucket?.size === 0) {
-        this.entryBuckets.delete(prevBucket);
-      }
-    }
-
-    entry.bucketIndex = nextBucket;
-    let bucket = this.entryBuckets.get(nextBucket);
-    if (!bucket) {
-      bucket = new Set();
-      this.entryBuckets.set(nextBucket, bucket);
-    }
-    bucket.add(key);
   }
 
   /** Calculates the render window from scroll bounds and current height model. */
@@ -262,22 +196,48 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
     this.heightModel.setCount(data.length);
 
     if (data.length === 0) {
-      this.visibleRange.dispatch([0, 0]);
+      this.range = [0, -1];
+      this.reconcileRange();
       return;
     }
 
-    if (
-      !this.fixedItemHeight && !this.heightModel.hasMeasuredEstimate && !force
-    ) {
+    // While row heights are unknown, only render the initial batch so the
+    // ResizeObserver can measure it. Scroll-driven recalcs are ignored entirely
+    // until a measurement lands; forced recalcs (initial mount, data change)
+    // are clamped to the initial batch instead of extrapolating from the
+    // default estimate, which would inflate the slot pool far beyond the
+    // steady-state window.
+    if (!this.fixedItemHeight && !this.heightModel.hasMeasuredEstimate) {
+      if (!force) {
+        return;
+      }
+      const initialEnd = Math.min(
+        data.length - 1,
+        (this.props.initialRender ?? this.pageSize) - 1,
+      );
+      this.range = [0, initialEnd];
+      this.reconcileRange();
       return;
     }
 
     const topBound = this.list.scrollTop;
     const bottomBound = topBound + this.list.clientHeight;
 
+    // Direction defaults to "down" (>= 0) before the first scroll, so the
+    // initial window uses overscanBefore for the top and overscanAfter for the
+    // bottom. Once the user scrolls, the leading edge (in the direction of
+    // travel) gets overscanAfter and the trailing edge gets overscanBefore.
+    const leadingIsBottom = this.scrollDirection >= 0;
+    const topOverscan = leadingIsBottom
+      ? this.overscanTrailing
+      : this.overscanLeading;
+    const bottomOverscan = leadingIsBottom
+      ? this.overscanLeading
+      : this.overscanTrailing;
+
     const bailThreshold = Math.max(
       16,
-      Math.max(this.overscanBefore, this.overscanAfter) / 4,
+      Math.max(this.overscanTrailing, this.overscanLeading) / 4,
     );
     if (
       force === false && this.lastBounds
@@ -289,8 +249,8 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
 
     this.lastBounds = [topBound, bottomBound];
 
-    const overscanTop = Math.max(0, topBound - this.overscanBefore);
-    const overscanBottom = Math.max(0, bottomBound + this.overscanAfter);
+    const overscanTop = Math.max(0, topBound - topOverscan);
+    const overscanBottom = Math.max(0, bottomBound + bottomOverscan);
 
     let start = this.heightModel.indexAtOffset(overscanTop);
     let end = this.heightModel.indexAtOffset(overscanBottom);
@@ -306,7 +266,90 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
       end = minEnd;
     }
 
-    this.visibleRange.dispatch([start, end]);
+    const prev = this.range;
+    this.range = [start, end];
+    if (force || prev[0] !== start || prev[1] !== end) {
+      this.reconcileRange();
+    }
+  }
+
+  /**
+   * Reconciles the current render window with the slot pool. Existing slots
+   * whose index is still in range are left in place (their key is refreshed if
+   * the underlying data moved). Slots that left the window are recycled into
+   * the newly required indices; surplus slots are detached (kept alive for
+   * future reuse, never destroyed).
+   */
+  private reconcileRange() {
+    const data = this.props.data.get();
+    this.heightModel.setCount(data.length);
+
+    if (data.length === 0) {
+      this.renderEmpty();
+      return;
+    }
+
+    if (this.isEmpty) {
+      this.exitEmptyState();
+    }
+
+    let [start, end] = this.range;
+    end = Math.min(end, data.length - 1);
+    if (start > end) {
+      start = Math.max(0, Math.min(start, data.length - 1));
+      end = start;
+    }
+    this.range = [start, end];
+
+    // Build the set of indices that must be visible.
+    const needed = new Set<number>();
+    for (let i = start; i <= end; i++) {
+      needed.add(i);
+    }
+
+    // Partition existing slots into "still in use" and "free".
+    const free: Slot<T>[] = [];
+    for (let s = 0; s < this.slots.length; s++) {
+      const slot = this.slots[s]!;
+      const idx = slot.currentIndex;
+      if (idx >= 0 && idx < data.length && needed.has(idx)) {
+        needed.delete(idx);
+        const item = data[idx]!;
+        const key = this.keyFor(item);
+        if (key !== slot.currentKey || slot.item !== item) {
+          slot.assign(item, idx, key);
+        }
+        slot.mount(this.list, this.bottomSpacer);
+      } else {
+        free.push(slot);
+      }
+    }
+
+    // Recycle free slots into the remaining needed indices, creating new slots
+    // only when the pool is exhausted. The pool never shrinks during normal
+    // scrolling - surplus slots are merely detached so they can be reused
+    // without re-running the user's render function.
+    for (const idx of needed) {
+      const item = data[idx]!;
+      const key = this.keyFor(item);
+      const slot = free.pop() ?? this.createSlot(item, idx, key);
+      slot.assign(item, idx, key);
+      slot.mount(this.list, this.bottomSpacer);
+    }
+
+    for (let i = 0; i < free.length; i++) {
+      free[i]!.unmount();
+    }
+
+    this.syncSpacers();
+  }
+
+  private createSlot(item: T, index: number, key: string): Slot<T> {
+    const slot = new Slot(this.props.render, item, index, key);
+    this.slots.push(slot);
+    this.slotByElement.set(slot.wrapper, slot);
+    this.resizeObserver?.observe(slot.wrapper);
+    return slot;
   }
 
   /** Batches scroll-driven range recalculation to one animation frame. */
@@ -352,188 +395,132 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
   private commitResizeMeasurements() {
     this.resizeCommitScheduled = false;
 
+    // Detect the transition out of the "heights unknown" state: the initial
+    // batch was clamped to pageSize, so once the first real measurement lands
+    // we must force a recalc to expand the window and fill the viewport
+    // instead of waiting for the next scroll event.
+    const wasUnmeasured = !this.heightModel.hasMeasuredEstimate;
+
     let changed = false;
     for (const [elem, height] of this.pendingResizeHeights) {
-      const key = this.wrapperKeys.get(elem);
-      const entry = key == null ? undefined : this.entries.get(key);
-      if (!entry || height <= 0 || Math.abs(entry.lastHeight - height) < 0.5) {
+      const slot = this.slotByElement.get(elem);
+      if (!slot || height <= 0 || Math.abs(slot.lastHeight - height) < 0.5) {
         continue;
       }
 
-      entry.lastHeight = height;
-      this.heightByKey.set(entry.key, height);
-      changed = this.heightModel.setMeasuredHeight(entry.index, height)
-        || changed;
+      slot.lastHeight = height;
+      if (slot.currentKey) {
+        this.heightByKey.set(slot.currentKey, height);
+      }
+      if (slot.currentIndex >= 0) {
+        changed = this.heightModel.setMeasuredHeight(
+          slot.currentIndex,
+          height,
+        ) || changed;
+      }
     }
 
     this.pendingResizeHeights.clear();
 
-    if (changed) {
+    const justMeasured = wasUnmeasured && this.heightModel.hasMeasuredEstimate;
+    if (changed || justMeasured) {
       this.syncSpacers();
       this.scheduleRecalculate(true);
     }
   }
 
-  /**
-   * Ensures visible rows have wrappers in the DOM. Visual ordering comes from
-   * flex-order, so existing wrappers do not need to be moved for every reorder.
-   */
-  private mountRows(rows: VisibleRow<T>[]) {
-    if (this.mountedKeys.size === 0) {
-      this.list.replaceChildren(this.topSpacer, this.bottomSpacer);
-    }
-
-    const visibleKeys = new Set<string>();
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]!;
-      visibleKeys.add(row.key);
-
-      const entry = this.getEntry(row);
-      const wrapper = entry.renderWrapper();
-      wrapper.style.order = String(row.index + 1);
-      this.wrapperKeys.set(wrapper, row.key);
-
-      if (!wrapper.isConnected) {
-        this.list.insertBefore(wrapper, this.bottomSpacer);
-      }
-
-      if (!this.mountedKeys.has(row.key)) {
-        this.resizeObserver?.observe(wrapper);
-        this.mountedKeys.add(row.key);
-      }
-    }
-
-    const keys = Array.from(this.mountedKeys);
-    let key: string;
-    for (let i = 0; i < keys.length; i++) {
-      key = keys[i]!;
-      if (visibleKeys.has(key)) {
-        continue;
-      }
-
-      const entry = this.entries.get(key);
-      if (entry?.wrapper) {
-        this.resizeObserver?.unobserve(entry.wrapper);
-        entry.wrapper.remove();
-      }
-      this.mountedKeys.delete(key);
-    }
-
-    this.syncSpacers();
-    this.scheduleEntryCleanup();
-  }
-
   /** Switches the container into the empty-state DOM shape. */
-  private renderEmpty(list: HTMLDivElement) {
-    this.mountedKeys.clear();
+  private renderEmpty() {
+    if (this.isEmpty) {
+      return;
+    }
+    this.isEmpty = true;
+
+    // Detach every slot but keep the Slot objects around so they can be reused
+    // (without re-running render) when data comes back.
+    for (let i = 0; i < this.slots.length; i++) {
+      this.slots[i]!.unmount();
+    }
+
     this.topSpacer.style.height = "0px";
     this.bottomSpacer.style.height = "0px";
 
     const emptyElem = this.props.renderEmpty?.();
     if (emptyElem) {
-      list.replaceChildren(this.topSpacer, emptyElem, this.bottomSpacer);
+      this.list.replaceChildren(this.topSpacer, emptyElem, this.bottomSpacer);
     } else {
-      list.replaceChildren(this.topSpacer, this.bottomSpacer);
+      this.list.replaceChildren(this.topSpacer, this.bottomSpacer);
     }
   }
 
-  /** Reconciles the derived visible rows with mounted wrapper elements. */
-  private bindRows(
-    list: HTMLDivElement,
-    { rows, empty }: { rows: Array<VisibleRow<T>>; empty: boolean },
-  ) {
-    if (empty) {
-      this.renderEmpty(list);
-      return;
-    }
-
-    if (!this.topSpacer.isConnected || !this.bottomSpacer.isConnected) {
-      list.replaceChildren(this.topSpacer, this.bottomSpacer);
-    }
-
-    this.mountRows(rows);
+  /** Restores the spacer-only container shape after leaving the empty state. */
+  private exitEmptyState() {
+    this.isEmpty = false;
+    this.list.replaceChildren(this.topSpacer, this.bottomSpacer);
   }
 
-  /** Debounces memo-range cleanup so rapid scroll events do not scan buckets. */
-  private scheduleEntryCleanup() {
-    if (this.cleanupTimer != null) {
-      return;
+  /**
+   * Returns the pixel offset of the top edge of the item at the given data
+   * index, measured from the top of the scrollable content. Uses the current
+   * height model (measured where known, estimated otherwise).
+   *
+   * Out of range indexes return -1
+   */
+  getItemPosition(idx: number): number {
+    const data = this.props.data.get();
+    if (idx < 0 || idx >= data.length) {
+      return -1;
     }
-
-    this.cleanupTimer = setTimeout(() => {
-      this.cleanupTimer = undefined;
-      this.deleteFarEntries();
-    }, 500);
+    return this.heightModel.offsetOf(idx);
   }
 
-  /** Deletes cached entries in buckets that are outside the configured memo range. */
-  private deleteFarEntries() {
-    const memoRange = this.props.memoRange ?? 32;
-    if (memoRange < 0) {
+  /**
+   * Scrolls the list so that the item at the given data index is visible.
+   *
+   * If the item is already rendered, its wrapper is scrolled into view via
+   * the native `scrollIntoView`, which honors `block`/`inline`/`behavior`.
+   * If it is outside the rendered window, the container is first jumped to the
+   * item's estimated offset and a forced recalc renders it; `scrollIntoView`
+   * is then invoked for precise alignment.
+   */
+  scrollToItem(idx: number, options?: ScrollIntoViewOptions) {
+    const data = this.props.data.get();
+    if (idx < 0 || idx >= data.length) {
       return;
     }
 
-    const [start, end] = this.visibleRange.get();
-    const minIndex = Math.max(0, start - memoRange);
-    const maxIndex = end + memoRange;
-    const minBucket = Math.floor(minIndex / this.entryBucketSize);
-    const maxBucket = Math.floor(maxIndex / this.entryBucketSize);
+    const slot = this.findMountedSlot(idx);
+    if (slot) {
+      slot.wrapper.scrollIntoView(options ?? { block: "start" });
+      return;
+    }
 
-    const bucketEntries = Array.from(this.entryBuckets);
-    let bucketIndex: number;
-    let keys: Set<string>;
-    for (let i = 0; i < bucketEntries.length; i++) {
-      [bucketIndex, keys] = bucketEntries[i]!;
-      if (bucketIndex >= minBucket && bucketIndex <= maxBucket) {
-        continue;
+    // Item is outside the rendered window: jump to its estimated offset first
+    // so the forced recalc below renders it.
+    this.list.scrollTo({
+      top: this.heightModel.offsetOf(idx),
+      behavior: options?.behavior,
+    });
+    this.lastBounds = undefined;
+    this.recalculateRange(true);
+
+    const mounted = this.findMountedSlot(idx);
+    if (mounted) {
+      mounted.wrapper.scrollIntoView(options ?? { block: "start" });
+    }
+  }
+
+  private findMountedSlot(idx: number): Slot<T> | undefined {
+    for (let i = 0; i < this.slots.length; i++) {
+      const slot = this.slots[i]!;
+      if (slot.currentIndex === idx && slot.wrapper.isConnected) {
+        return slot;
       }
-
-      for (const key of keys) {
-        const entry = this.entries.get(key);
-        if (!entry) {
-          continue;
-        }
-
-        if (entry.wrapper) {
-          this.resizeObserver?.unobserve(entry.wrapper);
-          entry.wrapper.remove();
-        }
-
-        this.mountedKeys.delete(key);
-        this.entries.delete(key);
-      }
-
-      this.entryBuckets.delete(bucketIndex);
     }
+    return undefined;
   }
 
   render() {
-    const visibleRows = sig.derive(
-      this.props.data,
-      this.visibleRange,
-      (data, [start, end]) => {
-        this.heightModel.setCount(data.length);
-
-        const to = Math.min(end + 1, data.length);
-        const rows = new Array<VisibleRow<T>>(Math.max(0, to - start));
-
-        for (let i = start; i < to; i++) {
-          const item = data[i]!;
-          rows[i - start] = {
-            item,
-            key: this.keyFor(item),
-            index: i,
-          };
-        }
-
-        return {
-          rows,
-          empty: data.length === 0,
-        };
-      },
-    );
-
     this.list = (
       <div
         {...this.props.containerProps}
@@ -563,30 +550,29 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
       );
     }
 
-    bindSignal(
-      visibleRows,
-      this.list,
-      (list, data) => this.bindRows(list, data),
-    );
-
     if (this.props.noclass !== true) {
       this.list.classList.add("vjsx-virt-list-container");
     }
 
+    const onscroll = throttle(this.props.scrollThrottle ?? 32, () => {
+      this.scheduleRecalculate();
+    });
+
     this.list.addEventListener("scroll", (ev) => {
-      this.scheduleEntryCleanup();
-
-      this.scrollCounter++;
-      if (this.scrollCounter % 3 === 0) {
-        this.scrollCounter = 0;
-        this.scheduleRecalculate();
+      const top = this.list.scrollTop;
+      if (top > this.lastScrollTop) {
+        this.scrollDirection = 1;
+      } else if (top < this.lastScrollTop) {
+        this.scrollDirection = -1;
       }
+      this.lastScrollTop = top;
 
+      onscroll();
       this.props.onscroll?.(ev, this.list.scrollTop);
     }, { passive: true });
 
     queueMicrotask(() => {
-      this.scheduleRecalculate(true);
+      this.recalculateRange(true);
       if (this.props.initialScroll != null) {
         this.list.scrollTop = this.props.initialScroll;
       }
@@ -817,91 +803,82 @@ class FenwickTree {
   }
 }
 
-/** Keyed cache of row entries, separated so cleanup bookkeeping is explicit. */
-class VirtualListEntryMap<T> {
-  entriesMap = new Map<string, VirtualListEntry<T>>();
-  keys = new Set<string>();
-
-  get(k: string) {
-    return this.entriesMap.get(k);
-  }
-
-  set(k: string, entry: VirtualListEntry<T>) {
-    this.entriesMap.set(k, entry);
-    this.keys.add(k);
-  }
-
-  delete(k: string) {
-    const e = this.entriesMap.get(k);
-    if (e) {
-      this.entriesMap.delete(k);
-      this.keys.delete(k);
-    }
-  }
-}
-
-/** Holds a row's render output, wrapper, index signal, and last measured size. */
-class VirtualListEntry<T> {
-  element?: GetElement;
-  wrapper?: HTMLDivElement;
-  bucketIndex?: number;
-  indexSignal;
+/**
+ * A recycled row slot. The wrapper and the user-rendered element are created
+ * exactly once and then reused for many different data items over the lifetime
+ * of the list. Only the `data` and `index` signals are dispatched when the slot
+ * is reassigned, so the user's render tree stays mounted and reactive.
+ */
+class Slot<T> {
+  readonly wrapper: HTMLDivElement;
+  readonly element: GetElement;
+  readonly dataSignal;
+  readonly indexSignal;
+  /** The data item currently bound to this slot. */
+  item: T;
+  currentIndex = -1;
+  currentKey = "";
   lastHeight = 0;
+  /** Whether the wrapper is currently inserted into the list container. */
+  private mounted = false;
 
   constructor(
-    public readonly renderFn: (
-      value: T,
+    renderFn: (
+      value: ReadonlySignal<T>,
       index: ReadonlySignal<number>,
     ) => GetElement,
-    public readonly key: string,
-    public item: T,
-    public index: number,
+    item: T,
+    index: number,
+    key: string,
   ) {
+    this.item = item;
+    this.dataSignal = sig(item);
     this.indexSignal = sig(index);
+    this.currentIndex = index;
+    this.currentKey = key;
+
+    this.wrapper = document.createElement("div");
+    this.wrapper.style.display = "flow-root";
+    this.wrapper.style.flexShrink = "0";
+    this.wrapper.style.contain = "layout style paint";
+    this.wrapper.style.order = String(index + 1);
+
+    this.element = renderFn(
+      this.dataSignal.readonly(),
+      this.indexSignal.readonly(),
+    );
+    this.wrapper.appendChild(this.element);
   }
 
-  update(item: T, index: number) {
+  /** Inserts the wrapper into the container if it is not already there. */
+  mount(container: Node, before: Node) {
+    if (this.mounted) {
+      return;
+    }
+    container.insertBefore(this.wrapper, before);
+    this.mounted = true;
+  }
+
+  /** Removes the wrapper from the DOM without destroying the slot. */
+  unmount() {
+    if (!this.mounted) {
+      return;
+    }
+    this.wrapper.remove();
+    this.mounted = false;
+  }
+
+  /** Repoints the slot at a new data item and index, updating visuals via signals. */
+  assign(item: T, index: number, key: string) {
+    this.currentIndex = index;
+    this.currentKey = key;
+
     if (this.item !== item) {
-      this.element = undefined;
       this.item = item;
+      this.dataSignal.dispatch(item);
     }
 
-    if (this.index !== index) {
-      this.index = index;
-      this.indexSignal.dispatch(index);
-    }
-  }
-
-  /**
-   * Creates a controlled wrapper around user content. The flow-root wrapper
-   * contains user margins so ResizeObserver measures the full row footprint.
-   */
-  renderWrapper() {
-    const wrapper = this.wrapper ?? document.createElement("div");
-    wrapper.style.display = "flow-root";
-    wrapper.style.flexShrink = "0";
-    wrapper.style.contain = "layout style paint";
-
-    if (this.wrapper == null) {
-      this.wrapper = wrapper;
-    }
-
-    const elem = this.render();
-    if (!elem.isConnected || elem.parentNode !== wrapper) {
-      wrapper.replaceChildren(elem);
-    }
-
-    return wrapper;
-  }
-
-  /** Lazily renders user content while preserving the stable index signal. */
-  render() {
-    if (this.element != null) {
-      return this.element;
-    }
-
-    const elem = this.renderFn(this.item, this.indexSignal);
-    this.element = elem;
-    return elem;
+    this.indexSignal.dispatch(index);
+    this.wrapper.style.order = String(index + 1);
   }
 }
