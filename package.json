@@ -58,7 +58,8 @@
     "test:unit": "vitest run",
     "build": "node ./scripts/build.mjs",
     "prepack": "yarn build",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "release": "git switch release && git rebase master && git push --force && git switch master"
   },
   "devDependencies": {
     "@ncpa0cpl/nodepack": "^2.3.0",
