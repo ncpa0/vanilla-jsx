@@ -1,0 +1,58 @@
+name: Release Package
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+  repository-projects: write
+
+on:
+  release:
+    types: [created]
+
+env:
+  NPM_TOKEN: ""
+
+jobs:
+  build-and-publish:
+    permissions:
+      id-token: write # Required for OIDC
+      packages: write
+      contents: write
+      pull-requests: write
+      issues: write
+      repository-projects: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+      - name: Update npm
+        run: npm install -g npm@latest
+      - name: Installing dependencies
+        uses: borales/actions-yarn@v5
+        with:
+          cmd: install
+      - name: Validating syntax
+        uses: borales/actions-yarn@v5
+        with:
+          cmd: test:tsc
+      - name: Running unit tests
+        uses: borales/actions-yarn@v5
+        with:
+          cmd: test:unit
+      - name: Building
+        uses: borales/actions-yarn@v5
+        with:
+          cmd: build
+      - name: Publishing
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          GH_BOT_API_URL: ${{ secrets.GH_BOT_API_URL }}
+          GH_BOT_AUTH_TOKEN: ${{ secrets.GH_BOT_AUTH_TOKEN }}
+          GH_BOT_ENCRYPTION_SECRET: ${{ secrets.GH_BOT_ENCRYPTION_SECRET }}
+        run: ./scripts/publish.sh
