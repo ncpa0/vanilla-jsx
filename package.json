@@ -43,13 +43,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ncpa0/vanilla-jsx"
+    "url": "git+https://github.com/ncpa0/vanilla-jsx.git"
   },
   "description": "",
   "license": "MIT",
   "author": {
     "name": "Szymon Bretner",
-    "email": ""
+    "email": "szymonb21@gmail.com"
   },
   "scripts": {
     "fix:format": "dprint fmt ./src/**/*.ts",
@@ -66,7 +66,7 @@
     "@preact/signals-core": "^1.6.0",
     "dprint": "^0.47.0",
     "esbuild": "^0.23.0",
-    "git-hook-tasks": "ncpa0cpl/git-hook-tasks#4215793",
+    "git-hook-tasks": "github:ncpa0cpl/git-hook-tasks#4215793",
     "happy-dom": "^17.4.6",
     "husky": "^8.0.3",
     "typescript": "^5.5.3",
