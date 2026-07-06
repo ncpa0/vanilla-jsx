@@ -6,8 +6,9 @@ permissions:
   repository-projects: write
 
 on:
-  release:
-    types: [created]
+  push:
+    branches:
+      - release
 
 env:
   NPM_TOKEN: ""
