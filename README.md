@@ -204,3 +204,29 @@ function displayList(list: JSX.Signal<string[]>) {
     </div>;
 }
 ```
+
+#### <VirtualList>
+
+```tsx
+import { Range } from "@ncpa0cpl/vanilla-jsx";
+
+type Item = {
+  id: string;
+  label: string;
+}
+
+function displayList(list: JSX.Signal<Item[]>) {
+    return (
+      <VirtualList
+        data={list}
+        getKey={(item) => item.id}
+        pageSize={32}
+        overscanLeading={2048}
+        renderEmpty={() => <p>List is empty.</p>}
+        render={(itemSig, indexSig) => {
+          return <p>{itemSig.derive(item => item.label)}</p>
+        }}
+      />
+    );
+}
+```

@@ -33,6 +33,12 @@ export type VirtualListProps<T> = {
   initialRender?: number;
   /** Number of items per page. Range boundaries are aligned to this value. */
   pageSize?: number;
+  /**
+   * Minimum amount of scrolled pixels to trigger the recalculate of the visible pages.
+   *
+   * Defaults to a 1/4 of max(overscanTrailing, overscanLeading)
+   */
+  bailThreshold?: number;
   /** (in pixels) Determines when to add the next page. Default: 1000px */
   threshold?: number;
   /** Initial height estimate for dynamic-height items. Ignored when itemHeight is set. */
@@ -44,10 +50,13 @@ export type VirtualListProps<T> = {
   /** Default: 32 (ms) */
   scrollThrottle?: number;
   /**
-   * Height of a single item. Used to determine the the amount of margin needed to be added to keep the scroll view
-   * height the same regardless which items are rendered or not before the actual height is known.
+   * Height of a single item in pixels (only set if known and guaranteed ahead of time). Used to determine
+   * the the amount of margin needed to be added to keep the scroll view height the same regardless
+   * which items are rendered or not before the actual height is known.
+   *
+   * If height is dynamic but always the same for all rows set to `homogeneous`.
    */
-  itemHeight?: number;
+  itemHeight?: number | "homogeneous";
   onscroll?: (ev: Event, topPos: number) => void;
   initialScroll?: number;
 };
@@ -110,7 +119,9 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
   }
 
   private get fixedItemHeight() {
-    return this.props.itemHeight != null && this.props.itemHeight > 0
+    return this.props.itemHeight != null
+        && typeof this.props.itemHeight === "number"
+        && this.props.itemHeight > 0
       ? this.props.itemHeight
       : undefined;
   }
@@ -141,6 +152,15 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
 
     const measured = this.getMeasuredHeights(data);
     const previousEstimate = this.heightModel?.estimatedHeight;
+
+    if (this.props.itemHeight === "homogeneous") {
+      return new DynamicHomogeneousHeightModel({
+        count: data.length,
+        estimatedHeight: previousEstimate ?? this.initialEstimatedHeight,
+        measured,
+      });
+    }
+
     return new DynamicHeightModel({
       count: data.length,
       estimatedHeight: previousEstimate ?? this.initialEstimatedHeight,
@@ -178,6 +198,14 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
       + "px";
     this.topSpacer.style.order = "0";
     this.bottomSpacer.style.order = String(this.heightModel.count + 1);
+  }
+
+  private bailThreshold() {
+    return Math.max(
+      16,
+      this.props.bailThreshold
+        ?? Math.max(this.overscanTrailing, this.overscanLeading) / 4,
+    );
   }
 
   /** Calculates the render window from scroll bounds and current height model. */
@@ -225,10 +253,7 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
       ? this.overscanLeading
       : this.overscanTrailing;
 
-    const bailThreshold = Math.max(
-      16,
-      Math.max(this.overscanTrailing, this.overscanLeading) / 4,
-    );
+    const bailThreshold = this.bailThreshold();
     if (
       force === false && this.lastBounds
       && Math.abs(this.lastBounds[0] - topBound) < bailThreshold
@@ -245,20 +270,14 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
     let start = this.heightModel.indexAtOffset(overscanTop);
     let end = this.heightModel.indexAtOffset(overscanBottom);
 
-    start = Math.floor(start / this.pageSize) * this.pageSize;
+    start = ((start / this.pageSize) | 0) * this.pageSize;
     end = Math.min(
       data.length - 1,
-      Math.ceil((end + 1) / this.pageSize) * this.pageSize - 1,
+      Math.ceil((end + 1) / this.pageSize) * this.pageSize,
     );
 
-    const minEnd = Math.min(data.length - 1, start + this.pageSize - 1);
-    if (end < minEnd) {
-      end = minEnd;
-    }
-
-    const prev = this.range;
-    this.range = [start, end];
-    if (force || prev[0] !== start || prev[1] !== end) {
+    if (force || this.range[0] !== start || this.range[1] !== end) {
+      this.range = [start, end];
       this.reconcileRange();
     }
   }
@@ -549,15 +568,23 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
     });
 
     this.list.addEventListener("scroll", (ev) => {
+      const prevDir = this.scrollDirection;
+
       const top = this.list.scrollTop;
       if (top > this.lastScrollTop) {
         this.scrollDirection = 1;
       } else if (top < this.lastScrollTop) {
         this.scrollDirection = -1;
       }
+
+      if (this.scrollDirection != prevDir) {
+        this.scheduleRecalculate(true);
+      } else {
+        onscroll();
+      }
+
       this.lastScrollTop = top;
 
-      onscroll();
       this.props.onscroll?.(ev, this.list.scrollTop);
     }, { passive: true });
 
@@ -640,7 +667,7 @@ class FixedHeightModel implements ItemHeightModel {
       return 0;
     }
 
-    return Math.min(this.count - 1, Math.floor(offset / this.estimatedHeight));
+    return Math.min(this.count - 1, (offset / this.estimatedHeight) | 0);
   }
 }
 
@@ -744,7 +771,7 @@ class DynamicHeightModel implements ItemHeightModel {
     let low = 0;
     let high = this.count - 1;
     while (low < high) {
-      const mid = Math.floor((low + high) / 2);
+      const mid = ((low + high) * 0.5) | 0;
       if (this.offsetOf(mid + 1) <= offset) {
         low = mid + 1;
       } else {
@@ -763,6 +790,89 @@ class DynamicHeightModel implements ItemHeightModel {
         this.deltas.set(index, height - this.estimatedHeight);
       }
     }
+  }
+}
+
+/**
+ * Height model for dynamic rows where each row is always the same height as all others.
+ */
+class DynamicHomogeneousHeightModel implements ItemHeightModel {
+  count;
+  estimatedHeight = 0;
+  hasMeasuredEstimate;
+
+  constructor({
+    count,
+    estimatedHeight,
+    measured,
+  }: {
+    count: number;
+    estimatedHeight: number;
+    measured: Map<number, number>;
+  }) {
+    this.count = count;
+    if (measured.size > 0) {
+      this.estimatedHeight = measured.get(measured.keys().next().value!)!;
+      this.hasMeasuredEstimate = true;
+    } else {
+      this.estimatedHeight = estimatedHeight;
+      this.hasMeasuredEstimate = false;
+    }
+  }
+
+  rebuild(
+    count: number,
+    getMeasured: () => Map<number, number>,
+  ): void {
+    const measured = getMeasured();
+    this.count = count;
+    if (measured.size > 0) {
+      this.estimatedHeight = measured.get(measured.keys().next().value!)!;
+      this.hasMeasuredEstimate = true;
+    } else {
+      this.hasMeasuredEstimate = false;
+    }
+  }
+
+  setCount(count: number) {
+    if (this.count === count) {
+      return;
+    }
+
+    this.count = count;
+  }
+
+  /** Records a row measurement and updates the delta tree when it changed. */
+  setMeasuredHeight(index: number, height: number) {
+    let changed = this.estimatedHeight != height;
+    this.estimatedHeight = height;
+    this.hasMeasuredEstimate = true;
+    return changed;
+  }
+
+  /** Returns the estimated/measured pixel offset at the start of an index. */
+  offsetOf(index: number) {
+    const clamped = Math.min(this.count, Math.max(0, index));
+    return clamped * this.estimatedHeight;
+  }
+
+  /** Returns the remaining height after an inclusive rendered end index. */
+  tailHeightAfter(index: number) {
+    const next = Math.min(this.count, Math.max(0, index + 1));
+    return Math.max(0, this.totalHeight() - this.offsetOf(next));
+  }
+
+  /** Returns the estimated total scrollable height. */
+  totalHeight() {
+    return this.offsetOf(this.count);
+  }
+
+  indexAtOffset(offset: number) {
+    if (this.count === 0 || offset <= 0) {
+      return 0;
+    }
+
+    return Math.round(offset / this.estimatedHeight);
   }
 }
 
