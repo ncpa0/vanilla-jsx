@@ -9,7 +9,7 @@ export {
 export {
   VirtualList,
   type VirtualListProps,
-} from "./base-components/virtual-list";
+} from "./base-components/virtual-list/virtual-list";
 export { ClassComponent } from "./class-component";
 export { $component, type ComponentApi } from "./component";
 export {
