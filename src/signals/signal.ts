@@ -286,6 +286,10 @@ class VSignal<T> implements Signal<T> {
     private orderedQueue: Array<BatchEntry> = [];
     private roots: Map<VSignal<any>, any> = new Map();
 
+    public hasPending() {
+      return this.orderedQueue.length > 0 || this.roots.size > 0;
+    }
+
     public add(s: VSignal<any>, isObserved: boolean) {
       s.batchEntry = [s, isObserved];
       this.orderedQueue.push(s.batchEntry);
@@ -332,7 +336,12 @@ class VSignal<T> implements Signal<T> {
 
   public static commitBatch() {
     if (VSignal.batchQueue) {
-      VSignal.batchQueue.commit();
+      let queue = VSignal.batchQueue;
+      while (queue.hasPending()) {
+        VSignal.batchQueue = new VSignal.BatchQueue();
+        queue.commit();
+        queue = VSignal.batchQueue;
+      }
       VSignal.batchQueue = undefined;
     }
   }

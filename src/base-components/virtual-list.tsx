@@ -1,7 +1,8 @@
 import { ClassComponent } from "../class-component";
 import { StyleDict, WithSignals } from "../jsx-namespace/jsx.types";
 import { ClassComponentInit, GetElement, jsx } from "../reconciler/reconciler";
-import { ReadonlySignal, sig } from "../signals/signal";
+import { bindSignal } from "../sig-proxy/_proxy";
+import { type ReadonlySignal, sig } from "../signals/signal";
 import throttle from "../utils";
 
 export type VirtualListProps<T> = {
@@ -102,17 +103,6 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
     this.heightModel = this.createHeightModel(props.data.get());
 
     this.range = [0, (props.initialRender ?? this.pageSize) - 1];
-
-    props.data.add(data => {
-      this.rebuildHeightModel(data);
-      if (this.list) {
-        this.lastBounds = undefined;
-        this.recalculateRange(true);
-        if (this.props.initialScroll != null) {
-          this.list.scrollTop = this.props.initialScroll;
-        }
-      }
-    });
   }
 
   private get pageSize() {
@@ -575,6 +565,17 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
       this.recalculateRange(true);
       if (this.props.initialScroll != null) {
         this.list.scrollTop = this.props.initialScroll;
+      }
+    });
+
+    bindSignal(this.props.data, this.list, (list, data) => {
+      this.rebuildHeightModel(data);
+      if (list) {
+        this.lastBounds = undefined;
+        this.recalculateRange(true);
+        if (this.props.initialScroll != null) {
+          list.scrollTop = this.props.initialScroll;
+        }
       }
     });
 

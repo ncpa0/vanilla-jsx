@@ -30,19 +30,7 @@ async function main() {
         formats: ["esm"],
         target: "es2022",
         bundle: true,
-        entrypoint: "index.ts",
-        esbuildOptions: {
-          sourcemap: dev,
-        },
-      }),
-      build({
-        srcDir: p("src"),
-        outDir: p("dist/bundle"),
-        tsConfig: p("tsconfig.json"),
-        formats: ["esm"],
-        target: "es2022",
-        bundle: true,
-        entrypoint: "signals.ts",
+        entrypoint: "bundle.ts",
         esbuildOptions: {
           sourcemap: dev,
         },
