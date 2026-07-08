@@ -35,9 +35,6 @@ export class DynamicHomogeneousHeightModel implements ItemHeightModel {
     this.count = count;
     if (measured.size > 0) {
       this.estimatedHeight = measured.get(measured.keys().next().value!)!;
-      this.hasMeasuredEstimate = true;
-    } else {
-      this.hasMeasuredEstimate = false;
     }
   }
 
