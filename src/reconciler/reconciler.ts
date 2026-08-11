@@ -39,6 +39,7 @@ type ElementProps = {
   [k: string]: any;
   children?: JSX.Children;
   unsafeHTML?: boolean;
+  ns?: string;
 };
 
 type ChildElement =
@@ -145,7 +146,10 @@ export class Reconciler {
     props: JSX.HTMLProps<PropsForElement<Element> & O>,
   ) {
     for (const [propName, propValue] of Object.entries(props)) {
-      if (propName === "children" || propName === "unsafeHTML") {
+      if (
+        propName === "children" || propName === "unsafeHTML"
+        || propName === "ns"
+      ) {
         continue;
       }
 
@@ -253,7 +257,7 @@ export class Reconciler {
       return fragment as any;
     }
 
-    const element = this.dom.create(tag);
+    const element = this.dom.create(tag, props?.ns);
 
     if (props) {
       this.bindProps(element, props);

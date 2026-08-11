@@ -10,6 +10,8 @@ for (const [key, value] of Object.entries(htmlElementAttributes)) {
   );
 }
 
+export const SVG_NS = "http://www.w3.org/2000/svg";
+
 export class DomInteraction
   implements InteractionInterface<Element, Text, DocumentFragment, Event>
 {
@@ -19,7 +21,13 @@ export class DomInteraction
     return value == null ? "" : String(value);
   }
 
-  create(tag: string): HTMLElement {
+  create(tag: string, ns?: string): HTMLElement {
+    if (ns) {
+      return document.createElementNS(ns, tag) as any;
+    }
+    if (isSvgNsElem(tag)) {
+      return document.createElementNS(SVG_NS, tag) as any;
+    }
     return document.createElement(tag);
   }
 
@@ -215,4 +223,84 @@ export class DomInteraction
   isText(element: Element | Text | DocumentFragment): element is Text {
     return element instanceof Text;
   }
+}
+
+function isSvgNsElem(tag: string) {
+  return tag === "svg"
+    || tag === "altGlyph"
+    || tag === "altGlyphDef"
+    || tag === "altGlyphItem"
+    || tag === "animate"
+    || tag === "animateColor"
+    || tag === "animateMotion"
+    || tag === "animateTransform"
+    || tag === "circle"
+    || tag === "clipPath"
+    || tag === "cursor"
+    || tag === "defs"
+    || tag === "desc"
+    || tag === "ellipse"
+    || tag === "feBlend"
+    || tag === "feColorMatrix"
+    || tag === "feComponentTransfer"
+    || tag === "feComposite"
+    || tag === "feConvolveMatrix"
+    || tag === "feDiffuseLighting"
+    || tag === "feDisplacementMap"
+    || tag === "feDistantLight"
+    || tag === "feDropShadow"
+    || tag === "feFlood"
+    || tag === "feFuncA"
+    || tag === "feFuncB"
+    || tag === "feFuncG"
+    || tag === "feFuncR"
+    || tag === "feGaussianBlur"
+    || tag === "feImage"
+    || tag === "feMerge"
+    || tag === "feMergeNode"
+    || tag === "feMorphology"
+    || tag === "feOffset"
+    || tag === "fePointLight"
+    || tag === "feSpecularLighting"
+    || tag === "feSpotLight"
+    || tag === "feTile"
+    || tag === "feTurbulence"
+    || tag === "filter"
+    || tag === "font"
+    || tag === "font-face"
+    || tag === "font-face-format"
+    || tag === "font-face-name"
+    || tag === "font-face-src"
+    || tag === "font-face-uri"
+    || tag === "foreignObject"
+    || tag === "g"
+    || tag === "glyph"
+    || tag === "glyphRef"
+    || tag === "hkern"
+    || tag === "image"
+    || tag === "line"
+    || tag === "linearGradient"
+    || tag === "marker"
+    || tag === "mask"
+    || tag === "metadata"
+    || tag === "missing-glyph"
+    || tag === "mpath"
+    || tag === "path"
+    || tag === "pattern"
+    || tag === "polygon"
+    || tag === "polyline"
+    || tag === "radialGradient"
+    || tag === "rect"
+    || tag === "set"
+    || tag === "solidColor"
+    || tag === "stop"
+    || tag === "switch"
+    || tag === "symbol"
+    || tag === "text"
+    || tag === "textPath"
+    || tag === "tref"
+    || tag === "tspan"
+    || tag === "use"
+    || tag === "view"
+    || tag === "vkern";
 }

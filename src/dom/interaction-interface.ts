@@ -6,7 +6,7 @@ export interface InteractionInterface<
   FragmentElement extends object,
   Ev extends object,
 > {
-  create(tag: string): Element;
+  create(tag: string, ns?: string): Element;
   createText(content: Primitive): TextElement;
   createFragment(): FragmentElement;
   setAttributeOrProperty(

@@ -243,7 +243,84 @@ declare global {
       video: HTMLProps<VanillaJSX.VideoTagProps>;
       wbr: HTMLProps<VanillaJSX.WbrTagProps>;
       webview: HTMLProps<VanillaJSX.WebviewTagProps>;
-      svg: HTMLProps<VanillaJSX.SvgTagProps>;
+
+      svg: HTMLProps<VanillaJSX.SVGTagProps>;
+      altGlyph: HTMLProps<VanillaJSX.BaseSvgProps>;
+      altGlyphDef: HTMLProps<VanillaJSX.BaseSvgProps>;
+      altGlyphItem: HTMLProps<VanillaJSX.BaseSvgProps>;
+      animate: HTMLProps<VanillaJSX.SVGAnimateTagProps>;
+      animateColor: HTMLProps<VanillaJSX.SVGAnimateTagProps>;
+      animateMotion: HTMLProps<VanillaJSX.SVGAnimateTagProps>;
+      animateTransform: HTMLProps<VanillaJSX.SVGAnimateTagProps>;
+      circle: HTMLProps<VanillaJSX.SVGCircleTagProps>;
+      clipPath: HTMLProps<VanillaJSX.SVGClipPathTagProps>;
+      cursor: HTMLProps<VanillaJSX.BaseSvgProps>;
+      defs: HTMLProps<VanillaJSX.SVGDefsTagProps>;
+      desc: HTMLProps<VanillaJSX.BaseSvgProps>;
+      ellipse: HTMLProps<VanillaJSX.SVGEllipseTagProps>;
+      feBlend: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feColorMatrix: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feComponentTransfer: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feComposite: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feConvolveMatrix: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feDiffuseLighting: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feDisplacementMap: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feDistantLight: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feDropShadow: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feFlood: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feFuncA: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feFuncB: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feFuncG: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feFuncR: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feGaussianBlur: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feImage: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feMerge: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feMergeNode: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feMorphology: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feOffset: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      fePointLight: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feSpecularLighting: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feSpotLight: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feTile: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      feTurbulence: HTMLProps<VanillaJSX.SVGFilterPriimitiveProps>;
+      filter: HTMLProps<VanillaJSX.SVGFilterTagProps>;
+      font: HTMLProps<VanillaJSX.BaseSvgProps>;
+      "font-face": HTMLProps<VanillaJSX.BaseSvgProps>;
+      "font-face-format": HTMLProps<VanillaJSX.BaseSvgProps>;
+      "font-face-name": HTMLProps<VanillaJSX.BaseSvgProps>;
+      "font-face-src": HTMLProps<VanillaJSX.BaseSvgProps>;
+      "font-face-uri": HTMLProps<VanillaJSX.BaseSvgProps>;
+      foreignObject: HTMLProps<VanillaJSX.SVGForeignObjectTagProps>;
+      g: HTMLProps<VanillaJSX.BaseSvgProps>;
+      glyph: HTMLProps<VanillaJSX.BaseSvgProps>;
+      glyphRef: HTMLProps<VanillaJSX.BaseSvgProps>;
+      hkern: HTMLProps<VanillaJSX.BaseSvgProps>;
+      image: HTMLProps<VanillaJSX.SVGImageTagProps>;
+      line: HTMLProps<VanillaJSX.SVGLineTagProps>;
+      linearGradient: HTMLProps<VanillaJSX.SVGLinearGradientTagProps>;
+      marker: HTMLProps<VanillaJSX.SVGMarkerTagProps>;
+      mask: HTMLProps<VanillaJSX.SVGMaskTagProps>;
+      metadata: HTMLProps<VanillaJSX.SVGMetadataTagProps>;
+      "missing-glyph": HTMLProps<VanillaJSX.BaseSvgProps>;
+      mpath: HTMLProps<VanillaJSX.BaseSvgProps>;
+      path: HTMLProps<VanillaJSX.SVGPathTagProps>;
+      pattern: HTMLProps<VanillaJSX.SVGPatternTagProps>;
+      polygon: HTMLProps<VanillaJSX.SVGPolygonTagProps>;
+      polyline: HTMLProps<VanillaJSX.SVGPolylineTagProps>;
+      radialGradient: HTMLProps<VanillaJSX.SVGRadialGradientTagProps>;
+      rect: HTMLProps<VanillaJSX.SVGRectTagProps>;
+      set: HTMLProps<VanillaJSX.BaseSvgProps>;
+      solidColor: HTMLProps<VanillaJSX.BaseSvgProps>;
+      stop: HTMLProps<VanillaJSX.SVGStopTagProps>;
+      switch: HTMLProps<VanillaJSX.BaseSvgProps>;
+      symbol: HTMLProps<VanillaJSX.SVGSymbolTagProps>;
+      text: HTMLProps<VanillaJSX.SVGTextTagProps>;
+      textPath: HTMLProps<VanillaJSX.BaseSvgProps>;
+      tref: HTMLProps<VanillaJSX.BaseSvgProps>;
+      tspan: HTMLProps<VanillaJSX.SVGTSpanTagProps>;
+      use: HTMLProps<VanillaJSX.SVGUseTagProps>;
+      view: HTMLProps<VanillaJSX.SVGViewTagProps>;
+      vkern: HTMLProps<VanillaJSX.BaseSvgProps>;
     }
 
     type EventHandlerFunction<E extends Event = Event> = (event: E) => void;
@@ -269,6 +346,12 @@ declare global {
        * treated as HTML (using `innerHTML`).
        */
       unsafeHTML?: boolean;
+      /**
+       * Namespace to use when creating this element.
+       *
+       * This is the same value that you would pass to the document.createElementNS()
+       */
+      ns?: string;
     }
 
     type PrefixAttributes = Record<
@@ -346,7 +429,6 @@ declare global {
     interface SubTagProps extends PropsForElement<HTMLElement> {}
     interface SummaryTagProps extends PropsForElement<HTMLElement> {}
     interface SupTagProps extends PropsForElement<HTMLElement> {}
-    interface SvgTagProps extends PropsForElement<HTMLElement> {}
     interface TableTagProps extends PropsForElement<HTMLTableElement> {}
     interface TbodyTagProps extends PropsForElement<HTMLTableSectionElement> {}
     interface TemplateTagProps extends PropsForElement<HTMLTemplateElement> {}
@@ -359,5 +441,44 @@ declare global {
     interface VarTagProps extends PropsForElement<HTMLElement> {}
     interface WbrTagProps extends PropsForElement<HTMLElement> {}
     interface WebviewTagProps extends PropsForElement<HTMLElement> {}
+
+    interface SVGTagProps extends PropsForElement<SVGSVGElement> {}
+    interface SVGAnimateTagProps extends PropsForElement<SVGAnimateElement> {}
+    interface SVGCircleTagProps extends PropsForElement<SVGCircleElement> {}
+    interface SVGClipPathTagProps extends PropsForElement<SVGClipPathElement> {}
+    interface SVGDefsTagProps extends PropsForElement<SVGDefsElement> {}
+    interface SVGEllipseTagProps extends PropsForElement<SVGEllipseElement> {}
+    interface SVGFilterTagProps extends PropsForElement<SVGFilterElement> {}
+    interface SVGForeignObjectTagProps
+      extends PropsForElement<SVGForeignObjectElement>
+    {}
+    interface SVGImageTagProps extends PropsForElement<SVGImageElement> {}
+    interface SVGLinearGradientTagProps
+      extends PropsForElement<SVGLinearGradientElement>
+    {}
+    interface SVGLineTagProps extends PropsForElement<SVGLineElement> {}
+    interface SVGMarkerTagProps extends PropsForElement<SVGMarkerElement> {}
+    interface SVGMaskTagProps extends PropsForElement<SVGMaskElement> {}
+    interface SVGMetadataTagProps extends PropsForElement<SVGMetadataElement> {}
+    interface SVGPathTagProps extends PropsForElement<SVGPathElement> {}
+    interface SVGPatternTagProps extends PropsForElement<SVGPatternElement> {}
+    interface SVGPolygonTagProps extends PropsForElement<SVGPolygonElement> {}
+    interface SVGPolylineTagProps extends PropsForElement<SVGPolylineElement> {}
+    interface SVGRadialGradientTagProps
+      extends PropsForElement<SVGRadialGradientElement>
+    {}
+    interface SVGRectTagProps extends PropsForElement<SVGRectElement> {}
+    interface SVGStopTagProps extends PropsForElement<SVGStopElement> {}
+    interface SVGSymbolTagProps extends PropsForElement<SVGSymbolElement> {}
+    interface SVGTextTagProps extends PropsForElement<SVGTextElement> {}
+    interface SVGTSpanTagProps extends PropsForElement<SVGTSpanElement> {}
+    interface SVGUseTagProps extends PropsForElement<SVGUseElement> {}
+    interface SVGViewTagProps extends PropsForElement<SVGViewElement> {}
+
+    interface SVGFilterPriimitiveProps
+      extends PropsForElement<SVGFilterPrimitiveStandardAttributes>
+    {}
+
+    interface BaseSvgProps extends PropsForElement<SVGElement> {}
   }
 }
