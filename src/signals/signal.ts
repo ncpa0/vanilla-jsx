@@ -285,9 +285,14 @@ class VSignal<T> implements Signal<T> {
   private static BatchQueue = class BatchQueue {
     private orderedQueue: Array<BatchEntry> = [];
     private roots: Map<VSignal<any>, any> = new Map();
+    private postCommitHooks: Array<() => void> = [];
 
     public hasPending() {
       return this.orderedQueue.length > 0 || this.roots.size > 0;
+    }
+
+    public addPostCommitHook(hook: () => void) {
+      this.postCommitHooks.push(hook);
     }
 
     public add(s: VSignal<any>, isObserved: boolean) {
@@ -324,9 +329,25 @@ class VSignal<T> implements Signal<T> {
       }
       this.orderedQueue.splice(0, this.orderedQueue.length);
     }
+
+    public takePostCommitHooks() {
+      const hooks = this.postCommitHooks;
+      this.postCommitHooks = [];
+      return hooks;
+    }
   };
 
   private static GlobalListeners = new Set<SignalListenerReference<any>>();
+
+  /**
+   * Listener references that have been attached to a signal within an active
+   * batch, but have not yet received their initial call. If a listener gets
+   * notified as a part of the batch commit before the batch ends, the commit
+   * notification itself counts as it's initial call.
+   */
+  private static PendingInitialCallRefs = new WeakSet<
+    SignalListenerReference<any>
+  >();
 
   private static batchQueue?: BatchQueue;
 
@@ -336,13 +357,22 @@ class VSignal<T> implements Signal<T> {
 
   public static commitBatch() {
     if (VSignal.batchQueue) {
+      // hooks might get registered on any of the queues created throughout
+      // the commit process, so they all have to be collected and triggered
+      // once the batch is fully committed.
+      const hooks: Array<() => void> = [];
       let queue = VSignal.batchQueue;
       while (queue.hasPending()) {
         VSignal.batchQueue = new VSignal.BatchQueue();
         queue.commit();
+        hooks.push(...queue.takePostCommitHooks());
         queue = VSignal.batchQueue;
       }
+      hooks.push(...queue.takePostCommitHooks());
       VSignal.batchQueue = undefined;
+      for (const hook of hooks) {
+        hook();
+      }
     }
   }
 
@@ -591,6 +621,14 @@ class VSignal<T> implements Signal<T> {
       signals[i]!.derivedSignals.push(new WeakRef(derivedSignal));
     }
 
+    if (VSignal.batchQueue) {
+      // if created within a batch, only evaluate the derived signal after
+      // the batch has been fully committed
+      VSignal.batchQueue.addPostCommitHook(() => {
+        derivedSignal.beforeAccess();
+      });
+    }
+
     return derivedSignal;
   }
 
@@ -783,6 +821,9 @@ class VSignal<T> implements Signal<T> {
       } catch (e) {
         console.error(e);
       }
+      // if this listener was attached within an active batch, this
+      // notification counts as it's initial call
+      VSignal.PendingInitialCallRefs.delete(listenerRef);
       if (abortSig.isAborted) {
         return;
       }
@@ -864,8 +905,6 @@ class VSignal<T> implements Signal<T> {
   }
 
   public add(listener: SignalListener<T>): SignalListenerReference<T> {
-    this.beforeAccess();
-
     if (typeof listener !== "function") {
       throw new Error("Signal.add(): listener must be a function");
     }
@@ -886,18 +925,34 @@ class VSignal<T> implements Signal<T> {
 
     this.listeners.push(lRef);
 
-    try {
-      listener(this.value);
-    } catch (e) {
-      console.error(e);
+    if (!VSignal.batchQueue) {
+      this.beforeAccess();
+      try {
+        listener(this.value);
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      VSignal.PendingInitialCallRefs.add(lRef);
+      VSignal.batchQueue.addPostCommitHook(() => {
+        // skip if the listener has already been notified as a part of the
+        // batch commit, or if it has been detached in the meantime
+        if (isDetached || !VSignal.PendingInitialCallRefs.delete(lRef)) {
+          return;
+        }
+        this.beforeAccess();
+        try {
+          listener(this.value);
+        } catch (e) {
+          console.error(e);
+        }
+      });
     }
 
     return lRef;
   }
 
   public observe(listener: SignalListener<T>): SignalListenerReference<T> {
-    this.beforeAccess();
-
     if (typeof listener !== "function") {
       throw new Error("Signal.add(): listener must be a function");
     }
@@ -920,10 +975,28 @@ class VSignal<T> implements Signal<T> {
     this.listeners.push(lRef);
     VSignal.GlobalListeners.add(lRef);
 
-    try {
-      listener(this.value);
-    } catch (e) {
-      console.error(e);
+    if (!VSignal.batchQueue) {
+      this.beforeAccess();
+      try {
+        listener(this.value);
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      VSignal.PendingInitialCallRefs.add(lRef);
+      VSignal.batchQueue.addPostCommitHook(() => {
+        // skip if the listener has already been notified as a part of the
+        // batch commit, or if it has been detached in the meantime
+        if (isDetached || !VSignal.PendingInitialCallRefs.delete(lRef)) {
+          return;
+        }
+        this.beforeAccess();
+        try {
+          listener(this.value);
+        } catch (e) {
+          console.error(e);
+        }
+      });
     }
 
     return lRef;
@@ -1064,8 +1137,6 @@ class VSignal<T> implements Signal<T> {
     getDerivedValue: DeriveFn<[T], U>,
     options?: SignalOptions<U>,
   ): VReadonlySignal<U> {
-    this.beforeAccess();
-
     const derivedSignal = new VReadonlySignal<U>(null as any, options);
     derivedSignal.isDirty = true;
     derivedSignal.isDerived = true;
@@ -1074,6 +1145,15 @@ class VSignal<T> implements Signal<T> {
     derivedSignal.derivedFrom = [this];
 
     this.derivedSignals.push(new WeakRef(derivedSignal));
+
+    if (VSignal.batchQueue) {
+      // if created within a batch, only evaluate the derived signal after
+      // the batch has been fully committed
+      VSignal.batchQueue.addPostCommitHook(() => {
+        derivedSignal.beforeAccess();
+      });
+    }
+
     return derivedSignal;
   }
 

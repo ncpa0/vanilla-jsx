@@ -5,6 +5,7 @@ import {
   expect,
   it,
   Mock,
+  vi,
   vitest,
 } from "vitest";
 import { sig, Signal } from "../../src/signals";
@@ -2172,6 +2173,155 @@ describe("VSignal()", () => {
 
       expect(onD4Change).toHaveBeenCalledTimes(1);
       expect(onD4Change).toHaveBeenLastCalledWith(36);
+    });
+
+    it("adding listener inside a batch", () => {
+      const listener = vi.fn();
+      const s = sig(1);
+
+      sig.startBatch();
+      try {
+        s.add(listener);
+        expect(listener).not.toHaveBeenCalled();
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("creating a derived sig inside a batch", () => {
+      const listener = vi.fn();
+      const s = sig(1);
+
+      sig.startBatch();
+      try {
+        s.derive((n) => {
+          listener();
+          return n + 1;
+        });
+        expect(listener).not.toHaveBeenCalled();
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("creating and listening to a signal inside batch", () => {
+      const listener = vi.fn();
+
+      sig.startBatch();
+      try {
+        const s = sig(123);
+        s.add(listener);
+        expect(listener).not.toHaveBeenCalled();
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(123);
+    });
+
+    it("adding listener inside a dispatching batch", () => {
+      const listener = vi.fn();
+      const s = sig(1);
+
+      sig.startBatch();
+      try {
+        s.dispatch(2);
+        s.add(listener);
+        expect(listener).not.toHaveBeenCalled();
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(2);
+    });
+
+    it("adding listener to an unmodified signal inside a dispatching batch", () => {
+      const listenerA = vi.fn();
+      const listenerB = vi.fn();
+      const a = sig(1);
+      const b = sig(10);
+
+      sig.startBatch();
+      try {
+        a.add(listenerA);
+        a.dispatch(2);
+        b.add(listenerB);
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listenerA).toHaveBeenCalledTimes(1);
+      expect(listenerA).toHaveBeenCalledWith(2);
+      expect(listenerB).toHaveBeenCalledTimes(1);
+      expect(listenerB).toHaveBeenCalledWith(10);
+    });
+
+    it("adding listener to a derived signal inside a dispatching batch", () => {
+      const listener = vi.fn();
+      const a = sig(1);
+      const d = a.derive((n) => n + 1);
+      d.get();
+
+      sig.startBatch();
+      try {
+        a.dispatch(10);
+        d.add(listener);
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(11);
+    });
+
+    it("adding listener inside a batch that requires multiple commit rounds", () => {
+      const listenerB = vi.fn();
+      const a = sig(1);
+      const b = sig(10);
+
+      sig.startBatch();
+      try {
+        a.dispatch(2);
+        b.add(listenerB);
+        a.add((v) => {
+          b.dispatch(v * 10);
+        });
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listenerB).toHaveBeenCalledTimes(1);
+      expect(listenerB).toHaveBeenCalledWith(20);
+    });
+
+    it("observing a signal inside a dispatching batch", () => {
+      const listener = vi.fn();
+      const s = sig(1);
+
+      sig.startBatch();
+      try {
+        s.dispatch(2);
+        s.observe(listener);
+        expect(listener).not.toHaveBeenCalled();
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(2);
+    });
+
+    it("detaching a listener added inside a batch before commit", () => {
+      const listener = vi.fn();
+      const s = sig(1);
+
+      sig.startBatch();
+      try {
+        const ref = s.add(listener);
+        ref.detach();
+      } finally {
+        sig.commitBatch();
+      }
+      expect(listener).not.toHaveBeenCalled();
+      expect(s.listenerCount()).toBe(0);
     });
 
     describe("multi-layer", () => {
