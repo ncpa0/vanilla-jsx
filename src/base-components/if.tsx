@@ -14,6 +14,7 @@ export type IfProps<T> =
      * Signal containing the condition to check.
      */
     condition: JSX.Signal<T>;
+    memo?: boolean;
   }
   & ({
     /**
@@ -70,18 +71,39 @@ export function If<T>(props: IfProps<T>) {
 
   const sig = sigProxy(props.condition);
 
+  let thenElem: JSX.Element | null = null;
+  const getThenElem = (v: NonNullable<T>) => {
+    if (!props.memo) return props.then(v);
+    if (thenElem) return thenElem;
+    const elem = props.then(v);
+    thenElem = elem;
+    return elem;
+  };
+
+  let elseElem: JSX.Element | null = null;
+  const getElseElem = (v: T) => {
+    if (!props.memo) return props.else?.(v!);
+    if (elseElem) return elseElem;
+    const elem = props.else?.(v!);
+    if (elem) {
+      elseElem = elem;
+    }
+    return elem;
+  };
+
   const onConditionMet = (v?: T, parent?: JSX.Element) => {
     Reconciler.interactions().replaceAllChildren(
       parent as HTMLElement,
-      props.then(v!),
+      getThenElem(v!),
     );
   };
 
   const onConditionNotMet = (v: T | undefined, parent: JSX.Element) => {
-    if (props.else) {
+    const elseElem = getElseElem(v!);
+    if (elseElem) {
       Reconciler.interactions().replaceAllChildren(
         parent as HTMLElement,
-        props.else(v!),
+        elseElem,
       );
     } else {
       Reconciler.interactions().replaceAllChildren(parent as HTMLElement);

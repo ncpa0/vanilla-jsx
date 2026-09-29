@@ -5,6 +5,7 @@ import {
   Objectish,
   type WritableDraft,
 } from "immer";
+import { DomGate, type GatedBinding } from "../sig-proxy/_gate";
 import { registerBoundSignal, Widen } from "./utils";
 
 class PropagationAbortSignal {
@@ -640,11 +641,24 @@ class VSignal<T> implements Signal<T> {
     registerBoundSignal(element, signal);
     const elemRef = new WeakRef(element);
 
+    const binding: GatedBinding = {
+      elemRef,
+      signal,
+      cb: (elem, value) => {
+        (elem as E)[key] = value;
+      },
+      detached: false,
+    };
+
     const l = signal.add((value) => {
       const element = elemRef.deref();
       if (element) {
-        element[key] = value;
+        if (DomGate.gate(element, binding)) {
+          return;
+        }
+        binding.cb(element, value);
       } else {
+        DomGate.discard(binding);
         l?.detach();
       }
     });
@@ -657,15 +671,28 @@ class VSignal<T> implements Signal<T> {
   ) {
     const elemRef = new WeakRef(element);
 
+    const binding: GatedBinding = {
+      elemRef,
+      signal,
+      cb: (elem, value) => {
+        if (value == null) {
+          elem.removeAttribute(key);
+        } else {
+          elem.setAttribute(key, value);
+        }
+      },
+      detached: false,
+    };
+
     const l = signal.add((value) => {
       const element = elemRef.deref();
       if (element) {
-        if (value == null) {
-          element.removeAttribute(key);
-        } else {
-          element.setAttribute(key, value);
+        if (DomGate.gate(element, binding)) {
+          return;
         }
+        binding.cb(element, value);
       } else {
+        DomGate.discard(binding);
         l?.detach();
       }
     });

@@ -1,4 +1,5 @@
 import { registerBoundSignal } from "../signals/utils";
+import { DomGate, type GatedBinding } from "./_gate";
 import { SignalInteropInterface } from "./_interface";
 import { VanillaJSXSignalInterop } from "./vanilla-jsx-interop";
 
@@ -24,6 +25,35 @@ export class SignalsReg {
 
   public static isSignal(signal: any): signal is JSX.Signal<any> {
     return this.interops.some(interop => interop.is(signal));
+  }
+
+  /**
+   * Prevents all signals bound to the given element and all of its
+   * descendants from making DOM and attribute mutations.
+   *
+   * The signals keep updating their values as usual, only the mutations
+   * of the DOM elements and attributes are suppressed. Once `resume()` is
+   * called, all the suppressed mutations will be re-applied with the most
+   * recent values of their signals.
+   *
+   * Calls to `stop()` can be nested - resuming an element will also
+   * resume all of its descendant subtrees that have been stopped
+   * separately.
+   *
+   * This operation is O(1) - the element tree is never walked.
+   */
+  public static stop(element: Element) {
+    DomGate.stop(element);
+  }
+
+  /**
+   * Re-enables all the signals bound to the given element and all of its
+   * descendants that have been stopped with `SignalsReg.stop()` and
+   * re-applies all the DOM and attribute mutations that were suppressed
+   * in the meantime, using the most recent values of their signals.
+   */
+  public static resume(element: Element) {
+    DomGate.resume(element);
   }
 }
 
@@ -51,16 +81,32 @@ export function sigProxy<T>(signal: JSX.Signal<T>): SignalProxy<T> {
       detach(): void;
     };
 
+    const binding: GatedBinding = {
+      elemRef: elementRef,
+      signal: signal as { get(): any },
+      cb: (elem, value) => cb(elem, value, ref),
+      detached: false,
+    };
+
     const onChange = (value: T) => {
       const elem = elementRef.deref();
       if (elem) {
-        cb(elem, value, ref);
+        if (DomGate.gate(elem, binding)) {
+          return;
+        }
+        binding.cb(elem, value);
       } else {
         ref?.detach();
       }
     };
 
-    ref = { detach: s.add(signal, onChange) };
+    const detachFromSignal = s.add(signal, onChange);
+    ref = {
+      detach: () => {
+        detachFromSignal();
+        DomGate.discard(binding);
+      },
+    };
     return ref;
   };
 
