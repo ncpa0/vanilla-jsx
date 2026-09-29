@@ -1,5 +1,5 @@
 import { GetElement, jsx, Reconciler } from "../reconciler/reconciler";
-import { sigProxy } from "../sig-proxy/_proxy";
+import { SignalsReg, sigProxy } from "../sig-proxy/_proxy";
 
 export type IfProps<T> =
   & {
@@ -92,15 +92,26 @@ export function If<T>(props: IfProps<T>) {
   };
 
   const onConditionMet = (v?: T, parent?: JSX.Element) => {
+    if (elseElem) {
+      SignalsReg.stop(elseElem);
+    }
+
+    const e = getThenElem(v!);
+    SignalsReg.resume(e);
     Reconciler.interactions().replaceAllChildren(
       parent as HTMLElement,
-      getThenElem(v!),
+      e,
     );
   };
 
   const onConditionNotMet = (v: T | undefined, parent: JSX.Element) => {
+    if (thenElem) {
+      SignalsReg.stop(thenElem);
+    }
+
     const elseElem = getElseElem(v!);
     if (elseElem) {
+      SignalsReg.resume(elseElem);
       Reconciler.interactions().replaceAllChildren(
         parent as HTMLElement,
         elseElem,

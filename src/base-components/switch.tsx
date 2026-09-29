@@ -1,12 +1,12 @@
 import { GetElement, jsx, Reconciler } from "../reconciler/reconciler";
-import { sigProxy } from "../sig-proxy/_proxy";
+import { SignalsReg, sigProxy } from "../sig-proxy/_proxy";
 
 export type SwitchProps<T> = {
   value: JSX.Signal<T>;
   /**
    * Children must be `Case` elements.
    */
-  children: JSX.Element[];
+  children: JSX.Element[] | JSX.Element;
   /** Parent element to use, if not provided a empty div will be created and used. */
   into?: GetElement;
   /**
@@ -74,17 +74,23 @@ class CaseBuilder<T> {
 
 function childBindingFactory<T>(builder: CaseBuilder<T>) {
   const emptyFragment = createEmptyElem();
+  let prevElem: Element | undefined;
+
   return (element: Element, v: T) => {
+    const dom = Reconciler.interactions();
     const matchingCase = CaseBuilder.findCase(v, builder);
 
-    const dom = Reconciler.interactions();
+    if (prevElem) SignalsReg.stop(prevElem);
 
     if (matchingCase) {
       if (matchingCase.data.element) {
+        SignalsReg.resume(matchingCase.data.element);
         dom.replaceAllChildren(element, matchingCase.data.element);
+        prevElem = matchingCase.data.element;
       } else {
         const elem = matchingCase.props.children(v);
         dom.replaceAllChildren(element, elem);
+        prevElem = elem;
 
         if (matchingCase.props.memo) {
           matchingCase.data.element = elem;
@@ -94,6 +100,7 @@ function childBindingFactory<T>(builder: CaseBuilder<T>) {
     }
 
     dom.replaceAllChildren(element, emptyFragment);
+    prevElem = undefined;
   };
 }
 
@@ -169,8 +176,12 @@ export const Switch = <T,>(props: SwitchProps<T>): JSX.Element => {
 
   const builder = new CaseBuilder<T>();
 
-  for (let i = 0; i < props.children.length; i++) {
-    const child = props.children[i]!;
+  const children = Array.isArray(props.children)
+    ? props.children
+    : [props.children];
+
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]!;
     const caseData = CaseData.get(child);
 
     if (caseData) {
