@@ -31,27 +31,28 @@ export function createEmptyElem() {
 }
 
 class CaseBuilder<T> {
-  private cases: Array<[T | ((value: T) => boolean), CaseRenderFn<T>]> = [];
+  private cases: Array<[(T | ((value: T) => boolean)), CaseCtx<T>]> = [];
+  private defaults: Array<CaseCtx<T>> = [];
 
   constructor() {}
 
   match(
     matcher: T | ((value: T) => boolean),
-    render: CaseRenderFn<T>,
+    caseCtx: CaseCtx<T>,
   ): CaseBuilder<T> {
-    this.cases.push([matcher, render]);
+    this.cases.push([matcher, caseCtx]);
     return this;
   }
 
-  default(render: CaseRenderFn<T>): CaseBuilder<T> {
-    this.cases.push([() => true, render]);
+  default(caseCtx: CaseCtx<T>): CaseBuilder<T> {
+    this.defaults.push(caseCtx);
     return this;
   }
 
   static findCase<T>(
     v: T,
     builder: CaseBuilder<T>,
-  ): undefined | (CaseRenderFn<T>) {
+  ): undefined | CaseCtx<T> {
     for (let i = 0; i < builder.cases.length; i++) {
       const [matcher, render] = builder.cases[i]!;
       if (isFunctionMatcher(matcher)) {
@@ -63,6 +64,10 @@ class CaseBuilder<T> {
       }
     }
 
+    if (builder.defaults.length > 0) {
+      return builder.defaults.at(-1);
+    }
+
     return undefined;
   }
 }
@@ -71,8 +76,24 @@ function childBindingFactory<T>(builder: CaseBuilder<T>) {
   const emptyFragment = createEmptyElem();
   return (element: Element, v: T) => {
     const matchingCase = CaseBuilder.findCase(v, builder);
-    const newChild = matchingCase ? matchingCase(v) : emptyFragment;
-    Reconciler.interactions().replaceAllChildren(element, newChild);
+
+    const dom = Reconciler.interactions();
+
+    if (matchingCase) {
+      if (matchingCase.data.element) {
+        dom.replaceAllChildren(element, matchingCase.data.element);
+      } else {
+        const elem = matchingCase.props.children(v);
+        dom.replaceAllChildren(element, elem);
+
+        if (matchingCase.props.memo) {
+          matchingCase.data.element = elem;
+        }
+      }
+      return;
+    }
+
+    dom.replaceAllChildren(element, emptyFragment);
   };
 }
 
@@ -82,6 +103,11 @@ export type CaseProps<T = unknown> =
      *  A function that will return element to be rendered when the case is matched.
      */
     children: CaseRenderFn<T>;
+    /**
+     * When set to true, the child will only ever get rendered once, and after the
+     * result wil be reused every time it matches.
+     */
+    memo?: boolean;
   }
   & ({
     /**
@@ -92,15 +118,25 @@ export type CaseProps<T = unknown> =
     default: true;
   });
 
-const CaseData = new WeakMap<object, CaseProps<any>>();
+type CaseCtx<T> = {
+  props: CaseProps<T>;
+  data: {
+    element?: Element;
+  };
+};
+
+const CaseData = new WeakMap<object, CaseCtx<any>>();
 
 export const Case = <T,>(props: CaseProps<T>): JSX.Element => {
   const tmp = <div />;
   CaseData.set(tmp, {
-    ...props,
-    children: Array.isArray(props.children)
-      ? props.children[0]!
-      : props.children,
+    data: {},
+    props: {
+      ...props,
+      children: Array.isArray(props.children)
+        ? props.children[0]!
+        : props.children,
+    },
   });
   return tmp;
 };
@@ -138,10 +174,10 @@ export const Switch = <T,>(props: SwitchProps<T>): JSX.Element => {
     const caseData = CaseData.get(child);
 
     if (caseData) {
-      if ("default" in caseData) {
-        builder.default(caseData.children);
+      if ("default" in caseData.props) {
+        builder.default(caseData);
       } else {
-        builder.match(caseData.match, caseData.children);
+        builder.match(caseData.props.match, caseData);
       }
     }
   }
