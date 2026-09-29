@@ -1,6 +1,8 @@
-*VanillaJSX provides a syntactic sugar for creating HTMLElements*
+# VanillaJSX
 
-### Example
+*VanillaJSX provides a syntactic sugar for creating HTMLElements.*
+
+It is a JSX render library that compiles JSX **directly to real DOM elements** — no virtual DOM, no diffing, no re-render loop. JSX runs once, eagerly building real `HTMLElement`s, and all dynamic behavior is driven by [signals](./docs/signals.md) bound to element attributes, children and event listeners at creation time.
 
 These two snippets are equivalent:
 
@@ -9,7 +11,7 @@ const container = document.createElement('div');
 const header = document.createElement('h1');
 header.textContent = 'Hello, world!';
 header.classList.add('custom-header');
-div.setAttribute('id', 'header-container');
+container.setAttribute('id', 'header-container');
 container.appendChild(header);
 ```
 
@@ -21,9 +23,13 @@ const container = (
 );
 ```
 
-## TypeScript and build step
+## Installation
 
-To enable TypeScript support set these options in your `tsconfig.json`:
+```bash
+yarn add @ncpa0cpl/vanilla-jsx
+```
+
+Enable the JSX transform in your `tsconfig.json`:
 
 ```json
 {
@@ -34,7 +40,7 @@ To enable TypeScript support set these options in your `tsconfig.json`:
 }
 ```
 
-Similar options will need to be set in the build tool you are using. For example the following option should be used in `esbuild`:
+Set the same option in your bundler, e.g. for `esbuild`:
 
 ```javascript
 esbuild
@@ -44,57 +50,7 @@ esbuild
   })
 ```
 
-## Signals
-
-On top of the basic syntax sugar it is also possible to easily bind signals to element attributes, children and listeners.
-
-VanillaJSX does not enforce any specific signal implementation, but it does provide one if you wish to use it. For a given signal to be able to be used it needs to be registered with the `SignalsReg`:
-
-```typescript
-import { SignalsReg } from "@ncpa0cpl/vanilla-jsx";
-import { MySignal } from "./my-signal";
-
-class MySignalInterop {
-    is(maybeSignal: unknown): maybeSignal is MySignal<unknown> {
-        return maybeSignal instanceof MySignal;
-    }
-    add(signal: MySignal<any>, listener: (value: any) => void) {
-        signal.addListener(listener);
-        listener(signal.value);
-        return () => signal.removeListener(listener);
-    }
-}
-
-SignalsReg.register(new MySignalInterop());
-
-declare global {
-    namespace JSX {
-        interface SupportedSignals<V> {
-            mySignal: MySignal<V>;
-        }
-    }
-}
-```
-
-#### Provided interops
-
-There's a few interops provided by default that can be imported and registered:
-
-
-```typescript
-import {
-    SignalsReg,
-    JsSignalInterop,
-    MiniSignalInterop,
-    PreactSignalInterop,
-} from "@ncpa0cpl/vanilla-jsx";
-
-SignalsReg.register(new JsSignalInterop());
-SignalsReg.register(new MiniSignalInterop());
-SignalsReg.register(new PreactSignalInterop());
-```
-
-### VanillaJSX Signals usage example
+## Quick example
 
 ```tsx
 import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
@@ -102,131 +58,33 @@ import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
 function getCounterComponent() {
     const counter = sig(0);
 
-    const onClick = () => {
-        counter.dispatch(current => current + 1);
-    };
-
     return (
         <div>
-            <button 
-                class={counter.derive(c => `counter_${c}`)} 
-                onClick={onClick}
+            <button
+                class={counter.derive(c => `counter_${c}`)}
+                onClick={() => counter.dispatch(current => current + 1)}
             >
                 Click me!
             </button>
             <p>{counter}</p>
         </div>
     );
-};
-```
-
-### Conditional rendering and maps
-
-It's possible to achieve conditional rendering or maping a list of elements by using the `derive()` method of the provided signal implementation:
-
-```tsx
-import { sig, Signal } from "@ncpa0cpl/vanilla-jsx/signals";
-
-function displayElements(elems: Signal<string[]>) {
-    return <div>
-        {elems.derive(list => {
-            if (list.length === 0) {
-                return <p>No elements to display</p>;
-            }
-            return list.map((elem, i) => <p>{elem}</p>);
-        })}
-    </div>;
 }
 ```
 
-However in case of another signal implementation or for more optimized rendering of lists a few base components are available:
+The built-in signal library is optional — interops are provided for [JS Signals, mini-signals and @preact/signals-core](./docs/interop.md#provided-interop), and any other implementation can be plugged in via `SignalsReg`.
 
-#### <If>
+## Documentation
 
-```tsx
-import { If } from "@ncpa0cpl/vanilla-jsx";
-import { sig } from "@ncpa0cpl/vanilla-jsx/signals";
+| Document | Contents |
+| --- | --- |
+| [Signals](./docs/signals.md) | The built-in signal library: `sig`, derive, combinators, batching, GC-based cleanup. |
+| [Signal Freezing](./docs/singal-freezing.md) | Stopping signal driven DOM mutation in selected sub-trees. |
+| [Working with JSX](./docs/jsx.md) | Setup, elements, fragments, props, events, reactive attributes, `class`/`style`, `boundSignal`, `unsafeHTML`, components. |
+| [Components](./docs/components.md) | `<If>`, `<Switch>`/`<Case>`, `<Range>`, `<VirtualList>`, `$component` lifecycle, `ClassComponent`. |
+| [Interop](./docs/interop.md) | Registering other signal implementations, swapping the DOM layer. |
+| [Gotchas and limitations](./docs/gotchas.md) | Rendering model, GC cleanup rules, XSS notes, batching semantics, environment requirements. |
 
-function conditionComponent() {
-    const someCondition = sig(false);
+## License
 
-    return <div>
-        <If 
-            condition={someCondition}
-            then={() => <p>Condition Met!</p>}
-            else={() => <p>Condition Not Met!</p>}
-        />
-    </div>;
-}
-```
-
-#### <Switch>
-
-```tsx
-import { Switch, Case } from "@ncpa0cpl/vanilla-jsx";
-
-enum MyEnum {
- A, B, C
-}
-
-function displayOneOf(value: JSX.Signal<MyEnum>) {
-    return <div>
-        <Switch
-            value={MyEnum.A}
-        >
-            <Case match={MyEnum.A}>
-                {() => <div>Case A</div>}
-            </Case>
-            <Case match={MyEnum.B}>
-                {() => <div>Case B</div>}
-            </Case>
-            <Case default>
-                {() => <div>Default case</div>}
-            </Case>
-        </Switch>
-    </div>;
-}
-```
-
-#### <Range>
-
-```tsx
-import { Range } from "@ncpa0cpl/vanilla-jsx";
-
-function displayList(list: JSX.Signal<string[]>) {
-    return <div>
-        <Range
-            data={list}
-            into={<ul />}
-        >
-            {(value) => <li>{value}</li>}
-        </Range>
-    </div>;
-}
-```
-
-#### <VirtualList>
-
-```tsx
-import { Range } from "@ncpa0cpl/vanilla-jsx";
-
-type Item = {
-  id: string;
-  label: string;
-}
-
-function displayList(list: JSX.Signal<Item[]>) {
-    return (
-      <VirtualList
-        data={list}
-        getKey={(item) => item.id}
-        pageSize={32}
-        overscanLeading={2048}
-        renderEmpty={() => <p>List is empty.</p>}
-        render={(itemSig, indexSig) => {
-          return <p>{itemSig.derive(item => item.label)}</p>
-        }}
-      />
-    );
-}
-```
+MIT
