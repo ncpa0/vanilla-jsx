@@ -40,6 +40,10 @@ export class SignalsReg {
    * resume all of its descendant subtrees that have been stopped
    * separately.
    *
+   * The element is held through a weak reference, so a stopped subtree
+   * that gets removed from the document and dropped from memory gets
+   * unregistered automatically without leaking.
+   *
    * This operation is O(1) - the element tree is never walked.
    */
   public static stop(element: Element) {

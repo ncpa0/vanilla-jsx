@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { sig } from "../../src/signals";
-import {
-  bindSignal,
-  sigProxy,
-  SignalsReg,
-} from "../../src/sig-proxy/_proxy";
-import { SignalInteropInterface } from "../../src/sig-proxy/_interface";
 import { createElement } from "../../src/reconciler/reconciler";
+import { SignalInteropInterface } from "../../src/sig-proxy/_interface";
+import { bindSignal, SignalsReg, sigProxy } from "../../src/sig-proxy/_proxy";
+import { sig, Signal } from "../../src/signals";
 import { gc } from "../gc-util";
 import { sleep } from "../utils";
 
@@ -150,7 +146,7 @@ describe("SignalsReg stop/resume", () => {
     root.appendChild(child);
     document.body.appendChild(root);
 
-    const s = sig<string>("a");
+    const s = sig<string | undefined>("a");
     sig.bindAttribute(s, child, "data-value");
 
     expect(child.getAttribute("data-value")).toBe("a");
@@ -691,7 +687,7 @@ describe("SignalsReg stop/resume", () => {
     SignalsReg.register(new FakeSignalInterop());
 
     const s = new FakeSignal("a");
-    bindSignal(s as any, child, (elem, value) => {
+    bindSignal(s as any, child, (elem, value: string) => {
       elem.setAttribute("data-value", value);
     });
 
@@ -882,7 +878,7 @@ describe("SignalsReg stop/resume", () => {
       let child: HTMLSpanElement | null = document.createElement("span");
       root.appendChild(child);
 
-      let s: any = sig("a");
+      let s: JSX.Signal<string> | null = sig("a");
       track(s, () => {
         collected = true;
       });
@@ -913,7 +909,7 @@ describe("SignalsReg stop/resume", () => {
       let child: HTMLSpanElement | null = document.createElement("span");
       root.appendChild(child);
 
-      let s: any = sig("a");
+      let s: Signal<string> | null = sig("a");
       track(s, () => {
         collected = true;
       });
@@ -926,7 +922,7 @@ describe("SignalsReg stop/resume", () => {
 
       // the suppressed mutation puts the binding on the pending list,
       // which holds a strong reference to the signal
-      s.dispatch("b");
+      s!.dispatch("b");
 
       child.remove();
       child = null;
@@ -948,6 +944,61 @@ describe("SignalsReg stop/resume", () => {
       await sleep(0);
 
       expect(collected).toBe(true);
+    });
+
+    it("should not retain stopped roots that get removed from the document and dropped", async () => {
+      let collected = false;
+
+      let root: HTMLDivElement | null = document.createElement("div");
+      document.body.appendChild(root);
+
+      track(root, () => {
+        collected = true;
+      });
+
+      SignalsReg.stop(root);
+
+      // the root gets removed from the document and dropped without ever
+      // being resumed - it should not be kept alive by the gate
+      root.remove();
+      root = null;
+
+      await gc();
+      await sleep(0);
+
+      expect(collected).toBe(true);
+    });
+
+    it("should keep gating functional after a stopped root has been garbage collected", async () => {
+      let root: HTMLDivElement | null = document.createElement("div");
+      document.body.appendChild(root);
+
+      SignalsReg.stop(root);
+
+      root.remove();
+      root = null;
+
+      await gc();
+      await sleep(0);
+
+      // a subsequent stop/resume cycle on another subtree keeps working
+      const otherRoot = document.createElement("div");
+      const otherChild = document.createElement("span");
+      otherRoot.appendChild(otherChild);
+      document.body.appendChild(otherRoot);
+
+      const s = sig("a");
+      bindSignal(s, otherChild, (elem, value) => {
+        elem.setAttribute("data-value", value);
+      });
+
+      SignalsReg.stop(otherRoot);
+
+      s.dispatch("b");
+      expect(otherChild.getAttribute("data-value")).toBe("a");
+
+      SignalsReg.resume(otherRoot);
+      expect(otherChild.getAttribute("data-value")).toBe("b");
     });
   });
 });

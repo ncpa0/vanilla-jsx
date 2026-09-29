@@ -59,8 +59,30 @@ export type GatedBinding = {
 };
 
 class DomGate {
-  /** Roots of the subtrees for which all DOM mutations are suppressed. */
-  private static stoppedRoots = new Set<Element>();
+  /**
+   * Roots of the subtrees for which all DOM mutations are suppressed.
+   *
+   * The roots are held through weak references (as WeakMap keys) so that
+   * a stopped subtree that gets removed from the document and dropped
+   * does not leak - such a root gets unregistered automatically. WeakMap
+   * keys cannot be enumerated though, so `trackedRoots` is used for the
+   * enumeration needs of the `resume()` operation.
+   */
+  private static stoppedRoots = new WeakMap<Element, true>();
+
+  /**
+   * Weak references to all currently stopped roots. Used only by the
+   * `stop()` and `resume()` operations to enumerate the stopped roots -
+   * the mutation-time code paths never iterate over it.
+   *
+   * References to garbage collected roots get pruned whenever a `stop()`
+   * or `resume()` is made. This set's size also acts as the
+   * "is anything stopped" fast-path guard for `isStopped()` and
+   * `gate()` - roots that have been garbage collected but not yet pruned
+   * make the guard pass, in which case the containment checks simply
+   * come up empty until the next `stop()` or `resume()` prunes them.
+   */
+  private static trackedRoots = new Set<WeakRef<Element>>();
 
   /**
    * Bindings that attempted to mutate the DOM while contained within a
@@ -81,9 +103,18 @@ class DomGate {
    * Calls to `stop()` can be nested - resuming an element will also
    * resume all of its descendant subtrees that have been stopped
    * separately.
+   *
+   * The element is held through a weak reference, so a stopped subtree
+   * that gets removed from the document and dropped from memory gets
+   * unregistered automatically without leaking.
    */
   public static stop(root: Element): void {
-    this.stoppedRoots.add(root);
+    if (this.stoppedRoots.has(root)) {
+      return;
+    }
+    this.pruneDeadRoots();
+    this.stoppedRoots.set(root, true);
+    this.trackedRoots.add(new WeakRef(root));
   }
 
   /**
@@ -96,9 +127,17 @@ class DomGate {
    * subtrees remain suppressed.
    */
   public static resume(root: Element): void {
-    for (const stoppedRoot of this.stoppedRoots) {
+    for (const ref of this.trackedRoots) {
+      const stoppedRoot = ref.deref();
+
+      if (!stoppedRoot) {
+        this.trackedRoots.delete(ref);
+        continue;
+      }
+
       if (stoppedRoot === root || root.contains(stoppedRoot)) {
         this.stoppedRoots.delete(stoppedRoot);
+        this.trackedRoots.delete(ref);
       }
     }
 
@@ -136,7 +175,7 @@ class DomGate {
    * any of the stopped subtrees.
    */
   public static isStopped(elem: object): boolean {
-    if (this.stoppedRoots.size === 0) {
+    if (this.trackedRoots.size === 0) {
       return false;
     }
 
@@ -163,7 +202,7 @@ class DomGate {
    * here already brings the DOM up to date.
    */
   public static gate(elem: object, binding: GatedBinding): boolean {
-    if (this.stoppedRoots.size === 0) {
+    if (this.trackedRoots.size === 0) {
       return false;
     }
     if (!this.isStopped(elem)) {
@@ -172,6 +211,18 @@ class DomGate {
     }
     this.pendingBindings.add(binding);
     return true;
+  }
+
+  /**
+   * Removes weak references to roots that have been garbage collected.
+   * Called from the non-hot paths (`stop()` and `resume()`) only.
+   */
+  private static pruneDeadRoots(): void {
+    for (const ref of this.trackedRoots) {
+      if (!ref.deref()) {
+        this.trackedRoots.delete(ref);
+      }
+    }
   }
 
   /**
