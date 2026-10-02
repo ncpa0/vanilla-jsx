@@ -298,6 +298,7 @@ class VSignal<T> implements Signal<T> {
 
     public add(s: VSignal<any>, isObserved: boolean) {
       s.batchEntry = [s, isObserved];
+      s.batchOwner = this;
       this.orderedQueue.push(s.batchEntry);
     }
 
@@ -326,7 +327,12 @@ class VSignal<T> implements Signal<T> {
             signal.propagateChangeOmitSinks();
           }
         }
-        signal.batchEntry = undefined;
+        // a dispatch during this commit may have re-queued the signal
+        // into the next round's queue
+        if (signal.batchOwner === this) {
+          signal.batchEntry = undefined;
+          signal.batchOwner = undefined;
+        }
       }
       this.orderedQueue.splice(0, this.orderedQueue.length);
     }
@@ -1030,10 +1036,13 @@ class VSignal<T> implements Signal<T> {
   }
 
   private batchEntry?: BatchEntry;
+  private batchOwner?: BatchQueue;
   private addToBatch(batchQueue: BatchQueue): boolean {
     let isObserved = this.listeners.length > 0;
 
-    if (this.batchEntry) {
+    // the entry may belong to a previous commit round's queue, so the
+    // signal might still need to be queued again in the current one
+    if (this.batchEntry && this.batchOwner === batchQueue) {
       return this.batchEntry[1];
     }
 

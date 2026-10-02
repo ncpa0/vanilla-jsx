@@ -2274,6 +2274,38 @@ describe("VSignal()", () => {
       expect(listener).toHaveBeenCalledWith(11);
     });
 
+    it("derived signal gets updated when its source is dispatched during commit", () => {
+      const a = sig(1);
+      const b = sig(10);
+      const d = sig.derive(a, b, (va, vb) => va + vb);
+
+      const onDChange = vitest.fn();
+      d.add(onDChange);
+      expect(onDChange).toHaveBeenCalledTimes(1);
+      expect(onDChange).toHaveBeenCalledWith(11);
+      onDChange.mockClear();
+
+      // the guard skips the initial call `add()` makes with the
+      // current value, so that `b` only gets dispatched during the commit
+      a.add((va) => {
+        if (va === 2) {
+          b.dispatch(20);
+        }
+      });
+
+      sig.startBatch();
+      try {
+        a.dispatch(2);
+      } finally {
+        // during the commit the listener on `a` dispatches `b` into the
+        // next round's queue, `d` must be re-queued there to pick it up
+        sig.commitBatch();
+      }
+
+      expect(d.get()).toBe(22);
+      expect(onDChange).toHaveBeenLastCalledWith(22);
+    });
+
     it("adding listener inside a batch that requires multiple commit rounds", () => {
       const listenerB = vi.fn();
       const a = sig(1);
