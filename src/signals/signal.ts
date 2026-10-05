@@ -136,7 +136,9 @@ export interface ReadonlySignal<T> {
    * Can only be used if the signal value is an Array.
    */
   $map<R>(
-    mapFn: T extends any[] ? (elem: T[number], index: number) => R : never,
+    mapFn: T extends (any[] | readonly any[])
+      ? (elem: T[number], index: number) => R
+      : never,
   ): ReadonlySignal<R[]>;
   /**
    * Similar to `Array.includes()`, equivalent to `signal.derive(list => list.includes(value))`
@@ -144,7 +146,7 @@ export interface ReadonlySignal<T> {
    * Can only be used if the signal value is an Array.
    */
   $includes(
-    value: T extends any[] ? Widen<T[number]> : never,
+    value: T extends (any[] | readonly any[]) ? Widen<T[number]> : never,
   ): ReadonlySignal<boolean>;
   /**
    * Derive Property
