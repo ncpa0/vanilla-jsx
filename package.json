@@ -28,8 +28,8 @@
   "files": [
     "dist",
     "LICENSE",
+    "README.md",
     "package.json",
-    "yarn.lock",
     "jsx-runtime.js",
     "jsx-runtime.d.ts",
     "jsx-dev-runtime.js",
