@@ -1731,6 +1731,211 @@ describe("VSignal()", () => {
       signal.dispatch("002");
       expect(dSignal.get()).toBe(1);
     });
+
+    it("should destroy all directly derived signals when there are multiple", () => {
+      const signal = sig("001");
+      const dSignal1 = signal.derive((v) => `${v}-d1`);
+      const dSignal2 = signal.derive((v) => `${v}-d2`);
+      const dSignal3 = signal.derive((v) => `${v}-d3`);
+
+      signal.destroy();
+
+      expect(() => dSignal1.add(() => {})).toThrowError();
+      expect(() => dSignal2.add(() => {})).toThrowError();
+      expect(() => dSignal3.add(() => {})).toThrowError();
+    });
+
+    it("should destroy all deeper derived signals when there are multiple", () => {
+      const signal = sig("001");
+      const midSignal = signal.derive((v) => `${v}-mid`);
+      const leaf1 = midSignal.derive((v) => `${v}-l1`);
+      const leaf2 = midSignal.derive((v) => `${v}-l2`);
+      const leaf3 = midSignal.derive((v) => `${v}-l3`);
+
+      signal.destroy();
+
+      expect(() => leaf1.add(() => {})).toThrowError();
+      expect(() => leaf2.add(() => {})).toThrowError();
+      expect(() => leaf3.add(() => {})).toThrowError();
+    });
+  });
+
+  describe("mid-iteration removals", () => {
+    it("should not skip listeners when a listener detaches itself during a dispatch", () => {
+      const signal = sig("001");
+      const calls: string[] = [];
+      let refA: SignalListenerReference<string>;
+      refA = signal.add((v) => {
+        calls.push(`A:${v}`);
+        if (v === "002") refA.detach();
+      });
+      signal.add((v) => calls.push(`B:${v}`));
+      signal.add((v) => calls.push(`C:${v}`));
+      signal.add((v) => calls.push(`D:${v}`));
+
+      signal.dispatch("002");
+
+      expect(calls).toEqual([
+        "A:001",
+        "B:001",
+        "C:001",
+        "D:001",
+        "A:002",
+        "B:002",
+        "C:002",
+        "D:002",
+      ]);
+
+      signal.dispatch("003");
+      expect(calls).toEqual([
+        "A:001",
+        "B:001",
+        "C:001",
+        "D:001",
+        "A:002",
+        "B:002",
+        "C:002",
+        "D:002",
+        "B:003",
+        "C:003",
+        "D:003",
+      ]);
+    });
+
+    it("should not skip listeners when a listener detaches an earlier listener during a dispatch", () => {
+      const signal = sig("001");
+      const calls: string[] = [];
+      let refA: SignalListenerReference<string>;
+      refA = signal.add((v) => calls.push(`A:${v}`));
+      signal.add((v) => {
+        calls.push(`B:${v}`);
+        if (v === "002") refA.detach();
+      });
+      signal.add((v) => calls.push(`C:${v}`));
+      signal.add((v) => calls.push(`D:${v}`));
+
+      signal.dispatch("002");
+
+      expect(calls).toEqual([
+        "A:001",
+        "B:001",
+        "C:001",
+        "D:001",
+        "A:002",
+        "B:002",
+        "C:002",
+        "D:002",
+      ]);
+
+      signal.dispatch("003");
+      expect(calls).toEqual([
+        "A:001",
+        "B:001",
+        "C:001",
+        "D:001",
+        "A:002",
+        "B:002",
+        "C:002",
+        "D:002",
+        "B:003",
+        "C:003",
+        "D:003",
+      ]);
+    });
+
+    it("should not skip listeners when a listener detaches all listeners during a dispatch", () => {
+      const signal = sig("001");
+      const calls: string[] = [];
+      signal.add((v) => {
+        calls.push(`A:${v}`);
+        if (v === "002") signal.detachListeners();
+      });
+      signal.add((v) => calls.push(`B:${v}`));
+      signal.add((v) => calls.push(`C:${v}`));
+
+      signal.dispatch("002");
+
+      expect(calls).toEqual([
+        "A:001",
+        "B:001",
+        "C:001",
+        "A:002",
+        "B:002",
+        "C:002",
+      ]);
+    });
+
+    it("should call a listener detached by an earlier listener during the same dispatch", () => {
+      const signal = sig("001");
+      const calls: string[] = [];
+      let refD: SignalListenerReference<string>;
+      signal.add((v) => {
+        calls.push(`A:${v}`);
+        if (v === "002") refD.detach();
+      });
+      signal.add((v) => calls.push(`B:${v}`));
+      refD = signal.add((v) => calls.push(`D:${v}`));
+
+      signal.dispatch("002");
+
+      expect(calls).toEqual([
+        "A:001",
+        "B:001",
+        "D:001",
+        "A:002",
+        "B:002",
+        "D:002",
+      ]);
+
+      signal.dispatch("003");
+      expect(calls).toEqual([
+        "A:001",
+        "B:001",
+        "D:001",
+        "A:002",
+        "B:002",
+        "D:002",
+        "A:003",
+        "B:003",
+      ]);
+    });
+
+    it("should notify all remaining sinks when an earlier sink is destroyed during propagation", () => {
+      const signal = sig("001");
+      const d1 = signal.derive((v) => `${v}-d1`);
+      signal.derive((v) => `${v}-d2`);
+      const d3 = signal.derive((v) => `${v}-d3`);
+      const d4 = signal.derive((v) => `${v}-d4`);
+      const d4Listener = vitest.fn();
+
+      d3.add((v) => {
+        if (v === "002-d3") {
+          d1.destroy();
+        }
+      });
+      d4.add(d4Listener);
+
+      signal.dispatch("002");
+
+      expect(d4Listener).toHaveBeenCalledWith("002-d4");
+      expect(d4Listener).toHaveBeenCalledTimes(2);
+    });
+
+    it("should not remove unrelated listeners when detaching a listener ref cleared by detachListeners()", () => {
+      const signal = sig("001");
+      const listenerB = vitest.fn();
+      const refA = signal.add(() => {});
+
+      signal.detachListeners();
+      signal.add(listenerB);
+
+      // refA is no longer attached, detaching it should be a no-op
+      refA.detach();
+
+      expect(signal.listenerCount()).toBe(1);
+      signal.dispatch("002");
+      expect(listenerB).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("sig.derive()", () => {

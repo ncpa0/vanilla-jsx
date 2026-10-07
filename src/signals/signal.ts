@@ -849,8 +849,9 @@ class VSignal<T> implements Signal<T> {
   }
 
   private notifyListeners(abortSig: PropagationAbortSignal) {
-    for (let i = 0; i < this.listeners.length; i++) {
-      const listenerRef = this.listeners[i]!;
+    const listeners = this.listeners.slice();
+    for (let i = 0; i < listeners.length; i++) {
+      const listenerRef = listeners[i]!;
       try {
         listenerRef.callback(this.value);
       } catch (e) {
@@ -953,7 +954,10 @@ class VSignal<T> implements Signal<T> {
           return;
         }
         const idx = this.listeners.findIndex((l) => l === lRef);
-        this.listeners.splice(idx, 1);
+        // detachListeners() clears this.listeners without setting isDetached, so idx can be -1 here
+        if (idx !== -1) {
+          this.listeners.splice(idx, 1);
+        }
         isDetached = true;
       },
     });
@@ -1001,7 +1005,10 @@ class VSignal<T> implements Signal<T> {
           return;
         }
         const idx = this.listeners.findIndex((l) => l === lRef);
-        this.listeners.splice(idx, 1);
+        // detachListeners() clears this.listeners without setting isDetached, so idx can be -1 here
+        if (idx !== -1) {
+          this.listeners.splice(idx, 1);
+        }
         VSignal.GlobalListeners.delete(lRef);
         isDetached = true;
       },
