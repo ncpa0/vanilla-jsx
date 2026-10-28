@@ -600,7 +600,10 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
     queueMicrotask(() => {
       this.recalculateRange(true);
       if (this.props.initialScroll != null) {
-        this.list.scrollTop = this.props.initialScroll;
+        this.list.scrollTo({
+          top: this.props.initialScroll,
+          behavior: "instant",
+        });
       }
     });
 
@@ -611,6 +614,10 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
         this.recalculateRange(true);
         if (this.props.initialScroll != null) {
           list.scrollTop = this.props.initialScroll;
+          list.scrollTo({
+            top: this.props.initialScroll,
+            behavior: "instant",
+          });
         }
       }
     });
