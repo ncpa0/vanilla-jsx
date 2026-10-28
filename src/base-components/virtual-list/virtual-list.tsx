@@ -612,13 +612,6 @@ export class VirtualList<T> extends ClassComponent<VirtualListProps<T>> {
       if (list) {
         this.lastBounds = undefined;
         this.recalculateRange(true);
-        if (this.props.initialScroll != null) {
-          list.scrollTop = this.props.initialScroll;
-          list.scrollTo({
-            top: this.props.initialScroll,
-            behavior: "instant",
-          });
-        }
       }
     });
 
